@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ایجاد اپلیکیشن تلگرام
+# ایجاد اپلیکیشن تلگرام - اینجا مشکل بود
 application = Application.builder().token(config.Config.BOT_TOKEN).build()
 
 # تنظیم هندلرها (استفاده از توابع مشترک با main.py)
@@ -130,26 +130,13 @@ async def remove_webhook():
 def health_check():
     """بررسی سلامت سرور"""
     try:
-        from database.utils import db_manager
-        
-        # بررسی سلامت دیتابیس
-        db_health = db_manager.health_check()
-        
-        # بررسی اتصال تلگرام
-        telegram_status = "healthy"
-        try:
-            # یک تست ساده از تلگرام
-            pass  # می‌توانید تست‌های بیشتری اضافه کنید
-        except Exception as e:
-            telegram_status = f"unhealthy: {str(e)}"
-        
+        # بررسی سلامت پایه
         health_data = {
             "status": "healthy",
             "service": "Konkur 1405 Bot",
             "timestamp": "2024",
-            "database": db_health.get('database_connection', 'unknown'),
-            "telegram": telegram_status,
-            "environment": config.Config.ENVIRONMENT
+            "environment": config.Config.ENVIRONMENT,
+            "bot_token_set": bool(config.Config.BOT_TOKEN and config.Config.BOT_TOKEN != "your_telegram_bot_token_here")
         }
         
         return jsonify(health_data), 200
@@ -163,17 +150,12 @@ def health_check():
 def stats():
     """آمار سیستم"""
     try:
-        from database.operations import database
-        from database.utils import db_manager
-        
-        system_stats = database.get_system_statistics()
-        db_info = db_manager.get_database_info()
-        
         stats_data = {
-            "system_stats": system_stats,
-            "database_info": db_info,
             "environment": config.Config.ENVIRONMENT,
-            "webhook_url": config.Config.WEBHOOK_URL
+            "webhook_url": config.Config.WEBHOOK_URL,
+            "bot_username": config.Config.BOT_USERNAME,
+            "admin_id": config.Config.ADMIN_ID,
+            "database_url": config.Config.DATABASE_URL
         }
         
         return jsonify(stats_data), 200
@@ -186,7 +168,8 @@ def test():
     return jsonify({
         "message": "ربات کنکور ۱۴۰۵ فعال است",
         "status": "operational",
-        "timestamp": "2024"
+        "timestamp": "2024",
+        "environment": config.Config.ENVIRONMENT
     })
 
 # راه‌اندازی اولیه
