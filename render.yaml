@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: konkur-bot
+    env: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.0
+      - key: BOT_TOKEN
+        value: 8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8
+      - key: ADMIN_ID
+        value: 7703677187
+      - key: ENVIRONMENT
+        value: production
+      - key: WEBHOOK_URL
+        value: https://konkurcounting-3ga0.onrender.com
+    healthCheckPath: /health

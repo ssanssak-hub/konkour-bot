@@ -1,0 +1,59 @@
+# فایل‌های محیط
+.env
+.env.local
+.env.production
+.env.development
+.env.testing
+
+# فایل‌های پایتون
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# محیط مجازی
+venv/
+env/
+ENV/
+
+# دیتابیس
+*.db
+*.sqlite
+*.sqlite3
+
+# لاگ‌ها
+*.log
+logs/
+
+# پشتیبان‌گیری
+backups/
+
+# فایل‌های موقت
+*.tmp
+*.temp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# سیستم
+.DS_Store
+Thumbs.db
