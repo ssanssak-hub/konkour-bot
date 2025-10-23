@@ -12,7 +12,7 @@ services:
       - key: BOT_TOKEN
         value: 8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8
       - key: ADMIN_ID
-        value: 7703677187
+        value: 7703672187
       - key: ENVIRONMENT
         value: production
       - key: WEBHOOK_URL
