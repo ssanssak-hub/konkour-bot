@@ -15,14 +15,24 @@ app = Flask(__name__)
 # تنظیمات مستقیماً از محیط
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
 ADMIN_ID = os.environ.get('ADMIN_ID', '')
-WEBHOOK_URL = os.environ.get('WEBHOOK_URL', '')
+WEBHOOK_URL = os.environ.get('WEBHOOK_URL', 'https://konkour-bot.onrender.com')
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'production')
 
 def get_status_html():
     """تولید HTML وضعیت"""
     bot_token_status = "✅ ست شده" if BOT_TOKEN and BOT_TOKEN != "your_telegram_bot_token_here" else "❌ تنظیم نشده"
     admin_id_status = "✅ ست شده" if ADMIN_ID else "❌ تنظیم نشده"
+    webhook_status = "✅ ست شده" if WEBHOOK_URL else "❌ تنظیم نشده"
+    
+    # لینک ربات تلگرام
+    bot_username = None
+    if BOT_TOKEN and ':' in BOT_TOKEN:
+        bot_id = BOT_TOKEN.split(':')[0]
+        bot_username = f"https://t.me/{BOT_TOKEN.split(':')[0]}"
+    
     status_div = '<div class="status">✅ سرویس فعال و در حال اجرا</div>' if BOT_TOKEN and BOT_TOKEN != "your_telegram_bot_token_here" else '<div class="error">❌ BOT_TOKEN تنظیم نشده است</div>'
+    
+    bot_link = f'<a href="{bot_username}" target="_blank">ربات تلگرام</a>' if bot_username else '<span>ربات تلگرام (نیاز به BOT_TOKEN)</span>'
     
     return f"""
     <!DOCTYPE html>
@@ -36,10 +46,12 @@ def get_status_html():
             h1 {{ font-size: 2.5em; margin-bottom: 20px; }}
             .status {{ background: #4CAF50; padding: 10px; border-radius: 5px; margin: 20px 0; }}
             .error {{ background: #f44336; padding: 10px; border-radius: 5px; margin: 20px 0; }}
+            .warning {{ background: #ff9800; padding: 10px; border-radius: 5px; margin: 20px 0; }}
             .links {{ margin-top: 30px; }}
             .links a {{ color: white; text-decoration: none; margin: 0 10px; padding: 10px 20px; border: 1px solid white; border-radius: 5px; transition: all 0.3s; }}
             .links a:hover {{ background: white; color: #667eea; }}
             .config {{ text-align: left; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin: 15px 0; }}
+            .step {{ background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin: 10px 0; text-align: left; }}
         </style>
     </head>
     <body>
@@ -57,12 +69,18 @@ def get_status_html():
             
             {status_div}
             
+            <div class="step">
+                <h3>🎯 راهنمای راه‌اندازی:</h3>
+                <p>1. ابتدا از صحت تنظیمات بالا مطمئن شوید</p>
+                <p>2. بر روی دکمه "تنظیم وب‌هوک" کلیک کنید</p>
+                <p>3. سپس بر روی "ربات تلگرام" کلیک کرده و ربات را تست کنید</p>
+            </div>
+            
             <div class="links">
                 <a href="/health">بررسی سلامت</a>
                 <a href="/config">تنظیمات</a>
-                <a href="/test">تست</a>
                 <a href="/setup_webhook">تنظیم وب‌هوک</a>
-                <a href="https://t.me/{BOT_TOKEN.split(':')[0] if BOT_TOKEN and ':' in BOT_TOKEN else 'your_bot'}">ربات تلگرام</a>
+                {bot_link}
             </div>
         </div>
     </html>
@@ -81,7 +99,8 @@ def health():
         "environment": ENVIRONMENT,
         "bot_token_configured": bool(BOT_TOKEN and BOT_TOKEN != "your_telegram_bot_token_here"),
         "admin_id_configured": bool(ADMIN_ID),
-        "webhook_url": WEBHOOK_URL or "NOT_SET"
+        "webhook_url": WEBHOOK_URL or "NOT_SET",
+        "server_url": "https://konkour-bot.onrender.com"
     })
 
 @app.route('/config')
@@ -92,7 +111,8 @@ def show_config():
         "ADMIN_ID": ADMIN_ID or "NOT_SET",
         "WEBHOOK_URL": WEBHOOK_URL or "NOT_SET",
         "ENVIRONMENT": ENVIRONMENT,
-        "PORT": os.environ.get('PORT', '5000')
+        "PORT": os.environ.get('PORT', '5000'),
+        "SERVER_URL": "https://konkour-bot.onrender.com"
     })
 
 @app.route('/test')
@@ -102,7 +122,8 @@ def test():
         "message": "ربات کنکور ۱۴۰۵ فعال است",
         "status": "operational",
         "environment": ENVIRONMENT,
-        "bot_ready": bool(BOT_TOKEN and BOT_TOKEN != "your_telegram_bot_token_here")
+        "bot_ready": bool(BOT_TOKEN and BOT_TOKEN != "your_telegram_bot_token_here"),
+        "server": "konkour-bot.onrender.com"
     })
 
 def set_telegram_webhook():
@@ -112,18 +133,23 @@ def set_telegram_webhook():
         
         # حذف وب‌هوک قبلی
         delete_url = f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook"
-        requests.get(delete_url)
+        delete_response = requests.get(delete_url, timeout=10)
+        delete_result = delete_response.json()
+        
+        logger.info(f"حذف وب‌هوک قبلی: {delete_result}")
         
         # تنظیم وب‌هوک جدید
         set_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
         payload = {
             "url": webhook_url,
             "max_connections": 40,
-            "allowed_updates": ["message", "callback_query"]
+            "allowed_updates": ["message", "callback_query", "chat_member"]
         }
         
-        response = requests.post(set_url, json=payload)
+        response = requests.post(set_url, json=payload, timeout=10)
         result = response.json()
+        
+        logger.info(f"نتیجه تنظیم وب‌هوک: {result}")
         
         if result.get('ok'):
             logger.info(f"✅ وب‌هوک با موفقیت تنظیم شد: {webhook_url}")
@@ -141,10 +167,18 @@ def setup_webhook():
     """تنظیم واقعی وب‌هوک"""
     try:
         if not BOT_TOKEN or BOT_TOKEN == "your_telegram_bot_token_here":
-            return jsonify({"status": "error", "message": "BOT_TOKEN not set"}), 400
+            return jsonify({
+                "status": "error", 
+                "message": "BOT_TOKEN تنظیم نشده است",
+                "solution": "لطفاً در Render.com → Environment Variables → BOT_TOKEN را تنظیم کنید"
+            }), 400
         
         if not WEBHOOK_URL:
-            return jsonify({"status": "error", "message": "WEBHOOK_URL not set"}), 400
+            return jsonify({
+                "status": "error", 
+                "message": "WEBHOOK_URL تنظیم نشده است",
+                "solution": "لطفاً در Render.com → Environment Variables → WEBHOOK_URL را تنظیم کنید"
+            }), 400
         
         success, result = set_telegram_webhook()
         
@@ -153,13 +187,15 @@ def setup_webhook():
                 "status": "success",
                 "message": "✅ وب‌هوک با موفقیت تنظیم شد!",
                 "webhook_url": f"{WEBHOOK_URL}/webhook",
-                "result": result
+                "result": result,
+                "next_step": "حالا می‌توانید به ربات تلگرام مراجعه کرده و دستور /start را ارسال کنید"
             })
         else:
             return jsonify({
                 "status": "error",
                 "message": "❌ خطا در تنظیم وب‌هوک",
-                "result": result
+                "result": result,
+                "solution": "لطفاً BOT_TOKEN را بررسی کنید"
             }), 500
     
     except Exception as e:
@@ -215,7 +251,7 @@ def webhook():
                     }
                 }
                 
-                requests.post(send_message_url, json=payload)
+                requests.post(send_message_url, json=payload, timeout=10)
             
             # پاسخ به پیام‌های دیگر
             else:
@@ -224,7 +260,7 @@ def webhook():
                     "chat_id": chat_id,
                     "text": "🤔 لطفاً از منوی ربات استفاده کنید یا دستور /start را وارد کنید."
                 }
-                requests.post(send_message_url, json=payload)
+                requests.post(send_message_url, json=payload, timeout=10)
         
         return jsonify({"status": "success"})
         
@@ -240,7 +276,7 @@ def remove_webhook():
             return jsonify({"status": "error", "message": "BOT_TOKEN not set"}), 400
         
         delete_url = f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook"
-        response = requests.get(delete_url)
+        response = requests.get(delete_url, timeout=10)
         result = response.json()
         
         if result.get('ok'):
@@ -258,6 +294,25 @@ def remove_webhook():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/get_webhook_info')
+def get_webhook_info():
+    """دریافت اطلاعات وب‌هوک"""
+    try:
+        if not BOT_TOKEN or BOT_TOKEN == "your_telegram_bot_token_here":
+            return jsonify({"status": "error", "message": "BOT_TOKEN not set"}), 400
+        
+        info_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getWebhookInfo"
+        response = requests.get(info_url, timeout=10)
+        result = response.json()
+        
+        return jsonify({
+            "status": "success",
+            "webhook_info": result
+        })
+            
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 # تابع اصلی برای Gunicorn
 def create_app():
     return app
@@ -267,6 +322,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     logger.info(f"🚀 شروع سرویس روی پورت {port}")
     logger.info(f"🔧 محیط: {ENVIRONMENT}")
+    logger.info(f"🌐 سرور: https://konkour-bot.onrender.com")
     
     if not BOT_TOKEN or BOT_TOKEN == "your_telegram_bot_token_here":
         logger.error("❌ BOT_TOKEN تنظیم نشده است!")
