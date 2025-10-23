@@ -1,5 +1,6 @@
 import os
 import logging
+import requests
 from flask import Flask, request, jsonify
 
 # تنظیمات اولیه
@@ -60,7 +61,8 @@ def get_status_html():
                 <a href="/health">بررسی سلامت</a>
                 <a href="/config">تنظیمات</a>
                 <a href="/test">تست</a>
-                <a href="/set_webhook">تنظیم وب‌هوک</a>
+                <a href="/setup_webhook">تنظیم وب‌هوک</a>
+                <a href="https://t.me/{BOT_TOKEN.split(':')[0] if BOT_TOKEN and ':' in BOT_TOKEN else 'your_bot'}">ربات تلگرام</a>
             </div>
         </div>
     </html>
@@ -103,31 +105,36 @@ def test():
         "bot_ready": bool(BOT_TOKEN and BOT_TOKEN != "your_telegram_bot_token_here")
     })
 
-@app.route('/set_webhook')
-def set_webhook():
-    """تنظیم وب‌هوک (نمایش اطلاعات)"""
-    if not BOT_TOKEN or BOT_TOKEN == "your_telegram_bot_token_here":
-        return jsonify({
-            "status": "error",
-            "message": "BOT_TOKEN تنظیم نشده است"
-        }), 400
-    
-    if not WEBHOOK_URL:
-        return jsonify({
-            "status": "error", 
-            "message": "WEBHOOK_URL تنظیم نشده است"
-        }), 400
-    
-    webhook_url = f"{WEBHOOK_URL}/webhook"
-    
-    return jsonify({
-        "status": "info",
-        "message": "برای تنظیم وب‌هوک از دستور زیر در ترمینال استفاده کنید:",
-        "command": f"curl -X GET '{WEBHOOK_URL}/setup_webhook'",
-        "webhook_url": webhook_url,
-        "bot_token_set": True,
-        "webhook_url_set": bool(WEBHOOK_URL)
-    })
+def set_telegram_webhook():
+    """تنظیم وب‌هوک در تلگرام"""
+    try:
+        webhook_url = f"{WEBHOOK_URL}/webhook"
+        
+        # حذف وب‌هوک قبلی
+        delete_url = f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook"
+        requests.get(delete_url)
+        
+        # تنظیم وب‌هوک جدید
+        set_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
+        payload = {
+            "url": webhook_url,
+            "max_connections": 40,
+            "allowed_updates": ["message", "callback_query"]
+        }
+        
+        response = requests.post(set_url, json=payload)
+        result = response.json()
+        
+        if result.get('ok'):
+            logger.info(f"✅ وب‌هوک با موفقیت تنظیم شد: {webhook_url}")
+            return True, result
+        else:
+            logger.error(f"❌ خطا در تنظیم وب‌هوک: {result}")
+            return False, result
+            
+    except Exception as e:
+        logger.error(f"❌ خطا در تنظیم وب‌هوک: {e}")
+        return False, {"error": str(e)}
 
 @app.route('/setup_webhook')
 def setup_webhook():
@@ -139,15 +146,21 @@ def setup_webhook():
         if not WEBHOOK_URL:
             return jsonify({"status": "error", "message": "WEBHOOK_URL not set"}), 400
         
-        # اینجا بعداً کد تنظیم وب‌هوک اضافه می‌شه
-        webhook_url = f"{WEBHOOK_URL}/webhook"
+        success, result = set_telegram_webhook()
         
-        return jsonify({
-            "status": "success",
-            "message": "Webhook setup initiated",
-            "webhook_url": webhook_url,
-            "next_step": "ربات آماده است! حالا می‌توانید ربات تلگرام را تست کنید"
-        })
+        if success:
+            return jsonify({
+                "status": "success",
+                "message": "✅ وب‌هوک با موفقیت تنظیم شد!",
+                "webhook_url": f"{WEBHOOK_URL}/webhook",
+                "result": result
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "❌ خطا در تنظیم وب‌هوک",
+                "result": result
+            }), 500
     
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -162,11 +175,86 @@ def webhook():
         }), 400
     
     try:
-        # اینجا بعداً کد پردازش وب‌هوک اضافه می‌شه
-        return jsonify({
-            "status": "success",
-            "message": "Webhook received (processing not implemented yet)"
-        })
+        data = request.get_json()
+        logger.info(f"📨 دریافت وب‌هوک: {data}")
+        
+        # پردازش اولیه پیام
+        if 'message' in data:
+            message = data['message']
+            chat_id = message['chat']['id']
+            text = message.get('text', '')
+            
+            # پاسخ به دستور /start
+            if text == '/start':
+                response_text = """
+                🤖 به ربات کنکور ۱۴۰۵ خوش آمدید!
+
+                🎯 امکانات ربات:
+                • ⏳ شمارش معکوس کنکور
+                • 📅 تقویم مطالعاتی  
+                • ⏰ مدیریت یادآوری
+                • 📚 برنامه مطالعاتی
+                • ✅ ثبت حضور و مطالعه
+                • 📊 آمار و گزارش‌گیری
+
+                برای شروع از دکمه‌های زیر استفاده کنید:
+                """
+                
+                # ارسال پاسخ به کاربر
+                send_message_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+                payload = {
+                    "chat_id": chat_id,
+                    "text": response_text,
+                    "reply_markup": {
+                        "keyboard": [
+                            ["⏳ شمارش معکوس", "📅 تقویم مطالعاتی"],
+                            ["⏰ مدیریت یادآوری", "📚 برنامه مطالعاتی"],
+                            ["✅ ثبت حضور", "📊 آمار"]
+                        ],
+                        "resize_keyboard": True
+                    }
+                }
+                
+                requests.post(send_message_url, json=payload)
+            
+            # پاسخ به پیام‌های دیگر
+            else:
+                send_message_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+                payload = {
+                    "chat_id": chat_id,
+                    "text": "🤔 لطفاً از منوی ربات استفاده کنید یا دستور /start را وارد کنید."
+                }
+                requests.post(send_message_url, json=payload)
+        
+        return jsonify({"status": "success"})
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در پردازش وب‌هوک: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/remove_webhook')
+def remove_webhook():
+    """حذف وب‌هوک"""
+    try:
+        if not BOT_TOKEN or BOT_TOKEN == "your_telegram_bot_token_here":
+            return jsonify({"status": "error", "message": "BOT_TOKEN not set"}), 400
+        
+        delete_url = f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook"
+        response = requests.get(delete_url)
+        result = response.json()
+        
+        if result.get('ok'):
+            return jsonify({
+                "status": "success", 
+                "message": "✅ وب‌هوک با موفقیت حذف شد"
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "❌ خطا در حذف وب‌هوک",
+                "result": result
+            }), 500
+            
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
