@@ -16,5 +16,5 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: WEBHOOK_URL
-        value: https://konkurcounting-3ga0.onrender.com
+        value: https://konkour-bot.onrender.com/
     healthCheckPath: /health
