@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 def setup_handlers(application):
     """تنظیم تمام هندلرهای ربات"""
+    logger.info("🔧 در حال تنظیم هندلرها...")
+    
     setup_main_menu_handlers(application)
     setup_countdown_handlers(application)
     setup_calendar_handlers(application)
@@ -33,6 +35,8 @@ def setup_handlers(application):
     setup_statistics_handlers(application)
     setup_help_handlers(application)
     setup_admin_handlers(application)
+    
+    logger.info("✅ تمام هندلرها تنظیم شدند")
     
     # هندلر برای پیام‌های متنی عمومی
     async def handle_unknown_message(update, context):
