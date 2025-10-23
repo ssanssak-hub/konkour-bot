@@ -55,7 +55,7 @@ async def show_attendance_list(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard = [
         [InlineKeyboardButton("🔄 بروزرسانی", callback_data="show_attendance")],
         [InlineKeyboardButton("✅ اعلام حضور", callback_data="attendance")],
-        [InlineURLButton("🏠 بازگشت به منو", callback_data="main_menu")]
+        [InlineKeyboardButton("🏠 بازگشت به منو", callback_data="main_menu")]
     ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
