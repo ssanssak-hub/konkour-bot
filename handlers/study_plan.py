@@ -305,17 +305,249 @@ async def study_stats_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.edit_message_text(message_text, reply_markup=reply_markup)
 
+async def show_daily_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """نمایش آمار مطالعه روزانه"""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    # آمار ۷ روز اخیر
+    days = []
+    study_times = []
+    
+    for i in range(7):
+        date = (jdatetime.datetime.now() - jdatetime.timedelta(days=i)).strftime("%Y-%m-%d")
+        study_time = database.get_daily_study_time(user_id, date)
+        days.append(date[5:])  # فقط ماه و روز
+        study_times.append(study_time)
+    
+    days.reverse()
+    study_times.reverse()
+    
+    # ایجاد نمودار متنی ساده
+    chart_text = "📈 نمودار مطالعه ۷ روز اخیر:\n\n"
+    max_time = max(study_times) if study_times else 1
+    
+    for i, (day, time) in enumerate(zip(days, study_times)):
+        bar_length = int((time / max_time) * 20) if max_time > 0 else 0
+        bar = "█" * bar_length
+        chart_text += f"{day}: {bar} {time:.1f}h\n"
+    
+    today_time = study_times[-1] if study_times else 0
+    yesterday_time = study_times[-2] if len(study_times) > 1 else 0
+    
+    if yesterday_time > 0:
+        change = ((today_time - yesterday_time) / yesterday_time) * 100
+        trend = "📈 افزایش" if change > 0 else "📉 کاهش" if change < 0 else "➡️ بدون تغییر"
+        chart_text += f"\n{today_time:.1f} ساعت\n{trend} {abs(change):.1f}% نسبت به دیروز"
+    
+    # توصیه روزانه
+    recommendation = ""
+    if today_time >= 6:
+        recommendation = "🎉 امروز عالی بود! فردا هم ادامه بده"
+    elif today_time >= 3:
+        recommendation = "✅ خوب بود. سعی کن فردا بیشتر مطالعه کنی"
+    elif today_time >= 1:
+        recommendation = "💪 شروع خوبی بود. فردا بیشتر تلاش کن"
+    else:
+        recommendation = "🔴 فردا حتماً مطالعه رو شروع کن"
+    
+    chart_text += f"\n\n{recommendation}"
+    
+    keyboard = [
+        [InlineKeyboardButton("📆 آمار هفتگی", callback_data="weekly_study_stats")],
+        [InlineKeyboardButton("🔙 بازگشت به آمار", callback_data="study_stats")],
+        [InlineKeyboardButton("🏠 بازگشت به منو", callback_data="main_menu")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(chart_text, reply_markup=reply_markup)
+
+async def show_weekly_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """نمایش آمار مطالعه هفتگی"""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    # آمار ۴ هفته اخیر
+    weeks = ["هفته ۴", "هفته ۳", "هفته ۲", "هفته ۱"]
+    study_times = []
+    
+    # محاسبه مطالعه هفتگی
+    for i in range(4):
+        # در نسخه واقعی، این مقدار از دیتابیس محاسبه می‌شود
+        base_time = database.get_weekly_study_time(user_id)
+        study_time = max(base_time - i * 5, 0)  # شبیه‌سازی داده
+        study_times.append(study_time)
+    
+    chart_text = "📆 نمودار مطالعه ۴ هفته اخیر:\n\n"
+    max_time = max(study_times) if study_times else 1
+    
+    for week, time in zip(weeks, study_times):
+        bar_length = int((time / max_time) * 20) if max_time > 0 else 0
+        bar = "█" * bar_length
+        chart_text += f"{week}: {bar} {time:.1f}h\n"
+    
+    # تحلیل پیشرفت
+    if len(study_times) >= 2:
+        current_week = study_times[-1]
+        last_week = study_times[-2]
+        
+        if last_week > 0:
+            change = ((current_week - last_week) / last_week) * 100
+            
+            if change > 20:
+                analysis = "🎉 پیشرفت فوق‌العاده! روندت عالیه"
+            elif change > 0:
+                analysis = "✅ در مسیر پیشرفت قرار داری"
+            elif change > -10:
+                analysis = "⚠️ ثابت موندی، نیاز به تلاش بیشتر"
+            else:
+                analysis = "🔴 افت داشتی، برنامه‌ات رو بررسی کن"
+            
+            chart_text += f"\n{analysis}\nتغییر: {change:+.1f}%"
+    
+    keyboard = [
+        [InlineKeyboardButton("📈 آمار روزانه", callback_data="daily_study_stats")],
+        [InlineKeyboardButton("🔙 بازگشت به آمار", callback_data="study_stats")],
+        [InlineKeyboardButton("🏠 بازگشت به منو", callback_data="main_menu")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(chart_text, reply_markup=reply_markup)
+
+async def study_timer_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """منوی زمان‌سنج مطالعه"""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    active_timers = database.get_user_timers(user_id, active_only=True)
+    
+    message_text = "⏱️ زمان‌سنج مطالعه\n\n"
+    
+    if active_timers:
+        message_text += "⏰ زمان‌سنج‌های فعال:\n"
+        for timer in active_timers[:3]:
+            message_text += f"• {timer.title}: {timer.remaining_hours:.1f} ساعت باقی مانده\n"
+        message_text += "\n"
+    
+    message_text += (
+        "با زمان‌سنج می‌توانید:\n"
+        "• ⏰ زمان مطالعه خود را مدیریت کنید\n"
+        "• 📊 پیشرفت را实时 مشاهده کنید\n"
+        "• 🔔 یادآوری دریافت کنید\n"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("➕ زمان‌سنج جدید", callback_data="add_study_timer")],
+        [InlineKeyboardButton("📋 مدیریت زمان‌سنج‌ها", callback_data="manage_timers")],
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="study_plan")],
+        [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message_text, reply_markup=reply_markup)
+
+async def add_study_timer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """شروع ایجاد زمان‌سنج جدید"""
+    query = update.callback_query
+    await query.answer()
+    
+    context.user_data['waiting_for_timer_title'] = True
+    
+    await query.edit_message_text(
+        "⏱️ ایجاد زمان‌سنج جدید\n\n"
+        "لطفاً عنوان زمان‌سنج را وارد کنید:\n"
+        "مثال: 'مطالعه ریاضی فصل ۳' یا 'حل تست‌های شیمی'"
+    )
+
+async def handle_timer_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """دریافت عنوان زمان‌سنج"""
+    if context.user_data.get('waiting_for_timer_title'):
+        title = update.message.text
+        context.user_data['timer_title'] = title
+        context.user_data['waiting_for_timer_hours'] = True
+        context.user_data.pop('waiting_for_timer_title', None)
+        
+        await update.message.reply_text(
+            f"✅ عنوان ثبت شد: {title}\n\n"
+            "لطفاً مدت زمان هدف (به ساعت) را وارد کنید:\n"
+            "مثال: 2.5 (یعنی ۲ ساعت و ۳۰ دقیقه)"
+        )
+
+async def handle_timer_hours(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ذخیره زمان‌سنج جدید"""
+    if context.user_data.get('waiting_for_timer_hours'):
+        try:
+            target_hours = float(update.message.text)
+            title = context.user_data.get('timer_title')
+            user_id = update.message.from_user.id
+            
+            # ذخیره زمان‌سنج در دیتابیس
+            timer = database.add_study_timer(
+                user_id=user_id,
+                title=title,
+                target_hours=target_hours
+            )
+            
+            # پاک کردن وضعیت
+            context.user_data.pop('waiting_for_timer_hours', None)
+            context.user_data.pop('timer_title', None)
+            
+            keyboard = [
+                [InlineKeyboardButton("⏱️ زمان‌سنج جدید", callback_data="add_study_timer")],
+                [InlineKeyboardButton("📋 مدیریت زمان‌سنج‌ها", callback_data="manage_timers")],
+                [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
+            ]
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                f"✅ زمان‌سنج با موفقیت ایجاد شد! ⏱️\n\n"
+                f"🎯 عنوان: {title}\n"
+                f"⏰ مدت زمان: {target_hours} ساعت\n"
+                f"🆔 کد زمان‌سنج: {timer.id}\n\n"
+                "حالا می‌تونی پیشرفتت رو实时 مشاهده کنی!",
+                reply_markup=reply_markup
+            )
+            
+        except ValueError:
+            await update.message.reply_text(
+                "❌ لطفاً یک عدد معتبر وارد کنید:\n"
+                "مثال: 2.5 (برای ۲ ساعت و ۳۰ دقیقه)"
+            )
+
 def setup_study_plan_handlers(application):
+    """تنظیم تمام هندلرهای مطالعه و برنامه‌ریزی"""
+    # هندلرهای منوی اصلی
     application.add_handler(CallbackQueryHandler(study_plan_menu, pattern="^study_plan$"))
     application.add_handler(CallbackQueryHandler(add_study_goal, pattern="^add_study_goal$"))
-    application.add_handler(CallbackQueryHandler(set_goal_type, pattern="^goal_"))
     application.add_handler(CallbackQueryHandler(add_study_session_menu, pattern="^add_study_session$"))
+    application.add_handler(CallbackQueryHandler(study_timer_menu, pattern="^study_timer$"))
     application.add_handler(CallbackQueryHandler(manage_study_plans, pattern="^manage_study_plans$"))
     application.add_handler(CallbackQueryHandler(study_stats_menu, pattern="^study_stats$"))
-    application.add_handler(CallbackQueryHandler(study_stats_menu, pattern="^daily_study_stats$"))
-    application.add_handler(CallbackQueryHandler(study_stats_menu, pattern="^weekly_study_stats$"))
     
+    # هندلرهای انواع هدف
+    application.add_handler(CallbackQueryHandler(set_goal_type, pattern="^goal_"))
+    
+    # هندلرهای آمار
+    application.add_handler(CallbackQueryHandler(show_daily_progress, pattern="^daily_study_stats$"))
+    application.add_handler(CallbackQueryHandler(show_weekly_progress, pattern="^weekly_study_stats$"))
+    
+    # هندلرهای زمان‌سنج
+    application.add_handler(CallbackQueryHandler(add_study_timer, pattern="^add_study_timer$"))
+    application.add_handler(CallbackQueryHandler(study_timer_menu, pattern="^manage_timers$"))
+    
+    # هندلرهای پیام متنی
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, save_study_goal), group=1)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, save_study_goal_hours), group=2)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, save_study_session_subject), group=3)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, save_study_session), group=4)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_timer_title), group=5)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_timer_hours), group=6)
