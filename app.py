@@ -67,6 +67,7 @@ def setup_logging():
             ]
     )
     logger = logging.getLogger(__name__)
+app = Flask(__name__)  # این خط باید اینجا باشد!
 # ==================== ADVANCED CONFIGURATION ====================
 
 class AdvancedConfig:
