@@ -56,10 +56,17 @@ def setup_logging():
     return logger
 
 # راه‌اندازی لاگینگ
-logger = setup_logging()
+# ==================== BASIC LOGGING SETUP ====================
 
-app = Flask(__name__)
-
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler('konkur_bot.log', encoding='utf-8')
+            ]
+    )
+    logger = logging.getLogger(__name__)
 # ==================== ADVANCED CONFIGURATION ====================
 
 class AdvancedConfig:
