@@ -1112,6 +1112,47 @@ def initialize_system():
         logger.error(traceback.format_exc())
         return False
 
+# ==================== QUICK FIX ====================
+def quick_initialize():
+    """راه‌اندازی سریع و تضمینی ربات"""
+    print("🚀 راه‌اندازی سریع ربات...")
+    
+    try:
+        # تست توکن
+        import requests
+        token = AdvancedConfig.BOT_TOKEN
+        test_url = f"https://api.telegram.org/bot{token}/getMe"
+        
+        response = requests.get(test_url, timeout=10)
+        print(f"✅ تست توکن: {response.json()}")
+        
+        # راه‌اندازی مستقیم
+        from telegram.ext import Application
+        
+        app_manager.application = Application.builder().token(token).build()
+        
+        # اضافه کردن یک هندلر ساده
+        async def start(update, context):
+            await update.message.reply_text("🎉 ربات فعال شد! به ربات کنکور خوش آمدید!")
+        
+        app_manager.application.add_handler(CommandHandler("start", start))
+        app_manager.application.add_handler(CommandHandler("help", start))
+        
+        app_manager.initialized = True
+        print("✅ ربات با موفقیت راه‌اندازی شد")
+        
+        # تنظیم وب‌هوک
+        try:
+            import asyncio
+            asyncio.run(webhook_manager.setup_webhook())
+        except Exception as e:
+            print(f"⚠️ وب‌هوک: {e}")
+            
+    except Exception as e:
+        print(f"❌ خطا در راه‌اندازی سریع: {e}")
+
+# اجرای راه‌اندازی سریع
+quick_initialize()
 # ==================== MAIN EXECUTION ====================
 
 if __name__ == '__main__':
