@@ -151,44 +151,36 @@ class ApplicationManager:
     def initialize(self) -> bool:
         """راه‌اندازی مقاوم برنامه"""
         try:
-            print("🔍 DEBUG: Starting initialize...")
             logger.info("🚀 در حال راه‌اندازی برنامه تلگرام...")
             
             # اعتبارسنجی تنظیمات
             config_errors = AdvancedConfig.validate_config()
             if config_errors:
-                print(f"❌ DEBUG: Config errors: {config_errors}")
                 for error in config_errors:
                     logger.error(f"❌ خطای پیکربندی: {error}")
                 return False
             
-            print("🔍 DEBUG: Config validation passed")
-            
             # ایجاد برنامه
             try:
-                print("🔍 DEBUG: Creating Application...")
                 self.application = (
                     Application.builder()
                     .token(AdvancedConfig.BOT_TOKEN)
                     .build()
                 )
-                print("✅ DEBUG: Application created successfully")
             except Exception as e:
-                print(f"❌ DEBUG: Application creation failed: {e}")
+                logger.error(f"❌ خطا در ایجاد برنامه: {e}")
                 return False
             
             # تنظیم هندلرها
-            print("🔍 DEBUG: Setting up handlers...")
             if not self._setup_handlers():
-                print("❌ DEBUG: Handler setup failed")
                 return False
             
             self.initialized = True
-            print("✅ DEBUG: Initialization completed successfully")
+            logger.info("✅ برنامه تلگرام با موفقیت راه‌اندازی شد")
             return True
             
         except Exception as e:
-            print(f"💥 DEBUG: Initialize crashed: {e}")
+            logger.error(f"💥 خطا در راه‌اندازی برنامه: {e}")
             return False
     
     def _setup_handlers(self) -> bool:
@@ -243,8 +235,7 @@ class ApplicationManager:
                 await update.message.reply_text(
                     welcome_text,
                     reply_markup=self._create_main_menu(),
-                    parse_mode='HTML',
-                    reply_to_message_id=update.message.message_id
+                    parse_mode='HTML'
                 )
                 
                 self.stats['successful_requests'] += 1
@@ -688,7 +679,7 @@ class ApplicationManager:
             'successful_requests': self.stats['successful_requests'],
             'failed_requests': self.stats['failed_requests'],
             'last_error': self.stats['last_error'],
-            'active_users': list(self.stats['active_users']),  # تبدیل set به list
+            'active_users': list(self.stats['active_users']),
             'active_users_count': len(self.stats['active_users']),
             'commands_processed': self.stats['commands_processed'],
             'messages_processed': self.stats['messages_processed'],
@@ -696,8 +687,7 @@ class ApplicationManager:
             'initialized': self.initialized,
             'application_status': 'active' if self.initialized else 'inactive',
             'retry_count': self.retry_count
-         }
-
+        }
 
 # ==================== WEBHOOK MANAGER ====================
 
@@ -723,7 +713,7 @@ class WebhookManager:
             try:
                 await self.app_manager.application.bot.delete_webhook()
                 logger.info("✅ وب‌هوک قبلی حذف شد")
-                await asyncio.sleep(1)  # تاخیر برای اطمینان
+                await asyncio.sleep(1)
             except Exception as e:
                 logger.warning(f"⚠️ خطا در حذف وب‌هوک قبلی: {e}")
             
@@ -740,9 +730,6 @@ class WebhookManager:
                     self.webhook_set = True
                     self.last_setup_time = datetime.now()
                     logger.info(f"✅ وب‌هوک با موفقیت تنظیم شد: {webhook_url}")
-                    
-                    # اطلاع به ادمین
-                    await self._notify_admin("✅ وب‌هوک فعال شد")
                     return True
                 else:
                     logger.error("❌ تنظیم وب‌هوک ناموفق بود")
@@ -755,18 +742,6 @@ class WebhookManager:
         except Exception as e:
             logger.error(f"❌ خطای کلی در تنظیم وب‌هوک: {e}")
             return False
-    
-    async def _notify_admin(self, message: str):
-        """اطلاع به ادمین"""
-        try:
-            await self.app_manager.application.bot.send_message(
-                chat_id=AdvancedConfig.ADMIN_ID,
-                text=f"🌐 {message}\n\n"
-                     f"🕒 {jdatetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}\n"
-                     f"🔗 {AdvancedConfig.WEBHOOK_URL}"
-            )
-        except Exception as e:
-            logger.warning(f"⚠️ نتوانست به ادمین پیام بفرستد: {e}")
 
 # ==================== HEALTH MONITOR ====================
 
@@ -819,7 +794,6 @@ def home():
     """صفحه اصلی پیشرفته"""
     health_monitor.increment_requests()
     
-    # تبدیل set به list برای JSON serialization
     bot_stats = app_manager.get_stats() if hasattr(app_manager, 'initialized') and app_manager.initialized else None
     if bot_stats and 'active_users' in bot_stats:
         bot_stats['active_users'] = list(bot_stats['active_users'])
@@ -899,9 +873,6 @@ def set_webhook_route():
     health_monitor.increment_requests()
     
     try:
-        # استفاده از requests برای تنظیم مستقیم وب‌هوک
-        import requests
-        
         # حذف وب‌هوک قبلی
         delete_url = f"https://api.telegram.org/bot{AdvancedConfig.BOT_TOKEN}/deleteWebhook"
         delete_response = requests.get(delete_url, timeout=10)
@@ -1012,7 +983,6 @@ def webhook():
         logger.error(traceback.format_exc())
         health_monitor.increment_errors()
         
-        # حتی در صورت خطا 200 برگردان
         return jsonify({
             "status": "success",
             "message": "Error handled gracefully",
@@ -1123,7 +1093,7 @@ def initialize_system():
         
         logger.info("✅ ربات تلگرام راه‌اندازی شد")
         
-        # تنظیم وب‌هوک (غیرضروری اما توصیه می‌شود)
+        # تنظیم وب‌هوک
         logger.info("🌐 در حال تنظیم وب‌هوک...")
         try:
             webhook_success = asyncio.run(webhook_manager.setup_webhook())
