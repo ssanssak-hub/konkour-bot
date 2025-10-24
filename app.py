@@ -325,7 +325,7 @@ class ApplicationManager:
 👨‍💻 **توسعه:** سیستم مدیریت پیشرفته
 
 📊 **آمار فعلی:**
-• کاربران فعال: {len(self.stats['active_users']}
+• کاربران فعال: {len(self.stats['active_users'])}
 • درخواست‌های موفق: {self.stats['successful_requests']}
 • آپتایم: {str(datetime.now() - self.start_time).split('.')[0]}
 
