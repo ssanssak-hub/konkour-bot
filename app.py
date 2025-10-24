@@ -832,6 +832,11 @@ def home():
     """صفحه اصلی پیشرفته"""
     health_monitor.increment_requests()
     
+    # تبدیل set به list برای JSON serialization
+    bot_stats = app_manager.get_stats() if hasattr(app_manager, 'initialized') and app_manager.initialized else None
+    if bot_stats and 'active_users' in bot_stats:
+        bot_stats['active_users'] = list(bot_stats['active_users'])
+    
     info = {
         "status": "active",
         "service": "Konkur 1405 Bot - Professional Edition",
@@ -840,7 +845,7 @@ def home():
         "persian_time": jdatetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
         "environment": AdvancedConfig.ENVIRONMENT,
         "health": health_monitor.get_health_status(),
-        "bot_stats": app_manager.get_stats() if hasattr(app_manager, 'initialized') else None,
+        "bot_stats": bot_stats,
         "config": AdvancedConfig.get_config_info(),
         "endpoints": {
             "health": "/health",
