@@ -29,7 +29,6 @@ class CustomFormatter(logging.Formatter):
             record.timestamp = "N/A"
         return super().format(record)
 
-# تنظیمات پیشرفته لاگ
 def setup_logging():
     """تنظیمات پیشرفته سیستم لاگینگ"""
     logger = logging.getLogger()
@@ -56,18 +55,10 @@ def setup_logging():
     return logger
 
 # راه‌اندازی لاگینگ
-# ==================== BASIC LOGGING SETUP ====================
+logger = setup_logging()
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler('konkur_bot.log', encoding='utf-8')
-            ]
-    )
-    logger = logging.getLogger(__name__)
-app = Flask(__name__)  # این خط باید اینجا باشد!
+app = Flask(__name__)
+
 # ==================== ADVANCED CONFIGURATION ====================
 
 class AdvancedConfig:
