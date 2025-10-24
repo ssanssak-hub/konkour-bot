@@ -159,56 +159,44 @@ class ApplicationManager:
     def initialize(self) -> bool:
         """راه‌اندازی مقاوم برنامه"""
         try:
-            logger.info("🚀 در حال راه‌اندازی پیشرفته برنامه تلگرام...")
+            print("🔍 DEBUG: Starting initialize...")
+            logger.info("🚀 در حال راه‌اندازی برنامه تلگرام...")
             
             # اعتبارسنجی تنظیمات
             config_errors = AdvancedConfig.validate_config()
             if config_errors:
+                print(f"❌ DEBUG: Config errors: {config_errors}")
                 for error in config_errors:
                     logger.error(f"❌ خطای پیکربندی: {error}")
                 return False
             
-            logger.info(f"🔑 توکن: {AdvancedConfig.BOT_TOKEN[:10]}...")
-            logger.info(f"🌐 وب‌هوک: {AdvancedConfig.WEBHOOK_URL}")
-            logger.info(f"👤 ادمین: {AdvancedConfig.ADMIN_ID}")
+            print("🔍 DEBUG: Config validation passed")
             
-            # ایجاد برنامه با مدیریت خطا
+            # ایجاد برنامه
             try:
+                print("🔍 DEBUG: Creating Application...")
                 self.application = (
                     Application.builder()
                     .token(AdvancedConfig.BOT_TOKEN)
-                    .connect_timeout(30)
-                    .read_timeout(30)
-                    .write_timeout(30)
-                    .pool_timeout(30)
                     .build()
                 )
-                logger.info("✅ Application object با موفقیت ساخته شد")
+                print("✅ DEBUG: Application created successfully")
             except Exception as e:
-                logger.error(f"❌ خطا در ساخت Application: {e}")
-                self.retry_count += 1
-                if self.retry_count <= self.max_retries:
-                    logger.info(f"🔄 تلاش مجدد ({self.retry_count}/{self.max_retries})...")
-                    time.sleep(2)
-                    return self.initialize()
+                print(f"❌ DEBUG: Application creation failed: {e}")
                 return False
             
             # تنظیم هندلرها
+            print("🔍 DEBUG: Setting up handlers...")
             if not self._setup_handlers():
-                logger.error("❌ خطا در تنظیم هندلرها")
+                print("❌ DEBUG: Handler setup failed")
                 return False
             
             self.initialized = True
-            self.retry_count = 0
-            logger.info("✅ برنامه تلگرام با موفقیت راه‌اندازی شد")
-            
-            # اطلاع به ادمین
-            self._notify_admin("✅ ربات فعال شد")
+            print("✅ DEBUG: Initialization completed successfully")
             return True
             
         except Exception as e:
-            logger.error(f"❌ خطای شدید در راه‌اندازی برنامه: {e}")
-            logger.error(traceback.format_exc())
+            print(f"💥 DEBUG: Initialize crashed: {e}")
             return False
     
     def _setup_handlers(self) -> bool:
