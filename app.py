@@ -1,67 +1,61 @@
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
-from handlers.main_menu import setup_main_menu_handlers
-from handlers.countdown import setup_countdown_handlers
-from handlers.calendar import setup_calendar_handlers
-from handlers.reminders import setup_reminders_handlers
-from handlers.messages import setup_messages_handlers
-from handlers.attendance import setup_attendance_handlers
-from handlers.study_plan import setup_study_plan_handlers
-from handlers.statistics import setup_statistics_handlers
-from handlers.help import setup_help_handlers
-from handlers.admin import setup_admin_handlers
-from database.base import db
-import config
-import logging
 import os
+import logging
+import asyncio
 from flask import Flask, request, jsonify
+from telegram.ext import Application
 
-# تنظیمات لاگ
+# تنظیمات اولیه
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
-
 logger = logging.getLogger(__name__)
 
-# ایجاد اپلیکیشن Flask
 app = Flask(__name__)
 
+# تنظیمات مستقیم از محیط
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8')
+ADMIN_ID = os.environ.get('ADMIN_ID', '7703677187')
+WEBHOOK_URL = os.environ.get('WEBHOOK_URL', 'https://konkour-bot.onrender.com')
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'production')
+
 # ایجاد اپلیکیشن تلگرام
-telegram_app = Application.builder().token(config.Config.BOT_TOKEN).build()
+telegram_app = Application.builder().token(BOT_TOKEN).build()
 
 def setup_handlers(application):
     """تنظیم تمام هندلرهای ربات"""
     logger.info("🔧 در حال تنظیم هندلرها...")
     
-    setup_main_menu_handlers(application)
-    setup_countdown_handlers(application)
-    setup_calendar_handlers(application)
-    setup_reminders_handlers(application)
-    setup_messages_handlers(application)
-    setup_attendance_handlers(application)
-    setup_study_plan_handlers(application)
-    setup_statistics_handlers(application)
-    setup_help_handlers(application)
-    setup_admin_handlers(application)
-    
-    logger.info("✅ تمام هندلرها تنظیم شدند")
-    
-    # هندلر برای پیام‌های متنی عمومی
-    async def handle_unknown_message(update, context):
-        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    try:
+        from handlers.main_menu import setup_main_menu_handlers
+        from handlers.countdown import setup_countdown_handlers
+        from handlers.calendar import setup_calendar_handlers
+        from handlers.reminders import setup_reminders_handlers
+        from handlers.messages import setup_messages_handlers
+        from handlers.attendance import setup_attendance_handlers
+        from handlers.study_plan import setup_study_plan_handlers
+        from handlers.statistics import setup_statistics_handlers
+        from handlers.help import setup_help_handlers
+        from handlers.admin import setup_admin_handlers
         
-        keyboard = [
-            [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        # تنظیم هندلرها
+        setup_main_menu_handlers(application)
+        setup_countdown_handlers(application)
+        setup_calendar_handlers(application)
+        setup_reminders_handlers(application)
+        setup_messages_handlers(application)
+        setup_attendance_handlers(application)
+        setup_study_plan_handlers(application)
+        setup_statistics_handlers(application)
+        setup_help_handlers(application)
+        setup_admin_handlers(application)
         
-        await update.message.reply_text(
-            "🤔 متوجه پیام شما نشدم!\n\n"
-            "لطفاً از منوی اصلی استفاده کنید یا دستور /start را وارد کنید.",
-            reply_markup=reply_markup
-        )
-    
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message), group=100)
+        logger.info("✅ تمام هندلرها تنظیم شدند")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در تنظیم هندلرها: {e}")
+        return False
 
 def setup_error_handler(application):
     """تنظیم هندلر خطاها"""
@@ -79,6 +73,7 @@ def setup_error_handler(application):
 def initialize_database():
     """راه‌اندازی اولیه دیتابیس"""
     try:
+        from database.base import db
         db.create_tables()
         logger.info("✅ جداول دیتابیس ایجاد شدند")
         return True
@@ -96,7 +91,10 @@ def initialize_bot():
         return False
 
     # تنظیم هندلرها
-    setup_handlers(telegram_app)
+    if not setup_handlers(telegram_app):
+        logger.error("❌ خطا در تنظیم هندلرها")
+        return False
+        
     setup_error_handler(telegram_app)
     
     logger.info("✅ ربات با موفقیت راه‌اندازی شد")
@@ -187,9 +185,9 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "Konkur 1405 Bot",
-        "environment": config.Config.ENVIRONMENT,
-        "bot_configured": bool(config.Config.BOT_TOKEN and config.Config.BOT_TOKEN != "your_telegram_bot_token_here"),
-        "webhook_url": config.Config.WEBHOOK_URL,
+        "environment": ENVIRONMENT,
+        "bot_configured": bool(BOT_TOKEN and BOT_TOKEN != "your_telegram_bot_token_here"),
+        "webhook_url": WEBHOOK_URL,
         "database_initialized": True
     })
 
@@ -199,14 +197,14 @@ def setup_webhook():
     try:
         import requests
         
-        webhook_url = f"{config.Config.WEBHOOK_URL}/webhook"
+        webhook_url = f"{WEBHOOK_URL}/webhook"
         
         # حذف وب‌هوک قبلی
-        delete_url = f"https://api.telegram.org/bot{config.Config.BOT_TOKEN}/deleteWebhook"
+        delete_url = f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook"
         delete_response = requests.get(delete_url, timeout=10)
         
         # تنظیم وب‌هوک جدید
-        set_url = f"https://api.telegram.org/bot{config.Config.BOT_TOKEN}/setWebhook"
+        set_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
         payload = {
             "url": webhook_url,
             "max_connections": 40,
@@ -243,13 +241,13 @@ def webhook():
         try:
             # دریافت آپدیت از تلگرام
             update_data = request.get_json()
-            logger.info(f"📨 دریافت وب‌هوک: {update_data}")
+            logger.info(f"📨 دریافت وب‌هوک")
             
             # ایجاد آبجکت Update
+            from telegram import Update
             update = Update.de_json(update_data, telegram_app.bot)
             
             # پردازش آپدیت به صورت همزمان
-            import asyncio
             asyncio.run(telegram_app.process_update(update))
             
             return jsonify({"status": "success"})
@@ -266,7 +264,7 @@ def remove_webhook():
     try:
         import requests
         
-        delete_url = f"https://api.telegram.org/bot{config.Config.BOT_TOKEN}/deleteWebhook"
+        delete_url = f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook"
         response = requests.get(delete_url, timeout=10)
         result = response.json()
         
@@ -291,7 +289,7 @@ def get_webhook_info():
     try:
         import requests
         
-        info_url = f"https://api.telegram.org/bot{config.Config.BOT_TOKEN}/getWebhookInfo"
+        info_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getWebhookInfo"
         response = requests.get(info_url, timeout=10)
         result = response.json()
         
@@ -303,7 +301,26 @@ def get_webhook_info():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# راه‌اندازی اولیه هنگام import
+# هندلر برای پیام‌های متنی عمومی (اضافه کردن به صورت دستی)
+async def handle_unknown_message(update, context):
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    
+    keyboard = [
+        [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "🤔 متوجه پیام شما نشدم!\n\n"
+        "لطفاً از منوی اصلی استفاده کنید یا دستور /start را وارد کنید.",
+        reply_markup=reply_markup
+    )
+
+# اضافه کردن هندلر ناشناخته به صورت دستی
+from telegram.ext import MessageHandler, filters
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message), group=100)
+
+# راه‌اندازی اولیه
 if initialize_bot():
     logger.info("🤖 ربات آماده دریافت پیام‌ها از طریق وب‌هوک")
 else:
@@ -313,15 +330,15 @@ else:
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     logger.info(f"🚀 شروع سرویس روی پورت {port}")
-    logger.info(f"🔧 محیط: {config.Config.ENVIRONMENT}")
-    logger.info(f"🌐 سرور: {config.Config.WEBHOOK_URL}")
+    logger.info(f"🔧 محیط: {ENVIRONMENT}")
+    logger.info(f"🌐 سرور: {WEBHOOK_URL}")
     
-    if not config.Config.BOT_TOKEN or config.Config.BOT_TOKEN == "your_telegram_bot_token_here":
+    if not BOT_TOKEN or BOT_TOKEN == "your_telegram_bot_token_here":
         logger.error("❌ BOT_TOKEN تنظیم نشده است!")
     else:
         logger.info("✅ BOT_TOKEN تنظیم شده است")
     
-    app.run(host='0.0.0.0', port=port, debug=config.Config.ENVIRONMENT == 'development')
+    app.run(host='0.0.0.0', port=port, debug=ENVIRONMENT == 'development')
 
 # این برای Gunicorn لازمه
 application = app
