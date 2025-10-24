@@ -72,23 +72,30 @@ def answer_callback_query(callback_query_id, text=None):
 
 # ==================== KEYBOARDS ====================
 
+# در بخش ایجاد کیبوردها، این تابع رو اضافه کنید:
+
+def create_glass_button(text, callback_data):
+    """ایجاد دکمه شیشه‌ای"""
+    return {"text": f"🔮 {text}", "callback_data": callback_data}
+
 def create_main_menu_keyboard():
-    """ایجاد کیبورد منوی اصلی"""
+    """ایجاد کیبورد منوی اصلی با دکمه‌های شیشه‌ای"""
     keyboard = {
         "inline_keyboard": [
-            [{"text": "⏳ چند روز تا کنکور؟", "callback_data": "countdown"}],
-            [{"text": "📅 تقویم و رویدادها", "callback_data": "calendar"}],
-            [{"text": "🔔 مدیریت یادآوری‌ها", "callback_data": "reminders"}],
-            [{"text": "📨 ارسال پیام", "callback_data": "send_message"}],
-            [{"text": "✅ اعلام حضور", "callback_data": "attendance"}],
-            [{"text": "📚 اهداف و برنامه‌ریزی", "callback_data": "study_plan"}],
-            [{"text": "📊 آمار و گزارش", "callback_data": "statistics"}],
-            [{"text": "❓ راهنما", "callback_data": "help"}],
-            [{"text": "🔧 پنل مدیریت", "callback_data": "admin_panel"}]
+            [create_glass_button("⏳ چند روز تا کنکور؟", "countdown")],
+            [create_glass_button("📅 تقویم و رویدادها", "calendar")],
+            [create_glass_button("🔔 مدیریت یادآوری‌ها", "reminders")],
+            [create_glass_button("📨 ارسال پیام", "send_message")],
+            [create_glass_button("✅ اعلام حضور", "attendance")],
+            [create_glass_button("📚 اهداف و برنامه‌ریزی", "study_plan")],
+            [create_glass_button("📊 آمار و گزارش", "statistics")],
+            [create_glass_button("❓ راهنما", "help")],
+            [create_glass_button("🔧 پنل مدیریت", "admin_panel")]
         ]
     }
     return keyboard
 
+# به همین صورت تمام کیبوردهای دیگر رو به دکمه‌های شیشه‌ای تبدیل کنید...
 def create_back_keyboard(back_to="main_menu"):
     """ایجاد کیبورد بازگشت"""
     keyboard = {
