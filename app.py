@@ -789,6 +789,70 @@ app_manager = ApplicationManager()
 webhook_manager = WebhookManager(app_manager)
 health_monitor = HealthMonitor()
 
+# ==================== LAZY INITIALIZATION FIX ====================
+
+def lazy_initialize():
+    """راه‌اندازی تنبل - فقط وقتی لازم است"""
+    print("🔧 راه‌اندازی تنبل ربات...")
+    
+    if app_manager.initialized:
+        print("✅ ربات از قبل راه‌اندازی شده")
+        return True
+        
+    try:
+        # تست توکن
+        import requests
+        token = AdvancedConfig.BOT_TOKEN
+        test_url = f"https://api.telegram.org/bot{token}/getMe"
+        
+        response = requests.get(test_url, timeout=10)
+        bot_info = response.json()
+        print(f"🤖 اطلاعات ربات: {bot_info}")
+        
+        if not bot_info.get('ok'):
+            print("❌ توکن نامعتبر است")
+            return False
+        
+        # راه‌اندازی برنامه
+        from telegram.ext import Application
+        
+        app_manager.application = Application.builder().token(token).build()
+        
+        # اضافه کردن هندلرهای ضروری
+        async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            await update.message.reply_text(
+                "🎉 **ربات فعال شد!**\n\n"
+                "به ربات کنکور ۱۴۰۵ خوش آمدید! 🎓\n\n"
+                "برای مشاهده منوی کامل از /menu استفاده کنید.",
+                parse_mode='HTML'
+            )
+        
+        async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            await update.message.reply_text(
+                "🏠 **منوی اصلی ربات کنکور**\n\n"
+                "لطفاً یکی از گزینه‌ها را انتخاب کنید:",
+                reply_markup=app_manager._create_main_menu(),
+                parse_mode='HTML'
+            )
+        
+        # اضافه کردن هندلرهای پایه
+        app_manager.application.add_handler(CommandHandler("start", start_command))
+        app_manager.application.add_handler(CommandHandler("menu", menu_command))
+        app_manager.application.add_handler(CommandHandler("help", start_command))
+        
+        app_manager.initialized = True
+        print("✅ ربات با موفقیت راه‌اندازی شد (حالت تنبل)")
+        return True
+        
+    except Exception as e:
+        print(f"❌ خطا در راه‌اندازی تنبل: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return False
+
+# راه‌اندازی اولیه
+lazy_initialize()
+
 @app.route('/')
 def home():
     """صفحه اصلی پیشرفته"""
@@ -935,7 +999,12 @@ def webhook():
         update_id = data.get('update_id', 'unknown')
         logger.info(f"📨 وب‌هوک دریافت شد - آپدیت: {update_id}")
         
-        # بررسی وضعیت ربات
+        # 🔥 راه‌اندازی تنبل اگر لازم است
+        if not app_manager.initialized:
+            logger.info("🔄 راه‌اندازی تنبل ربات...")
+            lazy_initialize()
+        
+        # اگر هنوز initialize نشده
         if not app_manager.initialized:
             logger.warning("🤖 ربات initialize نشده - پاسخ پایه ارسال می‌شود")
             return jsonify({
@@ -1112,47 +1181,6 @@ def initialize_system():
         logger.error(traceback.format_exc())
         return False
 
-# ==================== QUICK FIX ====================
-def quick_initialize():
-    """راه‌اندازی سریع و تضمینی ربات"""
-    print("🚀 راه‌اندازی سریع ربات...")
-    
-    try:
-        # تست توکن
-        import requests
-        token = AdvancedConfig.BOT_TOKEN
-        test_url = f"https://api.telegram.org/bot{token}/getMe"
-        
-        response = requests.get(test_url, timeout=10)
-        print(f"✅ تست توکن: {response.json()}")
-        
-        # راه‌اندازی مستقیم
-        from telegram.ext import Application
-        
-        app_manager.application = Application.builder().token(token).build()
-        
-        # اضافه کردن یک هندلر ساده
-        async def start(update, context):
-            await update.message.reply_text("🎉 ربات فعال شد! به ربات کنکور خوش آمدید!")
-        
-        app_manager.application.add_handler(CommandHandler("start", start))
-        app_manager.application.add_handler(CommandHandler("help", start))
-        
-        app_manager.initialized = True
-        print("✅ ربات با موفقیت راه‌اندازی شد")
-        
-        # تنظیم وب‌هوک
-        try:
-            import asyncio
-            asyncio.run(webhook_manager.setup_webhook())
-        except Exception as e:
-            print(f"⚠️ وب‌هوک: {e}")
-            
-    except Exception as e:
-        print(f"❌ خطا در راه‌اندازی سریع: {e}")
-
-# اجرای راه‌اندازی سریع
-quick_initialize()
 # ==================== MAIN EXECUTION ====================
 
 if __name__ == '__main__':
