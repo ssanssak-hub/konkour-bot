@@ -693,17 +693,24 @@ class ApplicationManager:
             [InlineKeyboardButton("🔧 پنل مدیریت", callback_data="admin_panel")]
         ]
         return InlineKeyboardMarkup(keyboard)
-    
+
     def get_stats(self):
         """دریافت آمار پیشرفته"""
         return {
-            **self.stats,
-            'uptime': str(datetime.now() - self.start_time).split('.')[0],
+            'total_requests': self.stats['total_requests'],
+            'successful_requests': self.stats['successful_requests'],
+            'failed_requests': self.stats['failed_requests'],
+            'last_error': self.stats['last_error'],
+            'active_users': list(self.stats['active_users']),  # تبدیل set به list
             'active_users_count': len(self.stats['active_users']),
+            'commands_processed': self.stats['commands_processed'],
+            'messages_processed': self.stats['messages_processed'],
+            'uptime': str(datetime.now() - self.start_time).split('.')[0],
             'initialized': self.initialized,
             'application_status': 'active' if self.initialized else 'inactive',
             'retry_count': self.retry_count
-        }
+         }
+
 
 # ==================== WEBHOOK MANAGER ====================
 
