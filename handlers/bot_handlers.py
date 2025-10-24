@@ -523,7 +523,6 @@ def send_countdown_menu(chat_id, message_id):
     edit_telegram_message(chat_id, message_id, text, create_countdown_keyboard())
 
 def show_countdown(chat_id, message_id, exam_name):
-def show_countdown(chat_id, message_id, exam_name):
     """نمایش زمان دقیق باقی‌مانده تا کنکور"""
     # تاریخ‌های دقیق کنکور 1405
     exam_dates = {
