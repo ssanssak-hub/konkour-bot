@@ -523,60 +523,150 @@ def send_countdown_menu(chat_id, message_id):
     edit_telegram_message(chat_id, message_id, text, create_countdown_keyboard())
 
 def show_countdown(chat_id, message_id, exam_name):
-    """نمایش زمان باقی‌مانده تا کنکور"""
+def show_countdown(chat_id, message_id, exam_name):
+    """نمایش زمان دقیق باقی‌مانده تا کنکور"""
+    # تاریخ‌های دقیق کنکور 1405
     exam_dates = {
-        "علوم تجربی": "1405-04-12",
-        "ریاضی‌وفنی": "1405-04-11",
-        "علوم انسانی": "1405-04-11",
-        "فرهنگیان": "1405-02-17 و 1405-02-18",
-        "هنر": "1405-04-12",
-        "زبان‌وگروه‌های‌خارجه": "1405-04-12"
+        "علوم تجربی": "1405-04-12 08:00:00",
+        "ریاضی‌وفنی": "1405-04-11 08:00:00",
+        "علوم انسانی": "1405-04-11 08:00:00",
+        "فرهنگیان": "1405-02-17 08:00:00",
+        "هنر": "1405-04-12 14:30:00",
+        "زبان‌وگروه‌های‌خارجه": "1405-04-12 14:30:00"
     }
     
-    days_remaining = {
-        "علوم تجربی": 260,
-        "ریاضی‌وفنی": 259,
-        "علوم انسانی": 259,
-        "فرهنگیان": 180,
-        "هنر": 260,
-        "زبان‌وگروه‌های‌خارجه": 260
-    }
+    exam_date_str = exam_dates.get(exam_name)
+    if not exam_date_str:
+        text = "❌ تاریخ کنکور یافت نشد."
+        edit_telegram_message(chat_id, message_id, text, create_back_keyboard("countdown"))
+        return
     
-    date = exam_dates.get(exam_name, "نامشخص")
-    days = days_remaining.get(exam_name, 0)
-    
-    text = f"""
+    try:
+        # تبدیل تاریخ شمسی به میلادی برای محاسبه
+        exam_date = jdatetime.datetime.strptime(exam_date_str, "%Y-%m-%d %H:%M:%S")
+        now = jdatetime.datetime.now()
+        
+        # محاسبه اختلاف زمان
+        time_diff = exam_date - now
+        
+        if time_diff.total_seconds() <= 0:
+            text = f"""
+🎉 کنکور {exam_name} به پایان رسیده است!
+
+📅 تاریخ برگزاری: {exam_date_str}
+✅ آرزوی موفقیت و قبولی برای شما داریم! 🎓
+"""
+        else:
+            # محاسبه جزئیات زمان
+            total_seconds = int(time_diff.total_seconds())
+            total_minutes = total_seconds // 60
+            total_hours = total_minutes // 60
+            total_days = total_hours // 24
+            total_weeks = total_days // 7
+            
+            # محاسبه باقی‌مانده
+            weeks = total_weeks
+            days = total_days % 7
+            hours = total_hours % 24
+            minutes = total_minutes % 60
+            seconds = total_seconds % 60
+            
+            # ایجاد متن زمان‌بندی
+            time_text = ""
+            if weeks > 0:
+                time_text += f"⏳ {weeks} هفته\n"
+            if days > 0:
+                time_text += f"📅 {days} روز\n"
+            if hours > 0:
+                time_text += f"🕐 {hours} ساعت\n"
+            if minutes > 0:
+                time_text += f"⏰ {minutes} دقیقه\n"
+            if seconds > 0:
+                time_text += f"⚡ {seconds} ثانیه\n"
+            
+            text = f"""
 ⏰ زمان باقی‌مانده تا کنکور {exam_name}:
 
-📅 تاریخ: {date}
-⏳ روزهای باقی‌مانده: {days} روز
+{time_text}
+📅 تاریخ کنکور: {exam_date_str}
+🕒 ساعت: {exam_date_str.split()[1]}
 
-💡 توصیه: {get_study_recommendation(days)}
+📊 خلاصه:
+• 🗓️ مجموع: {total_days} روز
+• 📈 هفته‌ها: {total_weeks} هفته
+• ⏱️ ساعت‌ها: {total_hours} ساعت
+
+💡 {get_study_recommendation(total_days)}
 """
-    
-    keyboard = {
-        "inline_keyboard": [
-            [{"text": "🔄 بروزرسانی", "callback_data": f"countdown_{exam_name}"}],
-            [{"text": "📊 همه کنکورها", "callback_data": "countdown"}],
-            [{"text": "🏠 بازگشت به منو", "callback_data": "main_menu"}]
-        ]
-    }
-    
-    edit_telegram_message(chat_id, message_id, text, keyboard)
+        
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔄 بروزرسانی زمان", "callback_data": f"countdown_{exam_name}"}],
+                [{"text": "📊 همه کنکورها", "callback_data": "countdown"}],
+                [{"text": "🏠 بازگشت به منو", "callback_data": "main_menu"}]
+            ]
+        }
+        
+        edit_telegram_message(chat_id, message_id, text, keyboard)
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در محاسبه زمان: {e}")
+        text = "❌ خطا در محاسبه زمان باقی‌مانده."
+        edit_telegram_message(chat_id, message_id, text, create_back_keyboard("countdown"))
 
 def get_study_recommendation(days):
-    """دریافت توصیه مطالعه"""
+    """دریافت توصیه مطالعه بر اساس روزهای باقی‌مانده"""
     if days > 180:
-        return "📅 زمان کافی داری! با برنامه‌ریزی منظم پیش برو."
+        return "📅 زمان کافی داری! با برنامه‌ریزی منظم پیش برو.\n• فصل‌های سنگین رو اولویت بده\n• تست‌زنی رو شروع کن"
+    elif days > 120:
+        return "⏳ زمان مناسبی داری! روی نقاط ضعف تمرکز کن.\n• مرور هفتگی داشته باش\n• خلاصه‌نویسی رو جدی بگیر"
     elif days > 90:
-        return "⏳ نیمه راهی! روی نقاط ضعف تمرکز کن."
+        return "🚀 نیمه راهی! تست‌زنی رو بیشتر کن.\n• آزمون‌های آزمایشی شرکت کن\n• timing خودت رو بهبود بده"
+    elif days > 60:
+        return "🔥 فاز آخر! مرور سریع و تست زمان‌دار.\n• نکات مهم رو مرور کن\n• مدیریت زمان رو تمرین کن"
     elif days > 30:
-        return "🚀 زمان محدود! تست‌زنی رو بیشتر کن."
+        return "⚡ یک ماه مونده! آرومش خودت رو حفظ کن.\n• سلامت روان مهمه\n• خواب کافی داشته باش"
     elif days > 7:
-        return "🔥 فاز آخر! مرور سریع و تست زمان‌دار."
+        return "🎯 یک هفته مونده! استراحت و مرور سبک.\n• از خودت فشار نیار\n• اعتماد به نفس داشته باش"
+    elif days > 0:
+        return "❤️ فردا کنکور داری! فقط استراحت کن.\n• وسایل لازم رو آماده کن\n• به خودت ایمان داشته باش"
     else:
-        return "🎯 نزدیک کنکوری! استراحت کن و آروم باش."
+        return "🎉 کنکور تموم شد! به خودت افتخار کن.\n• هر نتیجه‌ای بگیری، تو بهترینی!"
 
+def format_countdown_text(exam_name, weeks, days, hours, minutes, seconds, exam_date_str, total_days):
+    """فرمت‌بندی متن شمارش معکوس"""
+    time_parts = []
+    
+    if weeks > 0:
+        time_parts.append(f"{weeks} هفته")
+    if days > 0:
+        time_parts.append(f"{days} روز")
+    if hours > 0:
+        time_parts.append(f"{hours} ساعت")
+    if minutes > 0:
+        time_parts.append(f"{minutes} دقیقه")
+    if seconds > 0:
+        time_parts.append(f"{seconds} ثانیه")
+    
+    time_display = " • ".join(time_parts)
+    
+    return f"""
+⏰ زمان باقی‌مانده تا کنکور **{exam_name}**
+
+🕐 {time_display}
+
+📅 تاریخ کنکور: {exam_date_str.split()[0]}
+🕒 ساعت برگزاری: {exam_date_str.split()[1]}
+
+📊 خلاصه زمانی:
+🗓️ مجموع روزها: {total_days} روز
+📈 مجموع هفته‌ها: {total_days // 7} هفته
+⏱️ مجموع ساعت‌ها: {total_days * 24} ساعت
+
+💡 **توصیه مطالعاتی:**
+{get_study_recommendation(total_days)}
+"""
+    
 def send_calendar_menu(chat_id, message_id):
     """ارسال منوی تقویم"""
     today = jdatetime.datetime.now().strftime("%Y/%m/%d")
