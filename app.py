@@ -32,7 +32,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 formatter = CustomFormatter(
-    '%(asctian_time)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
+    '%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'  # اصلاح: asctian_time -> asctime
 )
 for handler in logging.getLogger().handlers:
     handler.setFormatter(formatter)
@@ -625,8 +625,8 @@ def set_webhook_route():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/webhook', methods=['POST'])
-async def webhook():
-    """دریافت وب‌هوک از تلگرام"""
+def webhook():
+    """دریافت وب‌هوک از تلگرام - تبدیل به sync"""
     health_monitor.increment_requests()
     
     try:
@@ -649,9 +649,12 @@ async def webhook():
             update_id = data.get('update_id', 'unknown')
             logger.info(f"📨 وب‌هوک #{update_id} دریافت شد")
         
-        # پردازش آپدیت
-        update = Update.de_json(data, app_manager.application.bot)
-        await app_manager.application.process_update(update)
+        # پردازش آپدیت به صورت async
+        async def process_update():
+            update = Update.de_json(data, app_manager.application.bot)
+            await app_manager.application.process_update(update)
+        
+        asyncio.run(process_update())
         
         logger.info(f"✅ وب‌هوک #{data.get('update_id', 'unknown')} پردازش شد")
         return jsonify({"status": "success"}), 200
