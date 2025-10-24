@@ -529,74 +529,43 @@ def show_countdown(chat_id, message_id, exam_name):
         "علوم تجربی": "1405-04-12 08:00:00",
         "ریاضی‌وفنی": "1405-04-11 08:00:00",
         "علوم انسانی": "1405-04-11 08:00:00",
-        "فرهنگیان": "1405-02-17 08:00:00",
+        "فرهنگیان": ["1405-02-17 08:00:00", "1405-02-18 08:00:00"],  # دو تاریخ
         "هنر": "1405-04-12 14:30:00",
         "زبان‌وگروه‌های‌خارجه": "1405-04-12 14:30:00"
     }
     
-    exam_date_str = exam_dates.get(exam_name)
-    if not exam_date_str:
+    exam_date_data = exam_dates.get(exam_name)
+    if not exam_date_data:
         text = "❌ تاریخ کنکور یافت نشد."
         edit_telegram_message(chat_id, message_id, text, create_back_keyboard("countdown"))
         return
     
     try:
-        # تبدیل تاریخ شمسی به میلادی برای محاسبه
-        exam_date = jdatetime.datetime.strptime(exam_date_str, "%Y-%m-%d %H:%M:%S")
-        now = jdatetime.datetime.now()
-        
-        # محاسبه اختلاف زمان
-        time_diff = exam_date - now
-        
-        if time_diff.total_seconds() <= 0:
-            text = f"""
+        if exam_name == "فرهنگیان":
+            # پردازش دو تاریخ برای فرهنگیان
+            text = process_cultural_exam(exam_date_data)
+        else:
+            # پردازش تک تاریخ برای سایر کنکورها
+            exam_date_str = exam_date_data
+            exam_date = jdatetime.datetime.strptime(exam_date_str, "%Y-%m-%d %H:%M:%S")
+            now = jdatetime.datetime.now()
+            time_diff = exam_date - now
+            
+            if time_diff.total_seconds() <= 0:
+                text = f"""
 🎉 کنکور {exam_name} به پایان رسیده است!
 
 📅 تاریخ برگزاری: {exam_date_str}
 ✅ آرزوی موفقیت و قبولی برای شما داریم! 🎓
 """
-        else:
-            # محاسبه جزئیات زمان
-            total_seconds = int(time_diff.total_seconds())
-            total_minutes = total_seconds // 60
-            total_hours = total_minutes // 60
-            total_days = total_hours // 24
-            total_weeks = total_days // 7
-            
-            # محاسبه باقی‌مانده
-            weeks = total_weeks
-            days = total_days % 7
-            hours = total_hours % 24
-            minutes = total_minutes % 60
-            seconds = total_seconds % 60
-            
-            # ایجاد متن زمان‌بندی
-            time_text = ""
-            if weeks > 0:
-                time_text += f"⏳ {weeks} هفته\n"
-            if days > 0:
-                time_text += f"📅 {days} روز\n"
-            if hours > 0:
-                time_text += f"🕐 {hours} ساعت\n"
-            if minutes > 0:
-                time_text += f"⏰ {minutes} دقیقه\n"
-            if seconds > 0:
-                time_text += f"⚡ {seconds} ثانیه\n"
-            
-            text = f"""
-⏰ زمان باقی‌مانده تا کنکور {exam_name}:
-
-{time_text}
-📅 تاریخ کنکور: {exam_date_str}
-🕒 ساعت: {exam_date_str.split()[1]}
-
-📊 خلاصه:
-• 🗓️ مجموع: {total_days} روز
-• 📈 هفته‌ها: {total_weeks} هفته
-• ⏱️ ساعت‌ها: {total_hours} ساعت
-
-💡 {get_study_recommendation(total_days)}
-"""
+            else:
+                weeks, days, hours, minutes, seconds, total_days = calculate_time_details(time_diff)
+                text = format_countdown_text(
+                    exam_name, 
+                    weeks, days, hours, minutes, seconds,
+                    exam_date_str,
+                    total_days
+                )
         
         keyboard = {
             "inline_keyboard": [
@@ -612,6 +581,156 @@ def show_countdown(chat_id, message_id, exam_name):
         logger.error(f"❌ خطا در محاسبه زمان: {e}")
         text = "❌ خطا در محاسبه زمان باقی‌مانده."
         edit_telegram_message(chat_id, message_id, text, create_back_keyboard("countdown"))
+
+def process_cultural_exam(exam_dates):
+    """پردازش دو تاریخ کنکور فرهنگیان"""
+    now = jdatetime.datetime.now()
+    
+    # تاریخ اول (۱۷ اردیبهشت)
+    date1_str = exam_dates[0]
+    date1 = jdatetime.datetime.strptime(date1_str, "%Y-%m-%d %H:%M:%S")
+    time_diff1 = date1 - now
+    
+    # تاریخ دوم (۱۸ اردیبهشت)  
+    date2_str = exam_dates[1]
+    date2 = jdatetime.datetime.strptime(date2_str, "%Y-%m-%d %H:%M:%S")
+    time_diff2 = date2 - now
+    
+    if time_diff1.total_seconds() <= 0 and time_diff2.total_seconds() <= 0:
+        return f"""
+🎉 کنکور فرهنگیان به پایان رسیده است!
+
+📅 تاریخ‌های برگزاری:
+• مرحله اول: {date1_str}
+• مرحله دوم: {date2_str}
+
+✅ آرزوی موفقیت و قبولی برای شما داریم! 🎓
+"""
+    elif time_diff1.total_seconds() <= 0:
+        # فقط تاریخ اول گذشته
+        weeks, days, hours, minutes, seconds, total_days = calculate_time_details(time_diff2)
+        return format_cultural_text(
+            "مرحله دوم", 
+            weeks, days, hours, minutes, seconds,
+            date2_str,
+            total_days,
+            date1_str
+        )
+    else:
+        # هر دو تاریخ آینده هستند
+        weeks1, days1, hours1, minutes1, seconds1, total_days1 = calculate_time_details(time_diff1)
+        weeks2, days2, hours2, minutes2, seconds2, total_days2 = calculate_time_details(time_diff2)
+        
+        return format_cultural_both_dates(
+            weeks1, days1, hours1, minutes1, seconds1, date1_str, total_days1,
+            weeks2, days2, hours2, minutes2, seconds2, date2_str, total_days2
+        )
+
+def calculate_time_details(time_diff):
+    """محاسبه جزئیات زمان"""
+    total_seconds = int(time_diff.total_seconds())
+    total_minutes = total_seconds // 60
+    total_hours = total_minutes // 60
+    total_days = total_hours // 24
+    total_weeks = total_days // 7
+    
+    weeks = total_weeks
+    days = total_days % 7
+    hours = total_hours % 24
+    minutes = total_minutes % 60
+    seconds = total_seconds % 60
+    
+    return weeks, days, hours, minutes, seconds, total_days
+
+def format_cultural_text(stage, weeks, days, hours, minutes, seconds, exam_date_str, total_days, past_date=None):
+    """فرمت‌بندی متن برای یک مرحله فرهنگیان"""
+    time_parts = []
+    
+    if weeks > 0:
+        time_parts.append(f"{weeks} هفته")
+    if days > 0:
+        time_parts.append(f"{days} روز")
+    if hours > 0:
+        time_parts.append(f"{hours} ساعت")
+    if minutes > 0:
+        time_parts.append(f"{minutes} دقیقه")
+    if seconds > 0:
+        time_parts.append(f"{seconds} ثانیه")
+    
+    time_display = " • ".join(time_parts)
+    
+    text = f"""
+👨‍🏫 زمان باقی‌مانده تا کنکور فرهنگیان ({stage})
+
+🕐 {time_display}
+
+📅 تاریخ {stage}: {exam_date_str.split()[0]}
+🕒 ساعت برگزاری: {exam_date_str.split()[1]}
+"""
+    
+    if past_date:
+        text += f"✅ مرحله اول: {past_date.split()[0]} (گذشته)\n\n"
+    else:
+        text += f"\n📊 خلاصه زمانی:\n"
+        text += f"🗓️ مجموع روزها: {total_days} روز\n"
+        text += f"📈 مجموع هفته‌ها: {total_days // 7} هفته\n"
+        text += f"⏱️ مجموع ساعت‌ها: {total_days * 24} ساعت\n\n"
+    
+    text += f"💡 **توصیه مطالعاتی:**\n{get_study_recommendation(total_days)}"
+    
+    return text
+
+def format_cultural_both_dates(weeks1, days1, hours1, minutes1, seconds1, date1_str, total_days1,
+                              weeks2, days2, hours2, minutes2, seconds2, date2_str, total_days2):
+    """فرمت‌بندی متن برای دو تاریخ فرهنگیان"""
+    
+    # زمان‌بندی مرحله اول
+    time_parts1 = []
+    if weeks1 > 0:
+        time_parts1.append(f"{weeks1} هفته")
+    if days1 > 0:
+        time_parts1.append(f"{days1} روز")
+    if hours1 > 0:
+        time_parts1.append(f"{hours1} ساعت")
+    if minutes1 > 0:
+        time_parts1.append(f"{minutes1} دقیقه")
+    if seconds1 > 0:
+        time_parts1.append(f"{seconds1} ثانیه")
+    
+    # زمان‌بندی مرحله دوم
+    time_parts2 = []
+    if weeks2 > 0:
+        time_parts2.append(f"{weeks2} هفته")
+    if days2 > 0:
+        time_parts2.append(f"{days2} روز")
+    if hours2 > 0:
+        time_parts2.append(f"{hours2} ساعت")
+    if minutes2 > 0:
+        time_parts2.append(f"{minutes2} دقیقه")
+    if seconds2 > 0:
+        time_parts2.append(f"{seconds2} ثانیه")
+    
+    time_display1 = " • ".join(time_parts1)
+    time_display2 = " • ".join(time_parts2)
+    
+    return f"""
+👨‍🏫 زمان باقی‌مانده تا کنکور فرهنگیان
+
+📅 **مرحله اول (۱۷ اردیبهشت):**
+🕐 {time_display1}
+🗓️ مجموع: {total_days1} روز
+
+📅 **مرحله دوم (۱۸ اردیبهشت):**  
+🕐 {time_display2}
+🗓️ مجموع: {total_days2} روز
+
+🕒 ساعت برگزاری هر دو مرحله: ۰۸:۰۰ صبح
+
+💡 **توصیه مطالعاتی:**
+{get_study_recommendation(min(total_days1, total_days2))}
+
+📝 **نکته:** کنکور فرهنگیان در دو روز متوالی برگزار می‌شود.
+"""    
 
 def get_study_recommendation(days):
     """دریافت توصیه مطالعه بر اساس روزهای باقی‌مانده"""
