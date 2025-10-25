@@ -1,14 +1,11 @@
 import os
 import logging
-import asyncio
-import threading
 from flask import Flask, request, jsonify
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 import sys
 import traceback
 from datetime import datetime
-import pytz
 import jdatetime
 import json
 import requests
@@ -23,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ==================== SIMPLE CONFIGURATION ====================
+# ==================== CONFIGURATION ====================
 
 class Config:
     BOT_TOKEN = os.environ.get('BOT_TOKEN', '8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8')
@@ -32,9 +29,9 @@ class Config:
     PORT = int(os.environ.get('PORT', 10000))
     HOST = '0.0.0.0'
 
-# ==================== SIMPLE BOT MANAGER ====================
+# ==================== BOT MANAGER ====================
 
-class SimpleBotManager:
+class BotManager:
     def __init__(self):
         self.application = None
         self.initialized = False
@@ -50,12 +47,8 @@ class SimpleBotManager:
                 logger.error("❌ BOT_TOKEN is not set")
                 return False
             
-            # Create application
-            self.application = (
-                Application.builder()
-                .token(Config.BOT_TOKEN)
-                .build()
-            )
+            # Create application with minimal configuration
+            self.application = Application.builder().token(Config.BOT_TOKEN).build()
             
             # Setup handlers
             self.setup_handlers()
@@ -86,11 +79,10 @@ class SimpleBotManager:
 🤖 **من یک دستیار هوشمندم که می‌تونم در مسیر کنکورت کمکت کنم:**
 
 ⏳ **شمارش معکوس هوشمند کنکور**
-📅 **تقویم و برنامه‌ریزی پیشرفته**  
-🔔 **سیستم یادآوری هوشمند**
+📅 **تقویم و برنامه‌ریزی**  
+🔔 **سیستم یادآوری**
 📚 **مدیریت برنامه مطالعه**
-📊 **آنالیز پیشرفت درسی**
-🔧 **پنل مدیریت پیشرفته**
+📊 **آمار و گزارش‌گیری**
 
 💡 **برای شروع، از منوی زیر انتخاب کن:**
 """
@@ -100,8 +92,7 @@ class SimpleBotManager:
                     [InlineKeyboardButton("🔔 مدیریت یادآوری‌ها", callback_data="reminders")],
                     [InlineKeyboardButton("📊 آمار و گزارش", callback_data="statistics")],
                     [InlineKeyboardButton("🔧 پنل مدیریت", callback_data="admin_panel")],
-                    [InlineKeyboardButton("❓ راهنما", callback_data="help_menu")],
-                    [InlineKeyboardButton("🔄 ریستارت", callback_data="restart_bot")]
+                    [InlineKeyboardButton("❓ راهنما", callback_data="help_menu")]
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
@@ -113,7 +104,6 @@ class SimpleBotManager:
                 
             except Exception as e:
                 logger.error(f"❌ Error in start command: {e}")
-                await update.message.reply_text("❌ خطا در پردازش درخواست")
         
         # Menu command
         async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -124,8 +114,7 @@ class SimpleBotManager:
                     [InlineKeyboardButton("🔔 مدیریت یادآوری‌ها", callback_data="reminders")],
                     [InlineKeyboardButton("📊 آمار و گزارش", callback_data="statistics")],
                     [InlineKeyboardButton("🔧 پنل مدیریت", callback_data="admin_panel")],
-                    [InlineKeyboardButton("❓ راهنما", callback_data="help_menu")],
-                    [InlineKeyboardButton("🔄 ریستارت", callback_data="restart_bot")]
+                    [InlineKeyboardButton("❓ راهنما", callback_data="help_menu")]
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
@@ -137,7 +126,6 @@ class SimpleBotManager:
                 
             except Exception as e:
                 logger.error(f"❌ Error in menu command: {e}")
-                await update.message.reply_text("❌ خطا در نمایش منو")
         
         # Help command
         async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -168,7 +156,6 @@ class SimpleBotManager:
                 
             except Exception as e:
                 logger.error(f"❌ Error in help command: {e}")
-                await update.message.reply_text("❌ خطا در نمایش راهنما")
         
         # Countdown handler
         async def countdown_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -217,7 +204,7 @@ class SimpleBotManager:
                     "علوم انسانی": "1405-04-11",
                     "فرهنگیان": "1405-02-17",
                     "هنر": "1405-04-12",
-                    "زبان‌وگروه‌های‌خارجه": "1405-04-12"
+                    "زبان‌وگroup‌های‌خارجه": "1405-04-12"
                 }
                 
                 exam_date = exam_dates.get(exam_name, "1405-04-12")
@@ -243,15 +230,9 @@ class SimpleBotManager:
 🕒 **ساعت برگزاری:** ۰۸:۰۰ صبح
 
 {motivation}
-
-💡 **توصیه مطالعاتی:**
-📚 برنامه‌ریزی منظم روزانه داشته باشید
-🎯 روی نقاط ضعف خود تمرکز کنید  
-⏱️ زمان خود را هوشمندانه مدیریت کنید
 """
                 
                 keyboard = [
-                    [InlineKeyboardButton("🔄 بروزرسانی زمان", callback_data=f"show_countdown_{exam_name}")],
                     [InlineKeyboardButton("📊 همه کنکورها", callback_data="countdown")],
                     [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
                 ]
@@ -281,13 +262,9 @@ class SimpleBotManager:
 • 📅 نمایش تقویم شمسی جاری
 • 🎉 مناسبت‌ها و رویدادهای ملی
 • 🎓 رویدادهای مهم کنکوری
-
-💡 *برای مشاهده جزئیات بیشتر گزینه مورد نظر را انتخاب کنید*
 """
                 
                 keyboard = [
-                    [InlineKeyboardButton("📅 تقویم جاری", callback_data="current_calendar")],
-                    [InlineKeyboardButton("🎓 رویدادهای کنکور", callback_data="exam_events")],
                     [InlineKeyboardButton("🏠 بازگشت", callback_data="main_menu")]
                 ]
                 
@@ -304,24 +281,18 @@ class SimpleBotManager:
             
             try:
                 text = """
-🔔 **سیستم مدیریت یادآوری‌های هوشمند**
+🔔 **سیستم مدیریت یادآوری‌ها**
 
 🎯 **انواع یادآوری قابل تنظیم:**
 
 ⏰ **یادآوری کنکور**
 • یادآوری روزانه تا زمان کنکور
-• یادآوری هفتگی پیشرفت
 
 📚 **یادآوری مطالعه**  
 • زمان‌بندی جلسات مطالعه
-• یادآوری استراحت بین مطالعه
-
-💡 *یادآوری‌ها به صورت خودکار ارسال می‌شوند*
 """
                 
                 keyboard = [
-                    [InlineKeyboardButton("⏰ یادآوری کنکور", callback_data="setup_exam_reminder")],
-                    [InlineKeyboardButton("📚 یادآوری مطالعه", callback_data="setup_study_reminder")],
                     [InlineKeyboardButton("🏠 بازگشت", callback_data="main_menu")]
                 ]
                 
@@ -344,13 +315,9 @@ class SimpleBotManager:
 • 📊 آمار مطالعه روزانه
 • 📈 نمودار پیشرفت هفتگی
 • 🎯 درصد پیشرفت کلی
-• ⏰ زمان مطالعه مفید
-
-💡 *سیستم آمارگیری به زودی فعال می‌شود*
 """
                 
                 keyboard = [
-                    [InlineKeyboardButton("🔄 بروزرسانی آمار", callback_data="statistics")],
                     [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
                 ]
                 
@@ -382,15 +349,13 @@ class SimpleBotManager:
 📊 **آمار سیستم:**
 • ربات فعال و در حال اجرا
 • وب‌هوک تنظیم شده
-• محیط: Production
 
 🛠️ **عملیات مدیریتی:**
+• مشاهده آمار کامل سیستم
+• ارسال پیام همگانی
 """
                 
                 keyboard = [
-                    [InlineKeyboardButton("📊 آمار کامل سیستم", callback_data="admin_full_stats")],
-                    [InlineKeyboardButton("📢 ارسال پیام همگانی", callback_data="admin_broadcast")],
-                    [InlineKeyboardButton("🔄 راه‌اندازی مجدد", callback_data="admin_restart")],
                     [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
                 ]
                 
@@ -420,16 +385,10 @@ class SimpleBotManager:
 🔧 **پنل مدیریت:** (فقط برای ادمین)
 • مشاهده آمار کامل سیستم
 • ارسال پیام همگانی
-• راه‌اندازی مجدد
-
-📞 **پشتیبانی:**
-اگر مشکل داشتید، از دکمه "🔄 ریستارت" استفاده کنید
 """
                 
                 keyboard = [
-                    [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")],
-                    [InlineKeyboardButton("🔧 پنل مدیریت", callback_data="admin_panel")],
-                    [InlineKeyboardButton("🔄 ریستارت", callback_data="restart_bot")]
+                    [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
                 ]
                 
                 await query.edit_message_text(help_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
@@ -437,27 +396,6 @@ class SimpleBotManager:
             except Exception as e:
                 logger.error(f"❌ Error in help menu: {e}")
                 await query.edit_message_text("❌ خطا در بارگذاری راهنما")
-        
-        # Restart bot handler
-        async def restart_bot_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            query = update.callback_query
-            await query.answer("🔄 در حال راه‌اندازی مجدد...")
-            
-            try:
-                keyboard = [
-                    [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
-                ]
-                
-                await query.edit_message_text(
-                    "✅ **ربات با موفقیت راه‌اندازی مجدد شد!**\n\n"
-                    "🎯 اکنون می‌توانید از تمام امکانات ربات استفاده کنید.",
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-                
-            except Exception as e:
-                logger.error(f"❌ Error in restart: {e}")
-                await query.edit_message_text("❌ خطا در راه‌اندازی مجدد")
         
         # Main menu handler
         async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -471,8 +409,7 @@ class SimpleBotManager:
                     [InlineKeyboardButton("🔔 مدیریت یادآوری‌ها", callback_data="reminders")],
                     [InlineKeyboardButton("📊 آمار و گزارش", callback_data="statistics")],
                     [InlineKeyboardButton("🔧 پنل مدیریت", callback_data="admin_panel")],
-                    [InlineKeyboardButton("❓ راهنما", callback_data="help_menu")],
-                    [InlineKeyboardButton("🔄 ریستارت", callback_data="restart_bot")]
+                    [InlineKeyboardButton("❓ راهنما", callback_data="help_menu")]
                 ]
                 
                 await query.edit_message_text(
@@ -504,8 +441,7 @@ class SimpleBotManager:
                 )
                 
                 keyboard = [
-                    [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")],
-                    [InlineKeyboardButton("🔄 ریستارت", callback_data="restart_bot")]
+                    [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")]
                 ]
                 
                 await update.message.reply_text(
@@ -516,22 +452,15 @@ class SimpleBotManager:
                 
             except Exception as e:
                 logger.error(f"❌ Error in text handler: {e}")
-                await update.message.reply_text("❌ خطا در پردازش پیام")
         
         # Error handler
         async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"❌ Bot error: {context.error}")
             
             if update and update.effective_message:
-                keyboard = [
-                    [InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")],
-                    [InlineKeyboardButton("🔄 ریستارت", callback_data="restart_bot")]
-                ]
-                
                 await update.effective_message.reply_text(
                     "❌ **خطایی در پردازش درخواست شما رخ داد.**\n\n"
-                    "💡 لطفاً دوباره تلاش کنید یا از دکمه ریستارت استفاده کنید.",
-                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    "💡 لطفاً دوباره تلاش کنید.",
                     parse_mode='HTML'
                 )
         
@@ -547,7 +476,6 @@ class SimpleBotManager:
         self.application.add_handler(CallbackQueryHandler(statistics_handler, pattern="^statistics$"))
         self.application.add_handler(CallbackQueryHandler(admin_panel_handler, pattern="^admin_panel$"))
         self.application.add_handler(CallbackQueryHandler(help_menu_handler, pattern="^help_menu$"))
-        self.application.add_handler(CallbackQueryHandler(restart_bot_handler, pattern="^restart_bot$"))
         self.application.add_handler(CallbackQueryHandler(main_menu_handler, pattern="^main_menu$"))
         
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
@@ -557,7 +485,7 @@ class SimpleBotManager:
 
 # ==================== FLASK ROUTES ====================
 
-bot_manager = SimpleBotManager()
+bot_manager = BotManager()
 
 @app.route('/')
 def home():
@@ -571,7 +499,7 @@ def home():
 @app.route('/health')
 def health():
     return jsonify({
-        "status": "healthy",
+        "status": "healthy" if bot_manager.initialized else "unhealthy",
         "bot_initialized": bot_manager.initialized,
         "timestamp": datetime.now().isoformat()
     })
@@ -588,8 +516,7 @@ def set_webhook():
         webhook_url = f"https://api.telegram.org/bot{Config.BOT_TOKEN}/setWebhook"
         params = {
             'url': f'{Config.WEBHOOK_URL}/webhook',
-            'max_connections': 40,
-            'allowed_updates': json.dumps(['message', 'callback_query'])
+            'max_connections': 40
         }
         
         response = requests.get(webhook_url, params=params, timeout=10)
@@ -620,8 +547,6 @@ def webhook():
             logger.error("❌ No data in webhook")
             return jsonify({"status": "error", "message": "No data"}), 400
         
-        logger.info(f"📊 Webhook data: {json.dumps(data, ensure_ascii=False)[:500]}...")
-        
         # Process update
         update = Update.de_json(data, bot_manager.application.bot)
         bot_manager.application.update_queue.put(update)
@@ -631,33 +556,24 @@ def webhook():
         
     except Exception as e:
         logger.error(f"❌ Webhook error: {e}")
-        logger.error(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==================== INITIALIZATION ====================
 
-def initialize():
+def initialize_bot():
     """Initialize the bot"""
     logger.info("🚀 Starting Konkur 1405 Bot...")
     
     # Initialize bot
     if bot_manager.initialize():
         logger.info("✅ Bot initialized successfully")
-        
-        # Set webhook
-        try:
-            response = requests.get(f"{Config.WEBHOOK_URL}/set_webhook", timeout=10)
-            logger.info(f"🌐 Webhook setup response: {response.json()}")
-        except Exception as e:
-            logger.warning(f"⚠️ Webhook setup failed: {e}")
-        
         return True
     else:
         logger.error("❌ Bot initialization failed")
         return False
 
-# Initialize the bot
-initialize()
+# Initialize the bot when the app starts
+initialize_bot()
 
 if __name__ == '__main__':
     app.run(host=Config.HOST, port=Config.PORT, debug=False)
