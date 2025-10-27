@@ -1,4 +1,6 @@
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+import os
+
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 
 # اطلاعات کنکورهای ۱۴۰۵
 EXAMS_1405 = {
