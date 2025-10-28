@@ -37,8 +37,9 @@ class WebhookManager:
         try:
             # دریافت توکن از محیط
             bot_token = os.environ.get('BOT_TOKEN')
-            if not bot_token:
+            if not bot_token or bot_token == "YOUR_BOT_TOKEN_HERE":
                 logger.error("❌ BOT_TOKEN not found in environment variables")
+                logger.info("💡 Please set BOT_TOKEN in Railway dashboard")
                 return
 
             # ساخت آدرس وب‌هوک
@@ -83,6 +84,12 @@ def initialize_app():
     """راه‌اندازی برنامه"""
     global bot
     try:
+        # چک کردن توکن قبل از ایمپورت
+        bot_token = os.environ.get('BOT_TOKEN')
+        if not bot_token or bot_token == "YOUR_BOT_TOKEN_HERE":
+            logger.error("❌ BOT_TOKEN not set. Please add it in Railway Variables")
+            return
+            
         from main import bot as main_bot
         bot = main_bot
         logger.info("✅ Bot imported successfully")
@@ -106,22 +113,49 @@ def before_first_request():
 
 @app.route('/')
 def home():
-    return """
+    bot_token_set = bool(os.environ.get('BOT_TOKEN')) and os.environ.get('BOT_TOKEN') != "YOUR_BOT_TOKEN_HERE"
+    
+    return f"""
     <!DOCTYPE html>
     <html dir="rtl">
     <head>
         <meta charset="UTF-8">
         <title>ربات کنکور ۱۴۰۵</title>
         <style>
-            body { font-family: Tahoma; text-align: center; padding: 50px; }
-            .container { background: white; padding: 30px; border-radius: 10px; }
+            body {{ font-family: Tahoma; text-align: center; padding: 50px; }}
+            .container {{ background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; }}
+            .status-ok {{ color: green; font-weight: bold; }}
+            .status-error {{ color: red; font-weight: bold; }}
         </style>
     </head>
     <body>
         <div class="container">
             <h1>🤖 ربات کنکور ۱۴۰۵</h1>
-            <p>✅ ربات در حال اجرا است</p>
+            
+            <p class="{'status-ok' if bot_token_set else 'status-error'}">
+                {'✅ BOT_TOKEN تنظیم شده' if bot_token_set else '❌ BOT_TOKEN تنظیم نشده'}
+            </p>
+            
+            <p class="{'status-ok' if webhook_manager.webhook_set else 'status-error'}">
+                {'✅ وب‌هوک فعال' if webhook_manager.webhook_set else '❌ وب‌هوک غیرفعال'}
+            </p>
+            
             <p>Platform: Railway</p>
+            
+            {'' if bot_token_set else '''
+            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3>⚠️ راهنمای تنظیم توکن:</h3>
+                <ol style="text-align: right; direction: rtl;">
+                    <li>به Dashboard Railway بروید</li>
+                    <li>روی App خود کلیک کنید</li>
+                    <li>به تب Variables بروید</li>
+                    <li>New Variable اضافه کنید:
+                        <br><strong>Key:</strong> BOT_TOKEN
+                        <br><strong>Value:</strong> توکن ربات تلگرام شما
+                    </li>
+                </ol>
+            </div>
+            '''}
         </div>
     </body>
     </html>
@@ -130,8 +164,11 @@ def home():
 @app.route('/health')
 def health_check():
     """بررسی سلامت سرویس"""
+    bot_token_set = bool(os.environ.get('BOT_TOKEN')) and os.environ.get('BOT_TOKEN') != "YOUR_BOT_TOKEN_HERE"
+    
     status = {
-        "status": "healthy",
+        "status": "healthy" if bot_token_set else "config_error",
+        "bot_token_set": bot_token_set,
         "webhook_set": webhook_manager.webhook_set,
         "bot_loaded": bot is not None
     }
@@ -148,6 +185,10 @@ def manual_webhook_setup():
 def webhook_with_token(token):
     """دریافت آپدیت‌های تلگرام با توکن"""
     expected_token = os.environ.get('BOT_TOKEN')
+    if not expected_token or expected_token == "YOUR_BOT_TOKEN_HERE":
+        logger.error("❌ BOT_TOKEN not configured")
+        return jsonify({"error": "Bot token not configured"}), 500
+        
     if token != expected_token:
         logger.warning(f"❌ Invalid token received: {token}")
         return jsonify({"error": "Invalid token"}), 403
