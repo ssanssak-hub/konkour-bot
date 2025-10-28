@@ -1,5 +1,4 @@
 import os
-from exam_data import EXAMS_1405, MOTIVATIONAL_MESSAGES, EXAM_GROUPS
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
 
@@ -14,8 +13,3 @@ MOTIVATIONAL_MESSAGES = [
     "🌈 بعد از هر تلاش سخت، نتیجۀ شیرین می‌رسد!",
     "🎓 به خودت ایمان داشته باش، تو قابلیت رسیدن به بهترین‌ها رو داری!",
 ]
-
-# تنظیمات وب‌هوک
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
-WEBAPP_HOST = os.environ.get("WEBAPP_HOST", "0.0.0.0")
-WEBAPP_PORT = int(os.environ.get("PORT", 5000))
