@@ -2,41 +2,22 @@ from flask import Flask, request, jsonify
 import os
 import asyncio
 import logging
-import time
 
-# تنظیم لاگ
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ایمپورت ربات
 try:
     from main import bot
-    logger.info("✅ ربات کنکور ایمپورت شد")
+    logger.info("✅ ربات لود شد")
 except Exception as e:
-    logger.error(f"❌ خطا در ایمپورت ربات: {e}")
+    logger.error(f"❌ خطا: {e}")
     bot = None
 
 @app.route('/')
 def home():
-    return """
-    <!DOCTYPE html>
-    <html dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <title>ربات کنکور</title>
-    </head>
-    <body style="font-family: Tahoma; text-align: center; padding: 50px;">
-        <h1>🤖 ربات کنکور ۱۴۰۵</h1>
-        <p>✅ سرویس فعال</p>
-        <p>ربات آماده دریافت پیام است</p>
-    </body>
-    </html>
-    """
+    return "🤖 ربات کنکور ۱۴۰۵ - فعال ✅"
 
 @app.route('/health')
 def health():
@@ -44,31 +25,25 @@ def health():
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    """دریافت آپدیت‌های تلگرام"""
-    logger.info("📨 وب‌هوک دریافت شد")
-    
     if not bot:
-        return jsonify({"error": "ربات در دسترس نیست"}), 500
+        return jsonify({"error": "ربات آماده نیست"}), 500
         
     try:
-        update_data = request.get_json()
-        update_id = update_data.get('update_id', 'unknown')
-        logger.info(f"📝 پردازش آپدیت: {update_id}")
+        data = request.get_json()
+        logger.info(f"📨 دریافت پیام: {data}")
         
-        # پردازش آپدیت
-        async def process_update():
-            await bot.application.process_update(update_data)
+        async def process():
+            await bot.application.process_update(data)
         
-        asyncio.run(process_update())
-        
+        asyncio.run(process())
         return jsonify({"status": "ok"}), 200
         
     except Exception as e:
         logger.error(f"❌ خطا: {e}")
-        return jsonify({"error": "خطای سرور"}), 500
+        return jsonify({"error": "خطای پردازش"}), 500
 
 if __name__ == '__main__':
-    # استفاده از پورت از environment variable
+    # استفاده از HOST 0.0.0.0 برای دسترسی از بیرون
     port = int(os.environ.get('PORT', 5000))
-    logger.info(f"🚀 راه‌اندازی سرور روی پورت {port}")
+    logger.info(f"🚀 اجرای سرور روی 0.0.0.0:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)
