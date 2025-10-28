@@ -81,19 +81,22 @@ def run_async_init():
     except Exception as e:
         logger.error(f"❌ خطا در اجرای async: {e}")
 
-# راه‌اندازی هنگام استارتاپ
-@app.before_first_request
+# راه‌اندازی هنگام اولین درخواست
+@app.before_request
 def startup():
-    """Initialize bot on startup"""
-    logger.info("🚀 شروع راه‌اندازی ربات...")
+    """Initialize bot on first request"""
+    global bot_initialized
     
-    if initialize_bot_sync():
-        # اجرای async در background
-        thread = Thread(target=run_async_init)
-        thread.daemon = True
-        thread.start()
-    else:
-        logger.error("❌ راه‌اندازی اولیه ربات ناموفق بود")
+    if not bot_initialized:
+        logger.info("🚀 شروع راه‌اندازی ربات...")
+        
+        if initialize_bot_sync():
+            # اجرای async در background
+            thread = Thread(target=run_async_init)
+            thread.daemon = True
+            thread.start()
+        else:
+            logger.error("❌ راه‌اندازی اولیه ربات ناموفق بود")
 
 @app.route('/')
 def home():
@@ -193,12 +196,25 @@ def set_webhook_manual():
         logger.error(f"❌ خطا در تنظیم وب‌هوک: {e}")
         return jsonify({"error": str(e)}), 500
 
+# راه‌اندازی هنگام استارتاپ
+def initialize_on_startup():
+    """Initialize bot when the app starts"""
+    logger.info("🚀 شروع راه‌اندازی ربات هنگام استارتاپ...")
+    
+    if initialize_bot_sync():
+        # اجرای async در background
+        thread = Thread(target=run_async_init)
+        thread.daemon = True
+        thread.start()
+    else:
+        logger.error("❌ راه‌اندازی اولیه ربات ناموفق بود")
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     logger.info(f"🚀 راه‌اندازی سرور روی پورت {port}")
     
     # راه‌اندازی اولیه
-    startup()
+    initialize_on_startup()
     
     # اجرای Flask
     app.run(host='0.0.0.0', port=port, debug=False)
