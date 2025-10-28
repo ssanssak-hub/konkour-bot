@@ -16,23 +16,34 @@ app = Flask(__name__)
 # ایمپورت و initialize ربات
 bot = None
 application = None
+bot_initialized = False
 
 async def initialize_bot():
     """Initialize the bot application"""
-    global bot, application
+    global bot, application, bot_initialized
+    
+    if bot_initialized:
+        logger.info("✅ ربات قبلاً initialize شده")
+        return True
+        
     try:
         from main import bot as main_bot
         bot = main_bot
         application = bot.application
         
-        # Initialize the application
-        await application.initialize()
-        await application.start()
+        # فقط اگر قبلاً initialize نشده
+        if not application.running:
+            await application.initialize()
+            await application.start()
+            
+        # تنظیم وب‌هوک
         await application.bot.set_webhook(
             "https://konkour-bot-4i5p.onrender.com/webhook",
             allowed_updates=["message", "callback_query"],
             drop_pending_updates=True
         )
+        
+        bot_initialized = True
         logger.info("✅ ربات initialize و وب‌هوک تنظیم شد")
         return True
         
@@ -45,13 +56,12 @@ async def initialize_bot():
 @app.before_request
 def setup_bot():
     """Setup bot on first request"""
-    if not hasattr(app, 'bot_initialized'):
+    global bot_initialized
+    if not bot_initialized:
         try:
-            # ایجاد event loop جدید
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(initialize_bot())
-            app.bot_initialized = True
         except Exception as e:
             logger.error(f"❌ خطا در setup: {e}")
 
@@ -64,7 +74,7 @@ def health():
     status = {
         "status": "healthy",
         "bot_loaded": bot is not None,
-        "app_initialized": application is not None,
+        "app_initialized": bot_initialized,
         "service": "konkour-bot"
     }
     return jsonify(status)
@@ -127,7 +137,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     logger.info(f"🚀 راه‌اندازی سرور روی پورت {port}")
     
-    # راه‌اندازی ربات
+    # راه‌اندازی ربات فقط یکبار
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
