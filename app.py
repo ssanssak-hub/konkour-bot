@@ -16,6 +16,18 @@ app = Flask(__name__)
 # ایمپورت ربات
 application = None
 bot_initialized = False
+loop = None
+
+def create_loop():
+    """Create and set event loop"""
+    global loop
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
+    except Exception as e:
+        logger.error(f"❌ خطا در ایجاد event loop: {e}")
+        return None
 
 async def initialize_bot():
     """Initialize bot asynchronously"""
@@ -49,15 +61,32 @@ async def initialize_bot():
 def run_async_init():
     """Run async initialization in background thread"""
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        success = loop.run_until_complete(initialize_bot())
-        if success:
-            logger.info("🎉 ربات با موفقیت راه‌اندازی شد")
-        else:
-            logger.error("💥 خطا در راه‌اندازی ربات")
+        loop = create_loop()
+        if loop:
+            success = loop.run_until_complete(initialize_bot())
+            if success:
+                logger.info("🎉 ربات با موفقیت راه‌اندازی شد")
+            else:
+                logger.error("💥 خطا در راه‌اندازی ربات")
     except Exception as e:
         logger.error(f"❌ خطا در اجرای async: {e}")
+
+def run_async(coro):
+    """Run async function in existing loop or new one"""
+    try:
+        if loop and loop.is_running():
+            # اگر loop در حال اجراست، از asyncio.run استفاده کن
+            return asyncio.run(coro)
+        else:
+            # اگر loop نیست، یک loop جدید ایجاد کن
+            new_loop = create_loop()
+            if new_loop:
+                return new_loop.run_until_complete(coro)
+            else:
+                return asyncio.run(coro)
+    except Exception as e:
+        logger.error(f"❌ خطا در اجرای async: {e}")
+        return None
 
 # راه‌اندازی هنگام استارتاپ
 @app.before_request
@@ -104,14 +133,19 @@ def webhook():
         update_id = update_data.get('update_id', 'unknown')
         logger.info(f"📝 پردازش آپدیت: {update_id}")
         
-        # پردازش آپدیت
+        # پردازش آپدیت با مدیریت بهتر event loop
         async def process_update():
             await application.process_update(update_data)
         
-        asyncio.run(process_update())
+        # استفاده از تابع بهبودیافته
+        result = run_async(process_update())
         
-        logger.info(f"✅ آپدیت {update_id} پردازش شد")
-        return jsonify({"status": "ok", "update_id": update_id}), 200
+        if result is not None:
+            logger.info(f"✅ آپدیت {update_id} پردازش شد")
+            return jsonify({"status": "ok", "update_id": update_id}), 200
+        else:
+            logger.error(f"❌ خطا در پردازش آپدیت {update_id}")
+            return jsonify({"error": "خطا در پردازش"}), 500
         
     except Exception as e:
         logger.error(f"❌ خطا در پردازش وب‌هوک: {e}")
@@ -134,8 +168,11 @@ def test_bot():
                 "webhook_pending_updates": webhook_info.pending_update_count,
             }
         
-        info = asyncio.run(get_bot_info())
-        return jsonify({"status": "bot_ready", "info": info})
+        info = run_async(get_bot_info())
+        if info:
+            return jsonify({"status": "bot_ready", "info": info})
+        else:
+            return jsonify({"status": "bot_error", "error": "خطا در دریافت اطلاعات"})
         
     except Exception as e:
         return jsonify({"status": "bot_error", "error": str(e)}), 500
@@ -156,11 +193,17 @@ def set_webhook_manual():
             )
             return result
         
-        result = asyncio.run(setup_webhook())
-        return jsonify({
-            "status": "success",
-            "message": "وب‌هوک تنظیم شد"
-        })
+        result = run_async(setup_webhook())
+        if result:
+            return jsonify({
+                "status": "success",
+                "message": "وب‌هوک تنظیم شد"
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "خطا در تنظیم وب‌هوک"
+            })
         
     except Exception as e:
         logger.error(f"❌ خطا در تنظیم وب‌هوک: {e}")
