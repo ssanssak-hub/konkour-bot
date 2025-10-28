@@ -1,6 +1,7 @@
 import os
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+# استفاده از Environment Variables یا مقادیر پیش‌فرض
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7703672187"))
 
 # جملات انگیزشی
