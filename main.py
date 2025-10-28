@@ -348,6 +348,32 @@ class ExamBot:
             parse_mode='HTML'
         )
 
+async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """دستور شروع ربات"""
+    try:
+        user = update.effective_user
+        logger.info(f"🎯 شروع ربات توسط کاربر: {user.first_name} (ID: {user.id})")
+        
+        welcome_text = f"""
+        🎓 سلام {user.first_name} عزیز!
+        به ربات کنکور ۱۴۰۵ خوش آمدید!
+        
+        🔍 با استفاده از این ربات می‌توانید:
+        • ⏳ زمان دقیق باقی‌مانده تا کنکورها را مشاهده کنید
+        • 📅 برنامه مطالعاتی پیشرفته تنظیم کنید
+        • 📊 آمار مطالعه حرفه‌ای داشته باشید
+        
+        👇 از منوی زیر انتخاب کنید:
+        """
+        
+        await update.message.reply_text(welcome_text, reply_markup=main_menu())
+        logger.info("✅ منوی اصلی نمایش داده شد")
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در دستور start: {e}")
+        logger.error(traceback.format_exc())
+        await update.message.reply_text("❌ خطایی رخ داد! لطفاً دوباره تلاش کنید.")
+
 # ایجاد نمونه ربات - برای وب‌هوک
 bot = ExamBot()
 
