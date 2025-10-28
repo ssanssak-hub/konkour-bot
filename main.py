@@ -31,6 +31,22 @@ class ExamBot:
         self.application.add_handler(MessageHandler(filters.Text("📊 آمار مطالعه حرفه‌ای"), self.stats_menu))
         self.application.add_handler(MessageHandler(filters.Text("👑 پنل مدیریت"), self.admin_menu))
         self.application.add_handler(CallbackQueryHandler(self.button_handler))
+        
+        # هندلر برای پیام‌های متنی که با دکمه‌ها مطابقت ندارند
+        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_unknown_text))
+    
+    async def handle_unknown_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """مدیریت پیام‌های متنی ناشناخته"""
+        user = update.effective_user
+        text = update.message.text
+        logger.info(f"📝 کاربر {user.first_name} پیام فرستاد: {text}")
+        
+        # اگر پیام جزو دکمه‌ها نبود، منو رو نمایش بده
+        if text not in ["⏳ زمان‌سنجی کنکورها", "📅 برنامه مطالعاتی پیشرفته", "📊 آمار مطالعه حرفه‌ای", "👑 پنل مدیریت"]:
+            await update.message.reply_text(
+                "لطفاً از دکمه‌های منو استفاده کنید:",
+                reply_markup=main_menu()
+            )
     
     def is_admin(self, user_id: int) -> bool:
         """بررسی آیا کاربر ادمین است"""
@@ -40,6 +56,7 @@ class ExamBot:
         """دستور شروع ربات"""
         user = update.effective_user
         is_admin = self.is_admin(user.id)
+        logger.info(f"🎯 کاربر {user.first_name} دستور /start رو فرستاد")
         
         welcome_text = f"""
         🎓 سلام {user.first_name} عزیز!
@@ -54,10 +71,17 @@ class ExamBot:
         
         👇 از منوی زیر انتخاب کنید:
         """
-        await update.message.reply_text(welcome_text, reply_markup=main_menu())
+        
+        try:
+            await update.message.reply_text(welcome_text, reply_markup=main_menu())
+            logger.info("✅ منوی اصلی نمایش داده شد")
+        except Exception as e:
+            logger.error(f"❌ خطا در نمایش منو: {e}")
+            await update.message.reply_text(welcome_text)
     
     async def exams_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """منوی کنکورها"""
+        logger.info("⏰ کاربر دکمه 'زمان‌سنجی کنکورها' رو زد")
         await update.message.reply_text(
             "🎯 انتخاب کنکور مورد نظر:",
             reply_markup=exams_menu()
@@ -65,6 +89,7 @@ class ExamBot:
     
     async def study_plan_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """منوی برنامه مطالعاتی"""
+        logger.info("📅 کاربر دکمه 'برنامه مطالعاتی' رو زد")
         menu_text = """
         📅 **برنامه مطالعاتی پیشرفته**
         
@@ -80,6 +105,7 @@ class ExamBot:
     
     async def stats_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """منوی آمار مطالعه"""
+        logger.info("📊 کاربر دکمه 'آمار مطالعه' رو زد")
         menu_text = """
         📊 **آمار مطالعه حرفه‌ای**
         
@@ -96,6 +122,7 @@ class ExamBot:
     async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """منوی پنل مدیریت"""
         user = update.effective_user
+        logger.info(f"👑 کاربر {user.first_name} دکمه 'پنل مدیریت' رو زد")
         
         if not self.is_admin(user.id):
             await update.message.reply_text("❌ دسترسی denied!")
@@ -123,6 +150,7 @@ class ExamBot:
         await query.answer()
         
         data = query.data
+        logger.info(f"🔘 کاربر دکمه اینلاین زد: {data}")
         
         if data.startswith("exam_"):
             exam_key = data.replace("exam_", "")
