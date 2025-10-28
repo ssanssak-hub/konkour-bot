@@ -3,7 +3,6 @@ import os
 import asyncio
 import logging
 import traceback
-from threading import Thread
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -18,15 +17,14 @@ app = Flask(__name__)
 application = None
 bot_initialized = False
 
-def initialize_bot_sync():
-    """Initialize bot synchronously"""
+def initialize_bot():
+    """Initialize bot"""
     global application, bot_initialized
     
     try:
-        # ایمپورت ربات اصلی
-        from main import bot
+        from main import get_application
         
-        application = bot.application
+        application = get_application()
         logger.info("✅ ربات با موفقیت import شد")
         
         bot_initialized = True
@@ -37,51 +35,28 @@ def initialize_bot_sync():
         logger.error(traceback.format_exc())
         return False
 
-async def initialize_bot_async():
-    """Initialize bot asynchronously"""
-    global application, bot_initialized
+async def setup_webhook_async():
+    """Setup webhook asynchronously"""
+    global application
     
     if not application:
-        logger.error("❌ application موجود نیست")
         return False
         
     try:
-        # فقط اگر قبلاً initialize نشده
-        if not application.running:
-            await application.initialize()
-            await application.start()
-            logger.info("✅ ربات initialize و start شد")
-        
-        # تنظیم وب‌هوک
         webhook_url = "https://konkour-bot-4i5p.onrender.com/webhook"
         await application.bot.set_webhook(
             webhook_url,
             allowed_updates=["message", "callback_query", "chat_member"],
             drop_pending_updates=True
         )
-        
-        bot_initialized = True
         logger.info(f"✅ وب‌هوک تنظیم شد: {webhook_url}")
         return True
         
     except Exception as e:
-        logger.error(f"❌ خطا در راه‌اندازی ربات: {e}")
+        logger.error(f"❌ خطا در تنظیم وب‌هوک: {e}")
         return False
 
-def run_async_init():
-    """Run async initialization in background"""
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        success = loop.run_until_complete(initialize_bot_async())
-        if success:
-            logger.info("🎉 ربات با موفقیت راه‌اندازی شد")
-        else:
-            logger.error("💥 خطا در راه‌اندازی ربات")
-    except Exception as e:
-        logger.error(f"❌ خطا در اجرای async: {e}")
-
-# راه‌اندازی هنگام اولین درخواست
+# راه‌اندازی هنگام استارتاپ
 @app.before_request
 def startup():
     """Initialize bot on first request"""
@@ -89,12 +64,9 @@ def startup():
     
     if not bot_initialized:
         logger.info("🚀 شروع راه‌اندازی ربات...")
-        
-        if initialize_bot_sync():
-            # اجرای async در background
-            thread = Thread(target=run_async_init)
-            thread.daemon = True
-            thread.start()
+        if initialize_bot():
+            # تنظیم وب‌هوک
+            asyncio.run(setup_webhook_async())
         else:
             logger.error("❌ راه‌اندازی اولیه ربات ناموفق بود")
 
@@ -129,14 +101,13 @@ def webhook():
         update_id = update_data.get('update_id', 'unknown')
         logger.info(f"📝 پردازش آپدیت: {update_id}")
         
-        # پردازش آپدیت با استفاده از update_queue
+        # پردازش آپدیت
         async def process_update():
-            await application.update_queue.put(update_data)
+            await application.process_update(update_data)
         
-        # اجرای async
         asyncio.run(process_update())
         
-        logger.info(f"✅ آپدیت {update_id} در صف قرار گرفت")
+        logger.info(f"✅ آپدیت {update_id} پردازش شد")
         return jsonify({"status": "ok", "update_id": update_id}), 200
         
     except Exception as e:
@@ -159,8 +130,6 @@ def test_bot():
                 "bot_name": bot_info.first_name,
                 "webhook_url": webhook_info.url,
                 "webhook_pending_updates": webhook_info.pending_update_count,
-                "has_custom_certificate": webhook_info.has_custom_certificate,
-                "ip_address": webhook_info.ip_address
             }
         
         info = asyncio.run(get_bot_info())
@@ -176,45 +145,23 @@ def set_webhook_manual():
         return jsonify({"error": "ربات آماده نیست"}), 500
         
     try:
-        async def setup_webhook():
-            webhook_url = "https://konkour-bot-4i5p.onrender.com/webhook"
-            result = await application.bot.set_webhook(
-                webhook_url,
-                allowed_updates=["message", "callback_query", "chat_member"],
-                drop_pending_updates=True
-            )
-            return result
-        
-        result = asyncio.run(setup_webhook())
+        result = asyncio.run(setup_webhook_async())
         return jsonify({
-            "status": "success",
-            "message": "وب‌هوک تنظیم شد",
-            "result": result
+            "status": "success" if result else "error",
+            "message": "وب‌هوک تنظیم شد" if result else "خطا در تنظیم وب‌هوک"
         })
         
     except Exception as e:
         logger.error(f"❌ خطا در تنظیم وب‌هوک: {e}")
         return jsonify({"error": str(e)}), 500
 
-# راه‌اندازی هنگام استارتاپ
-def initialize_on_startup():
-    """Initialize bot when the app starts"""
-    logger.info("🚀 شروع راه‌اندازی ربات هنگام استارتاپ...")
-    
-    if initialize_bot_sync():
-        # اجرای async در background
-        thread = Thread(target=run_async_init)
-        thread.daemon = True
-        thread.start()
-    else:
-        logger.error("❌ راه‌اندازی اولیه ربات ناموفق بود")
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     logger.info(f"🚀 راه‌اندازی سرور روی پورت {port}")
     
     # راه‌اندازی اولیه
-    initialize_on_startup()
+    initialize_bot()
+    asyncio.run(setup_webhook_async())
     
     # اجرای Flask
     app.run(host='0.0.0.0', port=port, debug=False)
