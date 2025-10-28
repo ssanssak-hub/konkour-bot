@@ -13,14 +13,29 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ایمپورت ربات
+# ایمپورت و initialize ربات
+bot = None
+application = None
+
 try:
-    from main import bot
+    from main import bot as main_bot
+    bot = main_bot
+    application = bot.application
+    
+    # Initialize the application
+    async def initialize_bot():
+        await application.initialize()
+        await application.start()
+        logger.info("✅ ربات initialize شد")
+    
+    asyncio.run(initialize_bot())
     logger.info("✅ ربات کنکور راه‌اندازی شد")
+    
 except Exception as e:
-    logger.error(f"❌ خطا در ایمپورت ربات: {e}")
+    logger.error(f"❌ خطا در راه‌اندازی ربات: {e}")
     logger.error(traceback.format_exc())
     bot = None
+    application = None
 
 @app.route('/')
 def home():
@@ -31,6 +46,7 @@ def health():
     status = {
         "status": "healthy",
         "bot_loaded": bot is not None,
+        "app_initialized": application is not None,
         "service": "konkour-bot"
     }
     return jsonify(status)
@@ -38,15 +54,15 @@ def health():
 @app.route('/set_webhook', methods=['GET'])
 def set_webhook():
     """تنظیم دستی وب‌هوک"""
-    if not bot:
+    if not application:
         return jsonify({"error": "ربات آماده نیست"}), 500
         
     try:
         webhook_url = "https://konkour-bot-4i5p.onrender.com/webhook"
         
         async def setup_webhook():
-            await bot.application.bot.delete_webhook()
-            result = await bot.application.bot.set_webhook(
+            await application.bot.delete_webhook()
+            result = await application.bot.set_webhook(
                 url=webhook_url,
                 allowed_updates=["message", "callback_query"],
                 drop_pending_updates=True
@@ -57,13 +73,11 @@ def set_webhook():
         return jsonify({
             "status": "success",
             "message": "وب‌هوک تنظیم شد",
-            "url": webhook_url,
-            "result": str(result)
+            "url": webhook_url
         })
         
     except Exception as e:
         logger.error(f"❌ خطا در تنظیم وب‌هوک: {e}")
-        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/webhook', methods=['POST'])
@@ -71,35 +85,21 @@ def webhook():
     """دریافت آپدیت‌های تلگرام"""
     logger.info("📨 دریافت درخواست وب‌هوک")
     
-    if not bot:
+    if not application:
         logger.error("❌ ربات در دسترس نیست")
         return jsonify({"error": "ربات در دسترس نیست"}), 500
         
     try:
-        # لاگ کامل درخواست
-        logger.info(f"📝 headers: {dict(request.headers)}")
-        logger.info(f"📝 content_type: {request.content_type}")
-        
-        if not request.is_json:
-            logger.error("❌ درخواست JSON نیست")
-            return jsonify({"error": "Content-Type must be application/json"}), 400
-        
         data = request.get_json()
         if not data:
             logger.error("❌ داده‌ای دریافت نشد")
             return jsonify({"error": "No data received"}), 400
             
-        logger.info(f"📝 داده دریافتی: {data}")
+        logger.info(f"📝 پردازش آپدیت: {data.get('update_id', 'unknown')}")
         
         # پردازش آپدیت
         async def process_update():
-            try:
-                await bot.application.process_update(data)
-                logger.info("✅ آپدیت با موفقیت پردازش شد")
-            except Exception as e:
-                logger.error(f"❌ خطا در پردازش آپدیت: {e}")
-                logger.error(traceback.format_exc())
-                raise
+            await application.process_update(data)
         
         asyncio.run(process_update())
         return jsonify({"status": "ok"}), 200
@@ -107,7 +107,16 @@ def webhook():
     except Exception as e:
         logger.error(f"❌ خطا در پردازش وب‌هوک: {e}")
         logger.error(traceback.format_exc())
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
+
+# Cleanup هنگام خروج
+import atexit
+async def cleanup():
+    if application:
+        await application.stop()
+        await application.shutdown()
+
+atexit.register(lambda: asyncio.run(cleanup()))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
