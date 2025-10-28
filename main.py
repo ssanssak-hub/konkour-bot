@@ -350,3 +350,12 @@ class ExamBot:
 
 # ایجاد نمونه ربات
 bot = ExamBot()
+
+# برای دسترسی از app.py
+def get_application():
+    return bot.application
+
+# اگر مستقیماً اجرا شد (برای تست)
+if __name__ == '__main__':
+    logger.info("🚀 اجرای ربات به صورت مستقیم...")
+    bot.application.run_polling()
