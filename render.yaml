@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: konkoor-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBHOOK_URL
+        fromService:
+          type: web
+          name: konkoor-bot
+          envVarKey: RENDER_EXTERNAL_URL
