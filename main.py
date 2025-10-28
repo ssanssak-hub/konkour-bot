@@ -148,4 +148,4 @@ class ExamBot:
             days_left = (closest_exam - now).days
             
             if days_left > 365:
-                return "📘 <b>مشاوره:</b> زمان کافی داری
+                return "📘 <b>مشاوره:</b> زمان کافی داری"
