@@ -7,7 +7,7 @@ import os
 
 from config import BOT_TOKEN, ADMIN_ID, MOTIVATIONAL_MESSAGES
 from exam_data import EXAMS_1405
-from keyboards import main_menu, countdown_actions
+from keyboards import main_menu, exams_menu, countdown_actions, study_plan_menu, stats_menu, admin_menu
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -21,22 +21,16 @@ class ExamBot:
         self.application = Application.builder().token(BOT_TOKEN).build()
         self.setup_handlers()
         logger.info("✅ ربات کنکور راه‌اندازی شد")
-        logger.info(f"👑 ادمین: {ADMIN_ID}")
     
     def setup_handlers(self):
         """تنظیم هندلرهای ربات"""
         # دستورات عمومی
         self.application.add_handler(CommandHandler("start", self.start))
-        self.application.add_handler(MessageHandler(filters.Text("⏳ چند روز تا کنکور؟"), self.countdown_menu))
-        self.application.add_handler(MessageHandler(filters.Text("📅 برنامه مطالعاتی"), self.study_plan))
-        self.application.add_handler(MessageHandler(filters.Text("📊 آمار مطالعه"), self.study_stats))
-        self.application.add_handler(MessageHandler(filters.Text("ℹ️ راهنمای استفاده"), self.help_command))
+        self.application.add_handler(MessageHandler(filters.Text("⏳ زمان‌سنجی کنکورها"), self.exams_menu))
+        self.application.add_handler(MessageHandler(filters.Text("📅 برنامه مطالعاتی پیشرفته"), self.study_plan_menu))
+        self.application.add_handler(MessageHandler(filters.Text("📊 آمار مطالعه حرفه‌ای"), self.stats_menu))
+        self.application.add_handler(MessageHandler(filters.Text("👑 پنل مدیریت"), self.admin_menu))
         self.application.add_handler(CallbackQueryHandler(self.button_handler))
-        
-        # دستورات ادمین
-        self.application.add_handler(CommandHandler("admin", self.admin_panel))
-        self.application.add_handler(CommandHandler("stats", self.bot_stats))
-        self.application.add_handler(CommandHandler("broadcast", self.broadcast))
     
     def is_admin(self, user_id: int) -> bool:
         """بررسی آیا کاربر ادمین است"""
@@ -54,16 +48,53 @@ class ExamBot:
         {"👑 **شما ادمین هستید**" if is_admin else ""}
         
         🔍 با استفاده از این ربات می‌توانید:
-        • ⏳ زمان دقیق باقی‌مانده تا کنکور را مشاهده کنید
-        • 📅 برنامه مطالعاتی خود را مدیریت کنید
-        • 📊 آمار مطالعه خود را پیگیری کنید
+        • ⏳ زمان دقیق باقی‌مانده تا کنکورها را مشاهده کنید
+        • 📅 برنامه مطالعاتی پیشرفته تنظیم کنید
+        • 📊 آمار مطالعه حرفه‌ای داشته باشید
         
         👇 از منوی زیر انتخاب کنید:
         """
         await update.message.reply_text(welcome_text, reply_markup=main_menu())
     
-    async def admin_panel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """پنل مدیریت ادمین"""
+    async def exams_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """منوی کنکورها"""
+        await update.message.reply_text(
+            "🎯 انتخاب کنکور مورد نظر:",
+            reply_markup=exams_menu()
+        )
+    
+    async def study_plan_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """منوی برنامه مطالعاتی"""
+        menu_text = """
+        📅 **برنامه مطالعاتی پیشرفته**
+        
+        امکانات موجود:
+        • 📝 ایجاد برنامه شخصی‌سازی شده
+        • 📊 مشاهده و مدیریت برنامه
+        • ✏️ ویرایش برنامه درسی
+        • 📈 پیگیری پیشرفت تحصیلی
+        
+        👇 گزینه مورد نظر را انتخاب کنید:
+        """
+        await update.message.reply_text(menu_text, reply_markup=study_plan_menu(), parse_mode='HTML')
+    
+    async def stats_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """منوی آمار مطالعه"""
+        menu_text = """
+        📊 **آمار مطالعه حرفه‌ای**
+        
+        امکانات موجود:
+        • ⏱️ ثبت ساعات مطالعه
+        • 📊 آمار روزانه و هفتگی
+        • 🏆 جدول رقابت و لیدربرد
+        • 📋 گزارش کامل عملکرد
+        
+        👇 گزینه مورد نظر را انتخاب کنید:
+        """
+        await update.message.reply_text(menu_text, reply_markup=stats_menu(), parse_mode='HTML')
+    
+    async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """منوی پنل مدیریت"""
         user = update.effective_user
         
         if not self.is_admin(user.id):
@@ -73,252 +104,221 @@ class ExamBot:
         admin_text = f"""
         👑 **پنل مدیریت**
         
-        دستورات موجود:
-        /stats - آمار ربات
-        /broadcast - ارسال پیام همگانی
+        کاربر: {user.first_name} (@{user.username})
+        ادمین: {ADMIN_ID}
         
-        اطلاعات سرور:
-        • ادمین: {ADMIN_ID}
-        • کاربر: {user.id}
-        • زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        امکانات مدیریتی:
+        • 📊 مشاهده آمار ربات
+        • 👥 مدیریت کاربران
+        • 📢 ارسال پیام همگانی
+        • ⚙️ تنظیمات پیشرفته
+        
+        👇 گزینه مورد نظر را انتخاب کنید:
         """
-        await update.message.reply_text(admin_text)
-    
-    async def bot_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """آمار ربات"""
-        user = update.effective_user
-        
-        if not self.is_admin(user.id):
-            await update.message.reply_text("❌ دسترسی denied!")
-            return
-        
-        stats_text = f"""
-        📊 **آمار ربات**
-        
-        • ادمین اصلی: {ADMIN_ID}
-        • کاربر فعلی: {user.id}
-        • نام: {user.first_name}
-        • یوزرنیم: @{user.username or 'ندارد'}
-        • زمان سرور: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        • ربات فعال: ✅
-        """
-        await update.message.reply_text(stats_text)
-    
-    async def broadcast(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """ارسال پیام همگانی"""
-        user = update.effective_user
-        
-        if not self.is_admin(user.id):
-            await update.message.reply_text("❌ دسترسی denied!")
-            return
-        
-        if not context.args:
-            await update.message.reply_text("⚠️ لطفاً پیام خود را بعد از دستور وارد کنید:\n/broadcast <پیام>")
-            return
-        
-        message = " ".join(context.args)
-        broadcast_text = f"""
-        📢 **پیام همگانی**
-        
-        {message}
-        
-        ───────────────
-        🎯 ربات کنکور ۱۴۰۵
-        """
-        
-        await update.message.reply_text(f"✅ پیام همگانی آماده ارسال:\n{message}")
-    
-    async def countdown_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """نمایش زمان باقی‌مانده تا کنکور"""
-        await self.send_countdown_message(update, context)
-    
-    async def send_countdown_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, is_callback: bool = False):
-        """ارسال پیام زمان‌سنجی"""
-        message_text = self.generate_countdown_text()
-        
-        if is_callback:
-            await update.callback_query.edit_message_text(
-                message_text, 
-                reply_markup=countdown_actions(),
-                parse_mode='HTML'
-            )
-        else:
-            await update.message.reply_text(
-                message_text, 
-                reply_markup=countdown_actions(),
-                parse_mode='HTML'
-            )
-    
-    def generate_countdown_text(self) -> str:
-        """تولید متن زمان‌سنجی"""
-        now = datetime.now()
-        text = "⏳ <b>زمان باقی‌مانده تا کنکور ۱۴۰۵</b>\n\n"
-        
-        for exam_key, exam_info in EXAMS_1405.items():
-            text += f"🎯 <b>{exam_info['name']}</b>\n"
-            text += f"📅 تاریخ: {exam_info['persian_date']}\n"
-            text += f"⏰ ساعت: {exam_info['time']}\n"
-            
-            if isinstance(exam_info['date'], list):
-                # برای کنکور فرهنگیان که دو تاریخ دارد
-                for i, exam_date in enumerate(exam_info['date']):
-                    target_date = datetime(*exam_date)
-                    if now < target_date:
-                        time_left = target_date - now
-                        text += f"📋 روز <b>{i+1}</b>: {self.format_time_left(time_left)}\n"
-            else:
-                # برای سایر کنکورها
-                target_date = datetime(*exam_info['date'])
-                if now < target_date:
-                    time_left = target_date - now
-                    text += f"⏳ {self.format_time_left(time_left)}\n"
-            
-            text += "─" * 30 + "\n\n"
-        
-        # افزودن جمله انگیزشی تصادفی
-        motivational_msg = random.choice(MOTIVATIONAL_MESSAGES)
-        text += f"\n💫 <i>{motivational_msg}</i>\n\n"
-        
-        # پیام مشاوره‌ای بر اساس زمان باقی‌مانده
-        text += self.get_advice_message()
-        
-        return text
-    
-    def format_time_left(self, time_delta) -> str:
-        """قالب‌بندی زمان باقی‌مانده"""
-        days = time_delta.days
-        hours, remainder = divmod(time_delta.seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        
-        weeks = days // 7
-        remaining_days = days % 7
-        
-        if days > 60:
-            return f"<b>{weeks} هفته و {remaining_days} روز</b> باقی مانده"
-        elif days > 30:
-            return f"<b>{days} روز</b> - {hours:02d}:{minutes:02d}:{seconds:02d}"
-        elif days > 7:
-            return f"<b>{days} روز</b> - {hours:02d}:{minutes:02d}:{seconds:02d}"
-        else:
-            return f"<b>{days} روز, {hours:02d} ساعت, {minutes:02d} دقیقه, {seconds:02d} ثانیه</b>"
-    
-    def get_advice_message(self) -> str:
-        """پیام مشاوره‌ای بر اساس زمان باقی‌مانده"""
-        now = datetime.now()
-        
-        # پیدا کردن نزدیک‌ترین کنکور
-        upcoming_dates = []
-        for exam_info in EXAMS_1405.values():
-            if isinstance(exam_info['date'], list):
-                for date_item in exam_info['date']:
-                    exam_date = datetime(*date_item)
-                    if now < exam_date:
-                        upcoming_dates.append(exam_date)
-            else:
-                exam_date = datetime(*exam_info['date'])
-                if now < exam_date:
-                    upcoming_dates.append(exam_date)
-        
-        if upcoming_dates:
-            closest_exam = min(upcoming_dates)
-            days_left = (closest_exam - now).days
-            
-            if days_left > 365:
-                return "📘 <b>مشاوره:</b> زمان کافی داری! با برنامه‌ریزی بلندمدت پیش برو و پایه‌ها رو قوی کن."
-            elif days_left > 180:
-                return "📗 <b>مشاوره:</b> نیمه راهی! حالا وقت مرور و تست‌زنی حرفه‌ای‌تره."
-            elif days_left > 90:
-                return "📒 <b>مشاوره:</b> فاز آخر! روی جمع‌بندی و رفع اشکال تمرکز کن."
-            elif days_left > 30:
-                return "📙 <b>مشاوره:</b> دوران طلایی! تست‌های زمان‌دار و شبیه‌ساز کنکور رو شروع کن."
-            else:
-                return "📕 <b>مشاوره:</b> آرامش خودت رو حفظ کن! همین الان هم می‌تونی با مرور هدفمند نتیجه بگیری!"
-        
-        return "🎉 <b>همه کنکورها برگزار شده‌اند!</b>"
+        await update.message.reply_text(admin_text, reply_markup=admin_menu(), parse_mode='HTML')
     
     async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """مدیریت کلیک روی دکمه‌های اینلاین"""
         query = update.callback_query
         await query.answer()
         
-        if query.data == "refresh_countdown":
-            await self.send_countdown_message(update, context, is_callback=True)
-        elif query.data == "back_to_main":
+        data = query.data
+        
+        if data.startswith("exam_"):
+            exam_key = data.replace("exam_", "")
+            await self.show_exam_countdown(query, exam_key)
+        
+        elif data.startswith("refresh_"):
+            if data == "refresh_all":
+                await self.show_all_exams_countdown(query)
+            else:
+                exam_key = data.replace("refresh_", "")
+                await self.show_exam_countdown(query, exam_key, is_refresh=True)
+        
+        elif data == "show_all_exams":
+            await self.show_all_exams_countdown(query)
+        
+        elif data == "back_to_main":
             await query.edit_message_text(
                 "🔙 به منوی اصلی بازگشتید:",
                 reply_markup=main_menu()
             )
-    
-    async def study_plan(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """برنامه مطالعاتی"""
-        await update.message.reply_text(
-            "📅 بخش برنامه مطالعاتی به زودی اضافه خواهد شد!\n\n"
-            "در این بخش می‌توانید:\n"
-            "• برنامه روزانه خود را تنظیم کنید\n"
-            "• زمان‌بندی دروس را مدیریت کنید\n"
-            "• پیشرفت خود را پیگیری کنید",
-            reply_markup=main_menu()
-        )
-    
-    async def study_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """آمار مطالعه"""
-        await update.message.reply_text(
-            "📊 بخش آمار مطالعه به زودی اضافه خواهد شد!\n\n"
-            "در این بخش می‌توانید:\n"
-            "• ساعات مطالعه خود را ثبت کنید\n"
-            "• نمودار پیشرفت را مشاهده کنید\n"
-            "• با دوستان خود رقابت کنید",
-            reply_markup=main_menu()
-        )
-    
-    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """راهنمای استفاده"""
-        help_text = """
-        ℹ️ <b>راهنمای استفاده از ربات کنکور ۱۴۰۵</b>
-
-        <b>⏳ چند روز تا کنکور؟</b>
-        • نمایش زمان دقیق باقی‌مانده تا تمامی کنکورها
-        • اطلاعات کامل هر کنکور شامل تاریخ و ساعت
-        • جملات انگیزشی و مشاوره‌ای متناسب با زمان
-
-        <b>📅 برنامه مطالعاتی</b>
-        • مدیریت برنامه درسی شخصی
-        • زمان‌بندی و تنظیم اهداف
-
-        <b>📊 آمار مطالعه</b>
-        • ثبت ساعات مطالعه
-        • پیگیری پیشرفت تحصیلی
-
-        <b>🔄 بروزرسانی</b>
-        • به‌روزرسانی لحظه‌ای زمان
-        • نمایش ثانیه‌شمار دقیق
-
-        <b>🔙 بازگشت به منو</b>
-        • بازگشت به منوی اصلی
-
-        🎯 <i>برای شروع از منوی اصلی استفاده کنید</i>
         
-        👑 <b>دستورات ادمین:</b>
-        /admin - پنل مدیریت
-        /stats - آمار ربات
-        /broadcast - ارسال پیام همگانی
-        """
-        await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_menu())
+        # منوی برنامه مطالعاتی
+        elif data in ["create_plan", "view_plan", "edit_plan", "progress", "refresh_plan"]:
+            await self.handle_study_plan(query, data)
+        
+        # منوی آمار مطالعه
+        elif data in ["log_study", "daily_stats", "weekly_stats", "leaderboard", "full_report"]:
+            await self.handle_stats(query, data)
+        
+        # منوی مدیریت
+        elif data in ["admin_stats", "admin_users", "admin_broadcast", "admin_settings", "admin_refresh"]:
+            await self.handle_admin(query, data)
+    
+    async def show_exam_countdown(self, query, exam_key, is_refresh=False):
+        """نمایش زمان باقی‌مانده برای یک کنکور خاص"""
+        if exam_key not in EXAMS_1405:
+            await query.edit_message_text("❌ کنکور مورد نظر یافت نشد!")
+            return
+        
+        exam_info = EXAMS_1405[exam_key]
+        message_text = self.generate_exam_countdown_text(exam_info, exam_key)
+        
+        await query.edit_message_text(
+            message_text,
+            reply_markup=countdown_actions(exam_key),
+            parse_mode='HTML'
+        )
+    
+    async def show_all_exams_countdown(self, query):
+        """نمایش زمان تمامی کنکورها"""
+        message_text = self.generate_all_exams_countdown_text()
+        
+        await query.edit_message_text(
+            message_text,
+            reply_markup=countdown_actions(),
+            parse_mode='HTML'
+        )
+    
+    def generate_exam_countdown_text(self, exam_info, exam_key):
+        """تولید متن زمان‌سنجی برای یک کنکور"""
+        now = datetime.now()
+        text = f"🎯 <b>{exam_info['name']}</b>\n"
+        text += f"📅 تاریخ: {exam_info['persian_date']}\n"
+        text += f"⏰ ساعت: {exam_info['time']}\n\n"
+        
+        if isinstance(exam_info['date'], list):
+            for i, exam_date in enumerate(exam_info['date']):
+                target_date = datetime(*exam_date)
+                if now < target_date:
+                    time_left = target_date - now
+                    text += f"📋 <b>روز {i+1}:</b>\n{self.format_detailed_time_left(time_left)}\n"
+                else:
+                    text += f"📋 <b>روز {i+1}:</b> ✅ برگزار شده\n"
+        else:
+            target_date = datetime(*exam_info['date'])
+            if now < target_date:
+                time_left = target_date - now
+                text += f"⏳ {self.format_detailed_time_left(time_left)}\n"
+            else:
+                text += "✅ <b>کنکور برگزار شده</b>\n"
+        
+        text += f"\n💫 <i>{random.choice(MOTIVATIONAL_MESSAGES)}</i>\n"
+        return text
+    
+    def generate_all_exams_countdown_text(self):
+        """تولید متن زمان‌سنجی برای تمامی کنکورها"""
+        now = datetime.now()
+        text = "⏳ <b>زمان باقی‌مانده تا کنکورهای ۱۴۰۵</b>\n\n"
+        
+        for exam_key, exam_info in EXAMS_1405.items():
+            text += f"🎯 <b>{exam_info['name']}</b>\n"
+            text += f"📅 {exam_info['persian_date']} - ⏰ {exam_info['time']}\n"
+            
+            if isinstance(exam_info['date'], list):
+                upcoming_dates = []
+                for exam_date in exam_info['date']:
+                    target_date = datetime(*exam_date)
+                    if now < target_date:
+                        upcoming_dates.append(target_date)
+                
+                if upcoming_dates:
+                    closest_date = min(upcoming_dates)
+                    time_left = closest_date - now
+                    text += f"⏳ {self.format_detailed_time_left(time_left)}\n"
+                else:
+                    text += "✅ برگزار شده\n"
+            else:
+                target_date = datetime(*exam_info['date'])
+                if now < target_date:
+                    time_left = target_date - now
+                    text += f"⏳ {self.format_detailed_time_left(time_left)}\n"
+                else:
+                    text += "✅ برگزار شده\n"
+            
+            text += "─" * 40 + "\n\n"
+        
+        text += f"💫 <i>{random.choice(MOTIVATIONAL_MESSAGES)}</i>\n"
+        return text
+    
+    def format_detailed_time_left(self, time_delta):
+        """قالب‌بندی دقیق زمان باقی‌مانده"""
+        total_seconds = int(time_delta.total_seconds())
+        
+        weeks = total_seconds // (7 * 24 * 3600)
+        days = (total_seconds % (7 * 24 * 3600)) // (24 * 3600)
+        hours = (total_seconds % (24 * 3600)) // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        
+        parts = []
+        if weeks > 0:
+            parts.append(f"{weeks} هفته")
+        if days > 0:
+            parts.append(f"{days} روز")
+        if hours > 0:
+            parts.append(f"{hours} ساعت")
+        if minutes > 0:
+            parts.append(f"{minutes} دقیقه")
+        if seconds > 0 or not parts:
+            parts.append(f"{seconds} ثانیه")
+        
+        return " 🕒 ".join(parts)
+    
+    async def handle_study_plan(self, query, action):
+        """مدیریت منوی برنامه مطالعاتی"""
+        messages = {
+            "create_plan": "📝 <b>ایجاد برنامه مطالعاتی</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "view_plan": "📊 <b>مشاهده برنامه</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "edit_plan": "✏️ <b>ویرایش برنامه</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "progress": "📈 <b>پیگیری پیشرفت</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "refresh_plan": "🔄 <b>بروزرسانی</b>\n\nبرنامه مطالعاتی بروزرسانی شد!"
+        }
+        
+        await query.edit_message_text(
+            messages[action],
+            reply_markup=study_plan_menu(),
+            parse_mode='HTML'
+        )
+    
+    async def handle_stats(self, query, action):
+        """مدیریت منوی آمار مطالعه"""
+        messages = {
+            "log_study": "⏱️ <b>ثبت مطالعه</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "daily_stats": "📊 <b>آمار روزانه</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "weekly_stats": "📈 <b>آمار هفتگی</b>\n\nاین بخش به زونی اضافه خواهد شد...",
+            "leaderboard": "🏆 <b>جدول رقابت</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "full_report": "📋 <b>گزارش کامل</b>\n\nاین بخش به زودی اضافه خواهد شد..."
+        }
+        
+        await query.edit_message_text(
+            messages[action],
+            reply_markup=stats_menu(),
+            parse_mode='HTML'
+        )
+    
+    async def handle_admin(self, query, action):
+        """مدیریت منوی ادمین"""
+        user = query.from_user
+        
+        if not self.is_admin(user.id):
+            await query.edit_message_text("❌ دسترسی denied!")
+            return
+        
+        messages = {
+            "admin_stats": f"📊 <b>آمار ربات</b>\n\n• ادمین: {ADMIN_ID}\n• کاربر: {user.id}\n• زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "admin_users": "👥 <b>مدیریت کاربران</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "admin_broadcast": "📢 <b>ارسال همگانی</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "admin_settings": "⚙️ <b>تنظیمات</b>\n\nاین بخش به زودی اضافه خواهد شد...",
+            "admin_refresh": "🔄 <b>بروزرسانی</b>\n\nاطلاعات بروزرسانی شد!"
+        }
+        
+        await query.edit_message_text(
+            messages[action],
+            reply_markup=admin_menu(),
+            parse_mode='HTML'
+        )
 
 # ایجاد نمونه ربات
 bot = ExamBot()
-
-# برای تست محلی (اختیاری)
-if __name__ == "__main__":
-    import asyncio
-    print("🚀 شروع ربات در حالت Polling...")
-    
-    async def main():
-        await bot.application.initialize()
-        await bot.application.start()
-        await bot.application.updater.start_polling()
-        
-        # نگه داشتن برنامه
-        await asyncio.Event().wait()
-    
-    asyncio.run(main())
