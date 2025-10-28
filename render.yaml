@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: konkoor-bot
+    name: konkour-bot
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
