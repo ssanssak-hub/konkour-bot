@@ -80,7 +80,7 @@ class ExamBot:
         اطلاعات سرور:
         • ادمین: {ADMIN_ID}
         • کاربر: {user.id}
-        • زمان: {datetime.now()}
+        • زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         """
         await update.message.reply_text(admin_text)
     
@@ -98,7 +98,8 @@ class ExamBot:
         • ادمین اصلی: {ADMIN_ID}
         • کاربر فعلی: {user.id}
         • نام: {user.first_name}
-        • زمان سرور: {datetime.now()}
+        • یوزرنیم: @{user.username or 'ندارد'}
+        • زمان سرور: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         • ربات فعال: ✅
         """
         await update.message.reply_text(stats_text)
@@ -125,10 +126,8 @@ class ExamBot:
         🎯 ربات کنکور ۱۴۰۵
         """
         
-        # اینجا می‌تونید به همه کاربران ارسال کنید
-        await update.message.reply_text(f"✅ پیام همگانی ارسال شد:\n{message}")
+        await update.message.reply_text(f"✅ پیام همگانی آماده ارسال:\n{message}")
     
-    # بقیه متدها بدون تغییر...
     async def countdown_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """نمایش زمان باقی‌مانده تا کنکور"""
         await self.send_countdown_message(update, context)
@@ -161,12 +160,14 @@ class ExamBot:
             text += f"⏰ ساعت: {exam_info['time']}\n"
             
             if isinstance(exam_info['date'], list):
+                # برای کنکور فرهنگیان که دو تاریخ دارد
                 for i, exam_date in enumerate(exam_info['date']):
                     target_date = datetime(*exam_date)
                     if now < target_date:
                         time_left = target_date - now
                         text += f"📋 روز <b>{i+1}</b>: {self.format_time_left(time_left)}\n"
             else:
+                # برای سایر کنکورها
                 target_date = datetime(*exam_info['date'])
                 if now < target_date:
                     time_left = target_date - now
@@ -204,20 +205,36 @@ class ExamBot:
     def get_advice_message(self) -> str:
         """پیام مشاوره‌ای بر اساس زمان باقی‌مانده"""
         now = datetime.now()
-        # تاریخ اولین کنکور (فرهنگیان)
-        first_exam_date = datetime(2026, 5, 6)  # 17 اردیبهشت 1405
-        days_left = (first_exam_date - now).days
         
-        if days_left > 365:
-            return "📘 <b>مشاوره:</b> زمان کافی داری! با برنامه‌ریزی بلندمدت پیش برو و پایه‌ها رو قوی کن."
-        elif days_left > 180:
-            return "📗 <b>مشاوره:</b> نیمه راهی! حالا وقت مرور و تست‌زنی حرفه‌ای‌تره."
-        elif days_left > 90:
-            return "📒 <b>مشاوره:</b> فاز آخر! روی جمع‌بندی و رفع اشکال تمرکز کن."
-        elif days_left > 30:
-            return "📙 <b>مشاوره:</b> دوران طلایی! تست‌های زمان‌دار و شبیه‌ساز کنکور رو شروع کن."
-        else:
-            return "📕 <b>مشاوره:</b> آرامش خودت رو حفظ کن! همین الان هم می‌تونی با مرور هدفمند نتیجه بگیری!"
+        # پیدا کردن نزدیک‌ترین کنکور
+        upcoming_dates = []
+        for exam_info in EXAMS_1405.values():
+            if isinstance(exam_info['date'], list):
+                for date_item in exam_info['date']:
+                    exam_date = datetime(*date_item)
+                    if now < exam_date:
+                        upcoming_dates.append(exam_date)
+            else:
+                exam_date = datetime(*exam_info['date'])
+                if now < exam_date:
+                    upcoming_dates.append(exam_date)
+        
+        if upcoming_dates:
+            closest_exam = min(upcoming_dates)
+            days_left = (closest_exam - now).days
+            
+            if days_left > 365:
+                return "📘 <b>مشاوره:</b> زمان کافی داری! با برنامه‌ریزی بلندمدت پیش برو و پایه‌ها رو قوی کن."
+            elif days_left > 180:
+                return "📗 <b>مشاوره:</b> نیمه راهی! حالا وقت مرور و تست‌زنی حرفه‌ای‌تره."
+            elif days_left > 90:
+                return "📒 <b>مشاوره:</b> فاز آخر! روی جمع‌بندی و رفع اشکال تمرکز کن."
+            elif days_left > 30:
+                return "📙 <b>مشاوره:</b> دوران طلایی! تست‌های زمان‌دار و شبیه‌ساز کنکور رو شروع کن."
+            else:
+                return "📕 <b>مشاوره:</b> آرامش خودت رو حفظ کن! همین الان هم می‌تونی با مرور هدفمند نتیجه بگیری!"
+        
+        return "🎉 <b>همه کنکورها برگزار شده‌اند!</b>"
     
     async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """مدیریت کلیک روی دکمه‌های اینلاین"""
@@ -235,26 +252,42 @@ class ExamBot:
     async def study_plan(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """برنامه مطالعاتی"""
         await update.message.reply_text(
-            "📅 بخش برنامه مطالعاتی به زودی اضافه خواهد شد!",
+            "📅 بخش برنامه مطالعاتی به زودی اضافه خواهد شد!\n\n"
+            "در این بخش می‌توانید:\n"
+            "• برنامه روزانه خود را تنظیم کنید\n"
+            "• زمان‌بندی دروس را مدیریت کنید\n"
+            "• پیشرفت خود را پیگیری کنید",
             reply_markup=main_menu()
         )
     
     async def study_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """آمار مطالعه"""
         await update.message.reply_text(
-            "📊 بخش آمار مطالعه به زودی اضافه خواهد شد!",
+            "📊 بخش آمار مطالعه به زودی اضافه خواهد شد!\n\n"
+            "در این بخش می‌توانید:\n"
+            "• ساعات مطالعه خود را ثبت کنید\n"
+            "• نمودار پیشرفت را مشاهده کنید\n"
+            "• با دوستان خود رقابت کنید",
             reply_markup=main_menu()
         )
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """راهنمای استفاده"""
         help_text = """
-        ℹ️ <b>راهنمای استفاده از ربات</b>
+        ℹ️ <b>راهنمای استفاده از ربات کنکور ۱۴۰۵</b>
 
         <b>⏳ چند روز تا کنکور؟</b>
         • نمایش زمان دقیق باقی‌مانده تا تمامی کنکورها
         • اطلاعات کامل هر کنکور شامل تاریخ و ساعت
         • جملات انگیزشی و مشاوره‌ای متناسب با زمان
+
+        <b>📅 برنامه مطالعاتی</b>
+        • مدیریت برنامه درسی شخصی
+        • زمان‌بندی و تنظیم اهداف
+
+        <b>📊 آمار مطالعه</b>
+        • ثبت ساعات مطالعه
+        • پیگیری پیشرفت تحصیلی
 
         <b>🔄 بروزرسانی</b>
         • به‌روزرسانی لحظه‌ای زمان
@@ -264,8 +297,28 @@ class ExamBot:
         • بازگشت به منوی اصلی
 
         🎯 <i>برای شروع از منوی اصلی استفاده کنید</i>
+        
+        👑 <b>دستورات ادمین:</b>
+        /admin - پنل مدیریت
+        /stats - آمار ربات
+        /broadcast - ارسال پیام همگانی
         """
         await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_menu())
 
 # ایجاد نمونه ربات
 bot = ExamBot()
+
+# برای تست محلی (اختیاری)
+if __name__ == "__main__":
+    import asyncio
+    print("🚀 شروع ربات در حالت Polling...")
+    
+    async def main():
+        await bot.application.initialize()
+        await bot.application.start()
+        await bot.application.updater.start_polling()
+        
+        # نگه داشتن برنامه
+        await asyncio.Event().wait()
+    
+    asyncio.run(main())
