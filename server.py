@@ -39,17 +39,14 @@ class WebhookManager:
             bot_token = os.environ.get('BOT_TOKEN')
             if not bot_token or bot_token == "YOUR_BOT_TOKEN_HERE":
                 logger.error("❌ BOT_TOKEN not found in environment variables")
-                logger.info("💡 Please set BOT_TOKEN in Railway dashboard")
                 return
 
-            # ساخت آدرس وب‌هوک
+            # ساخت آدرس وب‌هوک - اینبار بدون توکن در URL
             railway_url = os.environ.get('RAILWAY_STATIC_URL')
             if railway_url:
-                webhook_url = f"{railway_url}/{bot_token}"
+                webhook_url = f"{railway_url}/webhook"
             else:
-                # اگر RAILWAY_STATIC_URL موجود نبود، از آدرس عمومی استفاده می‌کنیم
-                service_name = os.environ.get('RAILWAY_SERVICE_NAME', 'konkoor-bot')
-                webhook_url = f"https://{service_name}.up.railway.app/{bot_token}"
+                webhook_url = f"https://konkoor-bot.up.railway.app/webhook"
 
             logger.info(f"🔄 Setting webhook to: {webhook_url}")
 
@@ -57,16 +54,21 @@ class WebhookManager:
                 try:
                     # حذف وب‌هوک قبلی
                     await bot.application.bot.delete_webhook()
-                    time.sleep(1)
+                    time.sleep(2)
                     
-                    # تنظیم وب‌هوک جدید
-                    await bot.application.bot.set_webhook(
-                        url=webhook_url,
+                    # تنظیم وب‌هوک جدید - بدون توکن در URL
+                    result = await bot.application.bot.set_webhook(
+                        url=webhook_url,  # فقط /webhook
                         allowed_updates=["message", "callback_query"],
-                        drop_pending_updates=True
+                        drop_pending_updates=True,
+                        secret_token=bot_token  # استفاده از secret_token برای امنیت
                     )
                     self.webhook_set = True
-                    logger.info("✅ Webhook set successfully!")
+                    logger.info(f"✅ Webhook set successfully!")
+                    
+                    # بررسی وضعیت وب‌هوک
+                    webhook_info = await bot.application.bot.get_webhook_info()
+                    logger.info(f"📊 Webhook info: {webhook_info.url}")
                     
                 except Exception as e:
                     logger.error(f"❌ Error setting webhook: {e}")
@@ -87,7 +89,7 @@ def initialize_app():
         # چک کردن توکن قبل از ایمپورت
         bot_token = os.environ.get('BOT_TOKEN')
         if not bot_token or bot_token == "YOUR_BOT_TOKEN_HERE":
-            logger.error("❌ BOT_TOKEN not set. Please add it in Railway Variables")
+            logger.error("❌ BOT_TOKEN not set.")
             return
             
         from main import bot as main_bot
@@ -95,7 +97,7 @@ def initialize_app():
         logger.info("✅ Bot imported successfully")
         
         # راه‌اندازی وب‌هوک در پس‌زمینه
-        time.sleep(3)
+        time.sleep(5)
         webhook_manager.setup_webhook()
         
     except ImportError as e:
@@ -108,6 +110,7 @@ def initialize_app():
 def before_first_request():
     """جایگزین before_first_request در Flask جدید"""
     if not hasattr(app, 'initialized'):
+        logger.info("🚀 Initializing application...")
         threading.Thread(target=initialize_app, daemon=True).start()
         app.initialized = True
 
@@ -140,22 +143,14 @@ def home():
                 {'✅ وب‌هوک فعال' if webhook_manager.webhook_set else '❌ وب‌هوک غیرفعال'}
             </p>
             
-            <p>Platform: Railway</p>
+            <p><strong>آدرس وب‌هوک:</strong></p>
+            <code>https://konkoor-bot.up.railway.app/webhook</code>
             
-            {'' if bot_token_set else '''
-            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <h3>⚠️ راهنمای تنظیم توکن:</h3>
-                <ol style="text-align: right; direction: rtl;">
-                    <li>به Dashboard Railway بروید</li>
-                    <li>روی App خود کلیک کنید</li>
-                    <li>به تب Variables بروید</li>
-                    <li>New Variable اضافه کنید:
-                        <br><strong>Key:</strong> BOT_TOKEN
-                        <br><strong>Value:</strong> توکن ربات تلگرام شما
-                    </li>
-                </ol>
+            <div style="margin-top: 20px;">
+                <a href="/health" style="margin: 10px; padding: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">بررسی سلامت</a>
+                <a href="/set_webhook" style="margin: 10px; padding: 10px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;">تنظیم وب‌هوک</a>
+                <a href="/delete_webhook" style="margin: 10px; padding: 10px; background: #dc3545; color: white; text-decoration: none; border-radius: 5px;">حذف وب‌هوک</a>
             </div>
-            '''}
         </div>
     </body>
     </html>
@@ -170,7 +165,8 @@ def health_check():
         "status": "healthy" if bot_token_set else "config_error",
         "bot_token_set": bot_token_set,
         "webhook_set": webhook_manager.webhook_set,
-        "bot_loaded": bot is not None
+        "bot_loaded": bot is not None,
+        "timestamp": time.time()
     }
     return jsonify(status)
 
@@ -180,19 +176,30 @@ def manual_webhook_setup():
     webhook_manager.setup_webhook()
     return jsonify({"message": "Webhook setup initiated"})
 
-# مسیر اصلی وب‌هوک با توکن
-@app.route('/<token>', methods=['POST'])
-def webhook_with_token(token):
-    """دریافت آپدیت‌های تلگرام با توکن"""
-    expected_token = os.environ.get('BOT_TOKEN')
-    if not expected_token or expected_token == "YOUR_BOT_TOKEN_HERE":
-        logger.error("❌ BOT_TOKEN not configured")
-        return jsonify({"error": "Bot token not configured"}), 500
+@app.route('/delete_webhook', methods=['GET'])
+def delete_webhook():
+    """حذف وب‌هوک"""
+    global bot
+    if not bot:
+        return jsonify({"error": "Bot not available"}), 500
         
-    if token != expected_token:
-        logger.warning(f"❌ Invalid token received: {token}")
-        return jsonify({"error": "Invalid token"}), 403
-    
+    try:
+        async def delete_webhook_task():
+            await bot.application.bot.delete_webhook()
+            webhook_manager.webhook_set = False
+            webhook_manager.setup_attempted = False
+            
+        asyncio.run(delete_webhook_task())
+        return jsonify({"message": "Webhook deleted successfully"})
+        
+    except Exception as e:
+        logger.error(f"Error deleting webhook: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# مسیر اصلی وب‌هوک - بدون توکن در URL
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """دریافت آپدیت‌های تلگرام"""
     return handle_webhook_request()
 
 def handle_webhook_request():
@@ -204,36 +211,52 @@ def handle_webhook_request():
         
     try:
         if not request.is_json:
+            logger.warning("❌ Received non-JSON request")
             return jsonify({"error": "Content-Type must be application/json"}), 400
         
         update_data = request.get_json()
         if not update_data:
+            logger.warning("❌ Empty request body received")
             return jsonify({"error": "Empty request body"}), 400
         
         update_id = update_data.get('update_id', 'unknown')
+        
+        # بررسی secret token (امنیت)
+        secret_token = request.headers.get('X-Telegram-Bot-Api-Secret-Token')
+        expected_token = os.environ.get('BOT_TOKEN')
+        
+        if secret_token and secret_token != expected_token:
+            logger.warning(f"❌ Invalid secret token: {secret_token}")
+            return jsonify({"error": "Invalid secret token"}), 403
+        
         logger.info(f"📨 Received update: {update_id}")
         
         # پردازش غیرهمزمان آپدیت
         async def process_update():
             try:
                 await bot.application.process_update(update_data)
-                logger.info(f"✅ Processed update: {update_id}")
+                logger.info(f"✅ Successfully processed update: {update_id}")
             except Exception as e:
                 logger.error(f"❌ Error processing update {update_id}: {e}")
         
         asyncio.run(process_update())
         
-        return jsonify({"status": "ok"}), 200
+        return jsonify({"status": "ok", "update_id": update_id}), 200
         
     except Exception as e:
         logger.error(f"❌ Webhook processing error: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/test', methods=['GET'])
+def test_route():
+    """مسیر تست"""
+    return jsonify({"message": "Test route works!", "timestamp": time.time()})
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     
     # راه‌اندازی اولیه
+    logger.info("🚀 Starting server...")
     threading.Thread(target=initialize_app, daemon=True).start()
     
-    logger.info(f"🚀 Starting server on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
