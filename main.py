@@ -12,6 +12,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# دریافت توکن از محیط
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+
 # داده‌های کنکور
 EXAMS_1405 = {
     "علوم_انسانی": {
@@ -69,10 +72,9 @@ def countdown_actions():
 
 class ExamBot:
     def __init__(self):
-        self.token = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-        self.application = Application.builder().token(self.token).build()
+        self.application = Application.builder().token(BOT_TOKEN).build()
         self.setup_handlers()
-        logger.info("✅ Bot initialized successfully")
+        logger.info("✅ ربات کنکور راه‌اندازی شد")
     
     def setup_handlers(self):
         """تنظیم هندلرهای ربات"""
@@ -155,23 +157,6 @@ class ExamBot:
         else:
             return f"<b>{days} روز, {hours:02d} ساعت, {minutes:02d} دقیقه</b>"
     
-    def get_advice_message(self) -> str:
-        """پیام مشاوره‌ای - بدون خطای string"""
-        now = datetime.now()
-        first_exam_date = datetime(2026, 5, 6)
-        days_left = (first_exam_date - now).days
-        
-        if days_left > 365:
-            return "📘 <b>مشاوره:</b> زمان کافی داری! با برنامه‌ریزی بلندمدت پیش برو."
-        elif days_left > 180:
-            return "📗 <b>مشاوره:</b> نیمه راهی! حالا وقت مرور و تست‌زنی حرفه‌ای."
-        elif days_left > 90:
-            return "📒 <b>مشاوره:</b> فاز آخر! روی جمع‌بندی و رفع اشکال تمرکز کن."
-        elif days_left > 30:
-            return "📙 <b>مشاوره:</b> دوران طلایی! تست‌های زمان‌دار رو شروع کن."
-        else:
-            return "📕 <b>مشاوره:</b> آرامش خودت رو حفظ کن!"
-    
     async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """مدیریت کلیک روی دکمه‌های اینلاین"""
         query = update.callback_query
@@ -192,8 +177,23 @@ class ExamBot:
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """راهنمای استفاده"""
-        help_text = "ℹ️ راهنمای استفاده از ربات"
-        await update.message.reply_text(help_text, reply_markup=main_menu())
+        help_text = """
+        ℹ️ <b>راهنمای استفاده از ربات کنکور</b>
+
+        <b>⏳ چند روز تا کنکور؟</b>
+        • نمایش زمان دقیق باقی‌مانده تا تمامی کنکورها
+        • اطلاعات کامل هر کنکور شامل تاریخ و ساعت
+        • جملات انگیزشی و مشاوره‌ای
+
+        <b>🔄 بروزرسانی</b>
+        • به‌روزرسانی لحظه‌ای زمان
+
+        <b>🔙 بازگشت به منو</b>
+        • بازگشت به منوی اصلی
+
+        🎯 <i>برای شروع از منوی اصلی استفاده کنید</i>
+        """
+        await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_menu())
 
 # ایجاد نمونه ربات
 bot = ExamBot()
