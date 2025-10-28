@@ -1,11 +1,13 @@
 import logging
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
-from datetime import datetime, timedelta
+from datetime import datetime
 import random
 import os
+import asyncio
 
-from config import BOT_TOKEN, EXAMS_1405, MOTIVATIONAL_MESSAGES
+from config import BOT_TOKEN, MOTIVATIONAL_MESSAGES
+from exam_data import EXAMS_1405, get_upcoming_exams, get_exam_group_info
 from keyboards import main_menu, countdown_actions
 
 # تنظیمات لاگ
@@ -14,10 +16,6 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
-# تنظیمات Webhook
-PORT = int(os.environ.get('PORT', 5000))
-WEBHOOK_URL = os.environ.get('WEBHOOK_URL', '') + "/" + BOT_TOKEN
 
 class ExamBot:
     def __init__(self):
@@ -51,7 +49,7 @@ class ExamBot:
         """نمایش زمان باقی‌مانده تا کنکور"""
         await self.send_countdown_message(update, context)
     
-    async def send_countdown_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, is_callback=False):
+    async def send_countdown_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, is_callback: bool = False):
         """ارسال پیام زمان‌سنجی"""
         message_text = self.generate_countdown_text()
         
@@ -68,11 +66,12 @@ class ExamBot:
                 parse_mode='HTML'
             )
     
-    def generate_countdown_text(self):
+    def generate_countdown_text(self) -> str:
         """تولید متن زمان‌سنجی"""
         now = datetime.now()
         text = "⏳ <b>زمان باقی‌مانده تا کنکور ۱۴۰۵</b>\n\n"
         
+        # استفاده از داده‌های جداگانه
         for exam_key, exam_info in EXAMS_1405.items():
             text += f"🎯 <b>{exam_info['name']}</b>\n"
             text += f"📅 تاریخ: {exam_info['persian_date']}\n"
@@ -103,7 +102,7 @@ class ExamBot:
         
         return text
     
-    def format_time_left(self, time_delta):
+    def format_time_left(self, time_delta) -> str:
         """قالب‌بندی زمان باقی‌مانده"""
         days = time_delta.days
         hours, remainder = divmod(time_delta.seconds, 3600)
@@ -121,23 +120,27 @@ class ExamBot:
         else:
             return f"<b>{days} روز, {hours:02d} ساعت, {minutes:02d} دقیقه, {seconds:02d} ثانیه</b>"
     
-    def get_advice_message(self):
+    def get_advice_message(self) -> str:
         """پیام مشاوره‌ای بر اساس زمان باقی‌مانده"""
         now = datetime.now()
-        # تاریخ اولین کنکور (فرهنگیان)
-        first_exam_date = datetime(2026, 5, 6)  # 17 اردیبهشت 1405
-        days_left = (first_exam_date - now).days
+        # استفاده از تابع جدید برای دریافت کنکورهای آینده
+        upcoming_exams = get_upcoming_exams()
+        if upcoming_exams:
+            first_exam_date = upcoming_exams[0]["date"]
+            days_left = (first_exam_date - now).days
+            
+            if days_left > 365:
+                return "📘 <b>مشاوره:</b> زمان کافی داری! با برنامه‌ریزی بلندمدت پیش برو و پایه‌ها رو قوی کن."
+            elif days_left > 180:
+                return "📗 <b>مشاوره:</b> نیمه راهی! حالا وقت مرور و تست‌زنی حرفه‌ای‌تره."
+            elif days_left > 90:
+                return "📒 <b>مشاوره:</b> فاز آخر! روی جمع‌بندی و رفع اشکال تمرکز کن."
+            elif days_left > 30:
+                return "📙 <b>مشاوره:</b> دوران طلایی! تست‌های زمان‌دار و شبیه‌ساز کنکور رو شروع کن."
+            else:
+                return "📕 <b>مشاوره:</b> آرامش خودت رو حفظ کن! همین الان هم می‌تونی با مرور هدفمند نتیجه بگیری!"
         
-        if days_left > 365:
-            return "📘 <b>مشاوره:</b> زمان کافی داری! با برنامه‌ریزی بلندمدت پیش برو و پایه‌ها رو قوی کن."
-        elif days_left > 180:
-            return "📗 <b>مشاوره:</b> نیمه راهی! حالا وقت مرور و تست‌زنی حرفه‌ای‌تره."
-        elif days_left > 90:
-            return "📒 <b>مشاوره:</b> فاز آخر! روی جمع‌بندی و رفع اشکال تمرکز کن."
-        elif days_left > 30:
-            return "📙 <b>مشاوره:</b> دوران طلایی! تست‌های زمان‌دار و شبیه‌ساز کنکور رو شروع کن."
-        else:
-            return "📕 <b>مشاوره:</b> آرامش خودت رو حفظ کن! همین الان هم می‌تونی با مرور هدفمند نتیجه بگیری!"
+        return "🎉 <b>همه کنکورها برگزار شده‌اند!</b>"
     
     async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """مدیریت کلیک روی دکمه‌های اینلاین"""
@@ -153,16 +156,16 @@ class ExamBot:
             )
     
     async def study_plan(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """برنامه مطالعاتی (موقت)"""
+        """برنامه مطالعاتی"""
         await update.message.reply_text(
             "📅 بخش برنامه مطالعاتی به زودی اضافه خواهد شد!",
             reply_markup=main_menu()
         )
     
     async def study_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """آمار مطالعه (موقت)"""
+        """آمار مطالعه"""
         await update.message.reply_text(
-            "📊 بخش آمار مطالعه به زودی اضافه خواهد شد!",
+            "📊 بخش آمار مطالعه به زونی اضافه خواهد شد!",
             reply_markup=main_menu()
         )
     
@@ -187,37 +190,5 @@ class ExamBot:
         """
         await update.message.reply_text(help_text, parse_mode='HTML', reply_markup=main_menu())
 
-    async def set_webhook(self):
-        """تنظیم وب هوک"""
-        await self.application.bot.set_webhook(
-            url=WEBHOOK_URL,
-            allowed_updates=Update.ALL_TYPES
-        )
-        logger.info(f"Webhook set to: {WEBHOOK_URL}")
-
-    async def webhook_handler(self, request):
-        """مدیریت درخواست‌های وب هوک"""
-        update = Update.de_json(await request.json(), self.application.bot)
-        await self.application.process_update(update)
-        return {"status": "ok"}
-
-def create_app():
-    """تابع ایجاد برنامه برای سرور"""
-    bot = ExamBot()
-    return bot
-
-# برای اجرای محلی (اختیاری)
-if __name__ == "__main__":
-    bot = ExamBot()
-    
-    # اگر متغیر محیطی WEBHOOK_URL تنظیم شده باشد از وب هوک استفاده کن
-    if WEBHOOK_URL:
-        import asyncio
-        async def main():
-            await bot.set_webhook()
-            # اینجا باید سرور Flask یا FastAPI راه اندازی کنید
-        asyncio.run(main())
-    else:
-        # حالت polling برای توسعه
-        print("🤖 ربات کنکور ۱۴۰۵ در حال اجرا در حالت Polling...")
-        bot.application.run_polling()
+# ایجاد نمونه ربات
+bot = ExamBot()
