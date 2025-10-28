@@ -41,17 +41,19 @@ async def initialize_bot():
         logger.error(traceback.format_exc())
         return False
 
-# راه‌اندازی ربات هنگام شروع
-@app.before_first_request
+# راه‌اندازی ربات هنگام اولین درخواست
+@app.before_request
 def setup_bot():
     """Setup bot on first request"""
-    try:
-        # ایجاد event loop جدید
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(initialize_bot())
-    except Exception as e:
-        logger.error(f"❌ خطا در setup: {e}")
+    if not hasattr(app, 'bot_initialized'):
+        try:
+            # ایجاد event loop جدید
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(initialize_bot())
+            app.bot_initialized = True
+        except Exception as e:
+            logger.error(f"❌ خطا در setup: {e}")
 
 @app.route('/')
 def home():
