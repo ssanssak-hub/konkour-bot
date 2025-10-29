@@ -73,20 +73,22 @@ def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     time_text = "⏳ " + " و ".join(parts) + " باقی مانده"
     return time_text, total_days
 
-def format_time_remaining_detailed(target_date: datetime) -> Dict[str, int]:
+def format_time_remaining_detailed(target_date: datetime) -> Dict[str, Any]:
     """
-    محاسبه دقیق زمان باقی‌مانده و بازگشت به صورت دیکشنری
+    محاسبه دقیق زمان باقی‌مانده و بازگشت تمام جزئیات
     """
     now = datetime.now()
     
     if target_date <= now:
         return {
             'weeks': 0, 'days': 0, 'hours': 0, 
-            'minutes': 0, 'seconds': 0, 'total_seconds': 0
+            'minutes': 0, 'seconds': 0, 
+            'total_seconds': 0, 'total_days': 0
         }
     
     delta = target_date - now
     total_seconds = int(delta.total_seconds())
+    total_days = delta.days
     
     return {
         'weeks': total_seconds // (7 * 24 * 3600),
@@ -94,9 +96,10 @@ def format_time_remaining_detailed(target_date: datetime) -> Dict[str, int]:
         'hours': (total_seconds % (24 * 3600)) // 3600,
         'minutes': (total_seconds % 3600) // 60,
         'seconds': total_seconds % 60,
-        'total_seconds': total_seconds
+        'total_seconds': total_seconds,
+        'total_days': total_days
     }
-
+    
 def create_membership_keyboard() -> InlineKeyboardMarkup:
     """
     ایجاد کیبورد برای عضویت در کانال‌ها
