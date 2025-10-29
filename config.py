@@ -1,23 +1,12 @@
 import os
 from dotenv import load_dotenv
+
 # بارگذاری متغیرهای محیطی
 load_dotenv()
 
-
+# متغیرهای اصلی
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7703672187"))
-
-def get_bot_token():
-    global _BOT_TOKEN
-    if _BOT_TOKEN is None:
-        _BOT_TOKEN = os.environ.get("BOT_TOKEN", "default_token")
-    return _BOT_TOKEN
-
-def get_admin_id():
-    global _ADMIN_ID  
-    if _ADMIN_ID is None:
-        _ADMIN_ID = int(os.environ.get("ADMIN_ID", 123456789))
-    return _ADMIN_ID
 
 MOTIVATIONAL_MESSAGES = [
     "🎯 هر روز یک قدم نزدیک‌تر به هدف! تو می‌تونی!",
@@ -46,12 +35,5 @@ MOTIVATIONAL_MESSAGES = [
     "💫 تو توانایی رسیدن به هر چیزی رو داری!"
 ]
 
-def get_motivational_messages():
-    return _MOTIVATIONAL_MESSAGES
-
-
 # تنظیمات دیتابیس
-BOT_TOKEN = get_bot_token()
-ADMIN_ID = get_admin_id()
-MOTIVATIONAL_MESSAGES = get_motivational_messages()
 DATABASE_URL = os.environ.get("DATABASE_URL", "konkour_bot.db")
