@@ -132,11 +132,18 @@ async def safe_startup():
         logger.critical(f"❌ راه‌اندازی ناموفق: {e}")
         raise
 
+# در تابع safe_shutdown این رو اضافه کن:
 async def safe_shutdown():
     """خاموشی ایمن"""
     try:
         await webhook_breaker.call(bot.delete_webhook)
         logger.info("✅ وب‌هوک حذف شد")
+        
+        # بستن session های باز
+        import aiohttp
+        await bot.session.close()
+        logger.info("✅ sessionهای ربات بسته شدند")
+        
     except Exception as e:
         logger.error(f"⚠️ خطا در خاموشی: {e}")
 
