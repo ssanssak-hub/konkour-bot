@@ -35,7 +35,7 @@ async def check_user_membership(bot: Bot, user_id: int) -> bool:
 
 def format_time_remaining(target_date: datetime) -> str:
     """
-    فرمت‌بندی زمان باقی‌مانده به صورت دقیق
+    فرمت‌بندی زمان باقی‌مانده به صورت دقیق (هفته، روز، ساعت، دقیقه، ثانیه)
     """
     now = datetime.now()
     
@@ -43,13 +43,14 @@ def format_time_remaining(target_date: datetime) -> str:
         return "✅ برگزار شده"
     
     delta = target_date - now
+    total_seconds = int(delta.total_seconds())
     
     # محاسبه اجزای زمان
-    weeks = delta.days // 7
-    days = delta.days % 7
-    hours = delta.seconds // 3600
-    minutes = (delta.seconds % 3600) // 60
-    seconds = delta.seconds % 60
+    weeks = total_seconds // (7 * 24 * 3600)
+    days = (total_seconds % (7 * 24 * 3600)) // (24 * 3600)
+    hours = (total_seconds % (24 * 3600)) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
     
     parts = []
     
@@ -61,10 +62,13 @@ def format_time_remaining(target_date: datetime) -> str:
         parts.append(f"{hours} ساعت")
     if minutes > 0:
         parts.append(f"{minutes} دقیقه")
-    if seconds > 0 and len(parts) < 3:  # فقط اگر جزئیات کم است ثانیه را نشان بده
+    if seconds > 0:
         parts.append(f"{seconds} ثانیه")
     
-    return " ⏳ " + " و ".join(parts) + " باقی مانده"
+    if not parts:
+        return "⏳ کمتر از ۱ ثانیه باقی مانده"
+    
+    return "⏳ " + " و ".join(parts) + " باقی مانده"
 
 def create_membership_keyboard() -> InlineKeyboardMarkup:
     """
