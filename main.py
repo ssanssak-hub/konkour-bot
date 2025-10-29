@@ -30,9 +30,9 @@ class ExamBot:
             self.setup_handlers()
             logger.info("✅ ربات کنکور ۱۴۰۵ آماده شد")
         except Exception as e:
-            logger.error(f"❌
-            خطا در ایجاد ربات: {e}")
+            logger.error(f"❌ خطا در ایجاد ربات: {e}")
             raise
+
     def setup_handlers(self):
         # دستورات
         self.application.add_handler(CommandHandler("start", self.start))
@@ -63,7 +63,6 @@ class ExamBot:
 """
             logger.info(f"🚀 تلاش برای ارسال پیام خوشآمدگویی به {user.id}")
             
-            # اضافه کردن await و لاگ بیشتر
             message = await update.message.reply_text(
                 welcome, 
                 reply_markup=main_menu(), 
