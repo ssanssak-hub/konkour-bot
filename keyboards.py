@@ -80,11 +80,14 @@ def study_plan_menu():
             InlineKeyboardButton(text="📊 مشاهده برنامه", callback_data="view_plan")
         ],
         [
-            InlineKeyboardButton(text="✏️ ویرایش برنامه", callback_data="edit_plan"),
-            InlineKeyboardButton(text="📈 پیشرفت", callback_data="progress")
+            InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="log_study"),
+            InlineKeyboardButton(text="✅ ثبت پیشرفت", callback_data="log_progress")
         ],
         [
-            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_plan"),
+            InlineKeyboardButton(text="📈 آمار پیشرفت", callback_data="view_progress"),
+            InlineKeyboardButton(text="🎯 اهداف", callback_data="set_goals")
+        ],
+        [
             InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
         ]
     ]
@@ -94,19 +97,18 @@ def study_plan_menu():
 def stats_menu():
     keyboard = [
         [
+            InlineKeyboardButton(text="📊 آمار امروز", callback_data="today_stats"),
+            InlineKeyboardButton(text="📅 آمار هفته", callback_data="weekly_stats")
+        ],
+        [
+            InlineKeyboardButton(text="📈 نمودار پیشرفت", callback_data="progress_chart"),
+            InlineKeyboardButton(text="🏆 رکوردها", callback_data="records")
+        ],
+        [
             InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="log_study"),
-            InlineKeyboardButton(text="📊 آمار روزانه", callback_data="daily_stats")
+            InlineKeyboardButton(text="📋 گزارش کامل", callback_data="full_report")
         ],
         [
-            InlineKeyboardButton(text="📈 آمار هفتگی", callback_data="weekly_stats"),
-            InlineKeyboardButton(text="🏆 لیدربرد", callback_data="leaderboard")
-        ],
-        [
-            InlineKeyboardButton(text="📋 گزارش کامل", callback_data="full_report"),
-            InlineKeyboardButton(text="📤 خروجی", callback_data="export_stats")
-        ],
-        [
-            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_stats"),
             InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
         ]
     ]
@@ -116,46 +118,36 @@ def stats_menu():
 def admin_menu():
     keyboard = [
         [
-            InlineKeyboardButton(text="📊 آمار ربات", callback_data="admin_stats"),
-            InlineKeyboardButton(text="👥 کاربران", callback_data="admin_users")
+            InlineKeyboardButton(text="📢 عضویت اجباری", callback_data="admin_mandatory_channels"),
+            InlineKeyboardButton(text="👥 مدیریت کاربران", callback_data="admin_users")
         ],
         [
-            InlineKeyboardButton(text="📢 ارسال همگانی", callback_data="admin_broadcast"),
+            InlineKeyboardButton(text="📊 آمار ربات", callback_data="admin_stats"),
             InlineKeyboardButton(text="⚙️ تنظیمات", callback_data="admin_settings")
         ],
         [
-            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="admin_refresh"),
+            InlineKeyboardButton(text="📣 ارسال پیام", callback_data="admin_broadcast"),
+            InlineKeyboardButton(text="🔍 لاگ‌ها", callback_data="admin_logs")
+        ],
+        [
             InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# دکمه‌های تأیید و لغو
-def confirm_cancel_menu(confirm_text="✅ تأیید", cancel_text="❌ لغو", 
-                       confirm_data="confirm", cancel_data="back_to_main"):
+# دکمه بازگشت
+def back_button_menu(text="🔙 بازگشت", callback_data="back_to_main"):
+    keyboard = [[
+        InlineKeyboardButton(text=text, callback_data=callback_data)
+    ]]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# منوی تأیید/لغو
+def confirm_cancel_menu(confirm_data="confirm", cancel_data="cancel"):
     keyboard = [
         [
-            InlineKeyboardButton(text=confirm_text, callback_data=confirm_data),
-            InlineKeyboardButton(text=cancel_text, callback_data=cancel_data)
+            InlineKeyboardButton(text="✅ تأیید", callback_data=confirm_data),
+            InlineKeyboardButton(text="❌ لغو", callback_data=cancel_data)
         ]
     ]
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-# دکمه بازگشت ساده
-def back_button_menu(back_text="🔙 بازگشت", back_data="back_to_main"):
-    keyboard = [
-        [InlineKeyboardButton(text=back_text, callback_data=back_data)]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-# منوی ساده برای پیام‌ها
-def simple_menu(buttons):
-    """
-    ایجاد منوی ساده از لیست دکمه‌ها
-    مثال: simple_menu([("📊 آمار", "stats"), ("⚙️ تنظیمات", "settings")])
-    """
-    keyboard = []
-    for text, callback_data in buttons:
-        keyboard.append([InlineKeyboardButton(text=text, callback_data=callback_data)])
-    
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
