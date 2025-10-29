@@ -59,38 +59,41 @@ class ExamBot:
         elif data == "back_to_main":
             await query.edit_message_text("بازگشت به منوی اصلی:", reply_markup=main_menu())
 
-    async def send_exam_countdown(self, query, exam_key):
-        if exam_key not in EXAMS_1405:
-            await query.edit_message_text("❌ آزمون مورد نظر یافت نشد.")
-            return
+async def send_exam_countdown(self, query, exam_key):
+    if exam_key not in EXAMS_1405:
+        await query.edit_message_text("❌ آزمون مورد نظر یافت نشد.")
+        return
 
-        exam = EXAMS_1405[exam_key]
-        now = datetime.now()
-        target = datetime(*exam["date"])  # مثال: [2025, 7, 15, 8, 0]
+    exam = EXAMS_1405[exam_key]
+    now = datetime.now()
 
-        if now >= target:
-            countdown = "⛳ آزمون برگزار شده است."
-        else:
-            delta = target - now
-            weeks = delta.days // 7
-            days = delta.days % 7
-            hours = delta.seconds // 3600
-            minutes = (delta.seconds % 3600) // 60
-            seconds = delta.seconds % 60
+    # تبدیل تاریخ‌ها به لیست datetime کامل
+    dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
+    future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
 
-            countdown = f"""
-            ⏳ زمان باقی‌مانده:
-            {weeks} هفته، {days} روز، {hours} ساعت، {minutes} دقیقه، {seconds} ثانیه
-            """
+    if not future_dates:
+        countdown = "⛳ همه‌ی مراحل این آزمون برگزار شده‌اند."
+    else:
+        target = min(future_dates)
+        delta = target - now
+        countdown = self.format_modern_countdown(delta)
 
-        message = f"""
-        📘 <b>{exam['name']}</b>
-        📅 تاریخ: {exam['persian_date']}
-        🕒 ساعت: {exam['time']}
+    # پیام انگیزشی تصادفی
+    try:
+        from random import choice
+        motivation = f"\n\n🎯 {choice(MOTIVATIONAL_MESSAGES)}"
+    except:
+        motivation = ""
 
-        {countdown}
-        """
-        await query.edit_message_text(message, reply_markup=countdown_actions(exam_key), parse_mode='HTML')
+    message = f"""
+📘 <b>{exam['name']}</b>
+📅 تاریخ: {exam['persian_date']}
+🕒 ساعت: {exam['time']}
+
+{countdown}
+{motivation}
+"""
+    await query.edit_message_text(message, reply_markup=countdown_actions(exam_key), parse_mode='HTML')
 
 def format_modern_countdown(delta):
     total_seconds = int(delta.total_seconds())
