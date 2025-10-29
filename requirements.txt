@@ -1,6 +1,6 @@
-python-telegram-bot==21.7       # نسخه پایدار و async-based
-flask==3.0.2                    # برای webhook یا تست محلی
-python-dotenv==1.0.0           # بارگذاری متغیرهای محیطی از .env
-python-dateutil==2.8.2         # مدیریت تاریخ‌ها
-pytz==2023.3                   # منطقه زمانی
-gunicorn>=21.2.0               # سرور production برای اجرای Flask
+python-telegram-bot[job-queue]==21.8
+flask==3.0.2
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+pytz==2023.3
+gunicorn>=21.2.0
