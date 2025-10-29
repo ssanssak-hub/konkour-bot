@@ -18,8 +18,8 @@ async def start_handler(message: types.Message, bot: Bot):
     user = message.from_user
     logger.info(f"🎯 دریافت /start از {user.first_name} ({user.id})")
     
-    # افزودن/بروزرسانی کاربر در دیتابیس
-    db.add_user(user_id, user.username or "", user.first_name, user.last_name or "")
+    # اصلاح: استفاده از user.id به جای user_id
+    db.add_user(user.id, user.username or "", user.first_name, user.last_name or "")
     
     # بررسی عضویت
     is_member = await check_user_membership(bot, user.id)
