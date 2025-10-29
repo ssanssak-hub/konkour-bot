@@ -4,11 +4,10 @@
 import logging
 from aiogram import Bot, types, F
 from aiogram.filters import Command, CommandStart
-from aiogram.fsm.context import FSMContext
 
 from config import MOTIVATIONAL_MESSAGES
-from keyboards import main_menu, create_membership_keyboard
-from utils import check_user_membership
+from keyboards import main_menu
+from utils import check_user_membership, create_membership_keyboard
 from database import Database
 
 logger = logging.getLogger(__name__)
@@ -18,6 +17,9 @@ async def start_handler(message: types.Message, bot: Bot):
     """هندلر دستور /start"""
     user = message.from_user
     logger.info(f"🎯 دریافت /start از {user.first_name} ({user.id})")
+    
+    # افزودن/بروزرسانی کاربر در دیتابیس
+    db.add_user(user_id, user.username or "", user.first_name, user.last_name or "")
     
     # بررسی عضویت
     is_member = await check_user_membership(bot, user.id)
