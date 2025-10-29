@@ -92,6 +92,23 @@ class ExamBot:
         """
         await query.edit_message_text(message, reply_markup=countdown_actions(exam_key), parse_mode='HTML')
 
+def format_modern_countdown(delta):
+    total_seconds = int(delta.total_seconds())
+    weeks = delta.days // 7
+    days = delta.days % 7
+    hours = total_seconds % (24 * 3600) // 3600
+    minutes = total_seconds % 3600 // 60
+    seconds = total_seconds % 60
+
+    return f"""
+⏳ زمان باقی‌مانده:
+
+🗓 {weeks} هفته  
+📆 {days} روز  
+⏰ {hours} ساعت  
+🕑 {minutes} دقیقه  
+⏱ {seconds} ثانیه
+"""
 # تابع برای app.py
 def get_application():
     bot = ExamBot()
