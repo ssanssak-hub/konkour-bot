@@ -1,30 +1,27 @@
 import logging
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
 
-# تنظیمات ساده لاگ
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ایجاد Application
-application = Application.builder().token("8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8").build()
+bot = Bot(token="8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8")
+dp = Dispatcher()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info("🎯 تابع start اجرا شد!")
-    await update.message.reply_text("✅ ربات کار می‌کند! تست موفق.")
+@dp.message(Command("start"))
+async def start_handler(message: types.Message):
+    logger.info(f"🎯 start اجرا شد برای کاربر {message.from_user.id}")
+    await message.answer("✅ ربات با aiogram کار می‌کند!")
 
-async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info("🧪 تابع test اجرا شد!")
-    await update.message.reply_text("🧪 تست موفق! همه چیز درست است.")
+@dp.message(Command("test"))
+async def test_handler(message: types.Message):
+    logger.info(f"🧪 test اجرا شد برای کاربر {message.from_user.id}")
+    await message.answer("🧪 تست aiogram موفق!")
 
-# ثبت فقط دو هندلر ساده
-application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("test", test))
+async def main():
+    logger.info("🚀 راه‌اندازی ربات با aiogram...")
+    await dp.start_polling(bot)
 
-logger.info("✅ هندلرهای ساده ثبت شدند")
-
-def get_application():
-    return application
+if __name__ == "__main__":
+    asyncio.run(main())
