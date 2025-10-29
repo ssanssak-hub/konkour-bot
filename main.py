@@ -132,7 +132,6 @@ async def safe_startup():
         logger.critical(f"❌ راه‌اندازی ناموفق: {e}")
         raise
 
-# در تابع safe_shutdown این رو اضافه کن:
 async def safe_shutdown():
     """خاموشی ایمن"""
     try:
@@ -140,7 +139,6 @@ async def safe_shutdown():
         logger.info("✅ وب‌هوک حذف شد")
         
         # بستن session های باز
-        import aiohttp
         await bot.session.close()
         logger.info("✅ sessionهای ربات بسته شدند")
         
@@ -155,9 +153,17 @@ async def on_shutdown(app: web.Application):
     """هندلر خاموشی"""
     await safe_shutdown()
 
+# هندلر جدید برای بررسی پورت
+async def render_check_handler(request):
+    """هندلر مخصوص Render برای تشخیص پورت"""
+    return web.Response(text="🚀 Bot Server is Running!")
+
 def main():
     """تابع اصلی"""
     app = web.Application()
+    
+    # اضافه کردن هندلر برای تشخیص پورت توسط Render
+    app.router.add_get('/render-check', render_check_handler)
     
     # وب‌هوک
     webhook_requests_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
