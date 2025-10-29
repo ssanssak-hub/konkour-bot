@@ -34,17 +34,18 @@ async def check_user_membership(bot: Bot, user_id: int) -> bool:
     
     return True
 
-def format_time_remaining(target_date: datetime) -> str:
+def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     """
-    فرمت‌بندی زمان باقی‌مانده به صورت دقیق (هفته، روز، ساعت، دقیقه، ثانیه)
+    فرمت‌بندی زمان باقی‌مانده به صورت دقیق و بازگشت تعداد کل روزها
     """
     now = datetime.now()
     
     if target_date <= now:
-        return "✅ برگزار شده"
+        return "✅ برگزار شده", 0
     
     delta = target_date - now
     total_seconds = int(delta.total_seconds())
+    total_days = delta.days
     
     # محاسبه اجزای زمان
     weeks = total_seconds // (7 * 24 * 3600)
@@ -67,9 +68,10 @@ def format_time_remaining(target_date: datetime) -> str:
         parts.append(f"{seconds} ثانیه")
     
     if not parts:
-        return "⏳ کمتر از ۱ ثانیه باقی مانده"
+        return "⏳ کمتر از ۱ ثانیه باقی مانده", total_days
     
-    return "⏳ " + " و ".join(parts) + " باقی مانده"
+    time_text = "⏳ " + " و ".join(parts) + " باقی مانده"
+    return time_text, total_days
 
 def format_time_remaining_detailed(target_date: datetime) -> Dict[str, int]:
     """
