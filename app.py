@@ -30,17 +30,9 @@ async def initialize_bot():
         await application.start()
         logger.info("✅ ربات initialize و start شد")
 
-        # دریافت و بررسی WEBHOOK_URL
-        webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
-        if not webhook_url:
-            logger.error("❌ WEBHOOK_URL تنظیم نشده")
-            # بدون وب‌هوک هم ادامه می‌دهیم (برای تست)
-            bot_initialized = True
-            return True
-            
-        # اطمینان از پایان /webhook
-        if not webhook_url.endswith('/webhook'):
-            webhook_url = webhook_url.rstrip('/') + '/webhook'
+        # راه‌حل موقت: ساخت خودکار WEBHOOK_URL
+        render_service_url = "https://konkour-bot-4i5p.onrender.com"
+        webhook_url = f"{render_service_url}/webhook"
         
         logger.info(f"🔧 تنظیم وب‌هوک روی: {webhook_url}")
         
@@ -62,6 +54,7 @@ async def initialize_bot():
             logger.info("✅ وب‌هوک با موفقیت تنظیم شد")
 
         bot_initialized = True
+        logger.info("🎉 ربات با وب‌هوک فعال شد")
         return True
 
     except Exception as e:
@@ -152,7 +145,7 @@ def webhook():
         logger.error(f"❌ خطا در پردازش وب‌هوک: {e}")
         logger.error(traceback.format_exc())
         return jsonify({"error": "Internal server error"}), 500
-        
+
 # صفحه دیباگ
 @app.route('/debug')
 def debug():
