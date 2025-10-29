@@ -13,7 +13,7 @@ from telegram.ext import (
 
 from config import BOT_TOKEN, ADMIN_ID, MOTIVATIONAL_MESSAGES
 from exam_data import EXAMS_1405
-from keyboards import main_menu, countdown_actions
+from keyboards import main_menu, exams_menu, countdown_actions, study_plan_menu, stats_menu, admin_menu
 
 # تنظیم لاگ
 logging.basicConfig(
@@ -28,38 +28,21 @@ class ExamBot:
         self.setup_handlers()
         logger.info("✅ ربات کنکور ۱۴۰۵ آماده شد")
 
-def setup_handlers(self):
-    self.application.add_handler(CommandHandler("start", self.start))
-    
-    # هندلر برای دکمه‌های متنی منو
-    self.application.add_handler(MessageHandler(filters.Text(["⏳ زمان‌سنجی کنکورها"]), self.exams_menu))
-    self.application.add_handler(MessageHandler(filters.Text(["📅 برنامه مطالعاتی پیشرفته"]), self.study_plan_menu))
-    self.application.add_handler(MessageHandler(filters.Text(["📊 آمار مطالعه حرفه‌ای"]), self.stats_menu))
-    self.application.add_handler(MessageHandler(filters.Text(["👑 پنل مدیریت"]), self.admin_menu))
-    
-    # هندلر برای سایر پیام‌های متنی
-    self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_text))
-    self.application.add_handler(CallbackQueryHandler(self.handle_callback))
-
-async def exams_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """منوی کنکورها"""
-    await update.message.reply_text("🎯 انتخاب کنکور مورد نظر:", reply_markup=exams_menu())
-
-async def study_plan_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """منوی برنامه مطالعاتی"""
-    await update.message.reply_text("📅 برنامه مطالعاتی پیشرفته:", reply_markup=study_plan_menu())
-
-async def stats_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """منوی آمار مطالعه"""
-    await update.message.reply_text("📊 آمار مطالعه حرفه‌ای:", reply_markup=stats_menu())
-
-async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """منوی مدیریت"""
-    user = update.effective_user
-    if user.id != ADMIN_ID:
-        await update.message.reply_text("❌ دسترسی denied!")
-        return
-    await update.message.reply_text("👑 پنل مدیریت:", reply_markup=admin_menu())
+    def setup_handlers(self):
+        # دستورات
+        self.application.add_handler(CommandHandler("start", self.start))
+        
+        # هندلر برای دکمه‌های متنی منو
+        self.application.add_handler(MessageHandler(filters.Text(["⏳ زمان‌سنجی کنکورها"]), self.show_exams_menu))
+        self.application.add_handler(MessageHandler(filters.Text(["📅 برنامه مطالعاتی پیشرفته"]), self.show_study_plan_menu))
+        self.application.add_handler(MessageHandler(filters.Text(["📊 آمار مطالعه حرفه‌ای"]), self.show_stats_menu))
+        self.application.add_handler(MessageHandler(filters.Text(["👑 پنل مدیریت"]), self.show_admin_menu))
+        
+        # هندلر برای سایر پیام‌های متنی
+        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_unknown_text))
+        
+        # هندلر برای دکمه‌های اینلاین
+        self.application.add_handler(CallbackQueryHandler(self.handle_callback))
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
@@ -73,8 +56,42 @@ async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         await update.message.reply_text(welcome, reply_markup=main_menu(), parse_mode='HTML')
 
-    async def handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("از منوی زیر گزینه‌ای را انتخاب کنید:", reply_markup=main_menu())
+    async def show_exams_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """نمایش منوی کنکورها"""
+        logger.info("⏰ کاربر منوی کنکورها رو انتخاب کرد")
+        await update.message.reply_text("🎯 انتخاب کنکور مورد نظر:", reply_markup=exams_menu())
+
+    async def show_study_plan_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """نمایش منوی برنامه مطالعاتی"""
+        logger.info("📅 کاربر منوی برنامه مطالعاتی رو انتخاب کرد")
+        await update.message.reply_text("📅 برنامه مطالعاتی پیشرفته:", reply_markup=study_plan_menu())
+
+    async def show_stats_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """نمایش منوی آمار مطالعه"""
+        logger.info("📊 کاربر منوی آمار مطالعه رو انتخاب کرد")
+        await update.message.reply_text("📊 آمار مطالعه حرفه‌ای:", reply_markup=stats_menu())
+
+    async def show_admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """نمایش منوی مدیریت"""
+        user = update.effective_user
+        logger.info(f"👑 کاربر {user.first_name} منوی مدیریت رو انتخاب کرد")
+        
+        if user.id != ADMIN_ID:
+            await update.message.reply_text("❌ دسترسی denied!")
+            return
+            
+        await update.message.reply_text("👑 پنل مدیریت:", reply_markup=admin_menu())
+
+    async def handle_unknown_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """مدیریت پیام‌های متنی ناشناخته"""
+        user = update.effective_user
+        text = update.message.text
+        logger.info(f"📝 کاربر {user.first_name} پیام فرستاد: {text}")
+        
+        await update.message.reply_text(
+            "لطفاً از دکمه‌های منو استفاده کنید:",
+            reply_markup=main_menu()
+        )
 
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -87,6 +104,8 @@ async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
             await self.send_exam_countdown(query, exam_key)
         elif data == "back_to_main":
             await query.edit_message_text("بازگشت به منوی اصلی:", reply_markup=main_menu())
+        elif data == "show_all_exams":
+            await self.show_all_exams_countdown(query)
 
     async def send_exam_countdown(self, query, exam_key):
         if exam_key not in EXAMS_1405:
@@ -120,6 +139,31 @@ async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
         await query.edit_message_text(message, reply_markup=countdown_actions(exam_key), parse_mode='HTML')
 
+    async def show_all_exams_countdown(self, query):
+        """نمایش زمان تمامی کنکورها"""
+        message = "⏳ <b>زمان باقی‌مانده تا کنکورهای ۱۴۰۵</b>\n\n"
+        
+        for exam_key, exam in EXAMS_1405.items():
+            now = datetime.now()
+            dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
+            future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
+            
+            message += f"🎯 <b>{exam['name']}</b>\n"
+            message += f"📅 {exam['persian_date']} - 🕒 {exam['time']}\n"
+            
+            if future_dates:
+                target = min(future_dates)
+                delta = target - now
+                message += f"⏳ {self.format_simple_countdown(delta)}\n"
+            else:
+                message += "✅ برگزار شده\n"
+            
+            message += "─" * 30 + "\n\n"
+        
+        message += f"💫 <i>{random.choice(MOTIVATIONAL_MESSAGES)}</i>"
+        
+        await query.edit_message_text(message, reply_markup=countdown_actions(), parse_mode='HTML')
+
     def format_modern_countdown(self, delta):
         total_seconds = int(delta.total_seconds())
         weeks = delta.days // 7
@@ -137,6 +181,12 @@ async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
 🕑 {minutes} دقیقه  
 ⏱ {seconds} ثانیه
 """
+
+    def format_simple_countdown(self, delta):
+        """قالب ساده برای نمایش همه کنکورها"""
+        days = delta.days
+        hours = delta.seconds // 3600
+        return f"{days} روز و {hours} ساعت"
 
 # تابع برای app.py
 def get_application():
