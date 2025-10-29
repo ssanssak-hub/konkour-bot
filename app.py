@@ -95,6 +95,7 @@ def webhook():
 
     try:
         update_data = request.get_json()
+        logger.info(f"📝 داده دریافتی: {update_data}")  # این خط رو اضافه کنید
         if not update_data:
             logger.error("❌ داده‌ای دریافت نشد")
             return jsonify({"error": "No data received"}), 400
