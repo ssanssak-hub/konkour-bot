@@ -82,9 +82,8 @@ class HealthMonitor:
     async def check_database_health(self) -> str:
         """بررسی سلامت دیتابیس"""
         try:
+            # ایمپورت داخل تابع برای جلوگیری از circular import
             from database import Database
-            from circuit_breaker import database_breaker
-            
             db = Database()
             with db.get_connection() as conn:
                 conn.execute("SELECT 1")
@@ -97,7 +96,7 @@ class HealthMonitor:
     async def check_webhook_health(self) -> str:
         """بررسی سلامت وب‌هوک"""
         try:
-            from main import bot
+            from main import bot  # ایمپورت داخل تابع
             webhook_info = await bot.get_webhook_info()
             if webhook_info.url:
                 return "healthy"
@@ -109,7 +108,7 @@ class HealthMonitor:
     async def check_cache_health(self) -> str:
         """بررسی سلامت کش"""
         try:
-            from main import _CACHE
+            from main import _CACHE  # ایمپورت داخل تابع
             cache_size = len(_CACHE)
             if cache_size < 1000:  # حداکثر 1000 آیتم در کش
                 return "healthy"
@@ -178,7 +177,7 @@ health_monitor = HealthMonitor()
 # هندلر HTTP برای سلامت
 async def health_check_handler(request):
     """هندلر بررسی سلامت برای HTTP"""
-    health_status = await health_monitor.health_monitor.check_system_health()
+    health_status = await health_monitor.check_system_health()
     
     status_code = 200
     if health_status["status"] == "critical":
@@ -190,7 +189,7 @@ async def health_check_handler(request):
 
 async def readiness_check_handler(request):
     """هندلر بررسی آمادگی سرویس"""
-    health_status = await health_monitor.health_monitor.check_system_health()
+    health_status = await health_monitor.check_system_health()
     
     if health_status["status"] in ["healthy", "warning"]:
         return web.Response(text="READY", status=200)
