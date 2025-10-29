@@ -307,9 +307,9 @@ def calculate_streak(study_days: List[str]) -> int:
     
     return streak
 
-def get_next_exam() -> Dict[str, Any]:
+def get_next_exam():
     """
-    پیدا کردن نزدیک‌ترین آزمون آینده
+    پیدا کردن نزدیک‌ترین آزمون آینده و بازگشت دیکشنری کامل
     """
     from exam_data import EXAMS_1405
     from datetime import datetime
