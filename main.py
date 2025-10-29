@@ -190,8 +190,9 @@ async def unknown_handler(message: types.Message):
 # --- توابع راه‌اندازی وب‌هوک ---
 async def on_startup(bot: Bot):
     """تنظیم وب‌هوک هنگام راه‌اندازی"""
-    await bot.set_webhook(WEBHOOK_URL)
-    logger.info(f"✅ وب‌هوک تنظیم شد: {WEBHOOK_URL}")
+    webhook_url = os.environ.get("WEBHOOK_URL", "https://konkour-bot-4i5p.onrender.com") + "/webhook"
+    await bot.set_webhook(webhook_url)
+    logger.info(f"✅ وب‌هوک تنظیم شد: {webhook_url}")
 
 async def on_shutdown(bot: Bot):
     """پاک کردن وب‌هوک هنگام خاموشی"""
@@ -202,15 +203,17 @@ def main():
     """تابع اصلی راه‌اندازی"""
     app = web.Application()
     
-    webhook_requests_handler = SimpleRequestHandler(
+    # ثبت هندلر وب‌هوک
+    SimpleRequestHandler(
         dispatcher=dp,
         bot=bot,
-    )
+    ).register(app, path="/webhook")
     
-    webhook_requests_handler.register(app, path=WEBHOOK_PATH)
+    # تنظیم startup/shutdown
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
     
+    # راه‌اندازی سرور
     port = int(os.environ.get("PORT", 10000))
     logger.info(f"🚀 سرور در حال راه‌اندازی روی پورت {port}...")
     
