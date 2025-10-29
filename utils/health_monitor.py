@@ -154,25 +154,35 @@ class HealthMonitor:
             self.metrics[metric_name] += value
     
     async def periodic_health_check(self):
-        """بررسی دوره‌ی سلامت"""
+        """بررسی دوره‌ی سلامت - با مدیریت session"""
+        import aiohttp
+    
         while True:
             try:
                 health_status = await self.check_system_health()
-                
+            
                 if health_status["status"] != "healthy":
                     logger.warning(f"🔍 گزارش سلامت: {health_status['status']}")
-                    
+                
                 # لاگ هر 5 دقیقه
                 if datetime.now().minute % 5 == 0:
                     logger.info(f"📊 گزارش سلامت دوره‌ای: {health_status}")
-                    
+                
+                # Keep alive با مدیریت session
+                if datetime.now().minute % 5 == 0:  # هر 5 دقیقه
+                    try:
+                        webhook_url = os.environ.get("WEBHOOK_URL", "").replace('/webhook', '')
+                        if webhook_url:
+                             async with aiohttp.ClientSession() as session:
+                                 async with session.get(f'{webhook_url}/health', timeout=10) as resp:
+                                     logger.info("🔄 Keep alive ping sent")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Keep alive failed: {e}")
+                
             except Exception as e:
                 logger.error(f"❌ خطا در بررسی سلامت: {e}")
-            
+        
             await asyncio.sleep(60)  # هر 1 دقیقه
-
-# نمونه全局
-health_monitor = HealthMonitor()
 
 # هندلر HTTP برای سلامت
 async def health_check_handler(request):
