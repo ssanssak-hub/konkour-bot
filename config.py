@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+# بارگذاری متغیرهای محیطی
+load_dotenv()
+
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7703672187"))
