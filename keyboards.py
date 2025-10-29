@@ -37,7 +37,7 @@ def exams_menu():
                 label = EXAMS_1405[key]["name"]
                 row.append(InlineKeyboardButton(
                     text=f"🎓 {label}", 
-                    callback_data=f"exam:{key}"  # تغییر به : برای جداکننده
+                    callback_data=f"exam:{key}"
                 ))
         keyboard.append(row)
     
@@ -199,4 +199,87 @@ def study_subjects_menu():
         InlineKeyboardButton(text="🔙 بازگشت", callback_data="stats:back")
     ])
     
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# کیبورد عضویت اجباری
+def create_membership_keyboard():
+    """
+    ایجاد کیبورد برای عضویت در کانال‌های اجباری
+    """
+    from database import Database
+    db = Database()
+    
+    channels = db.get_mandatory_channels()
+    keyboard = []
+    
+    for channel in channels:
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"📢 {channel['channel_title']}",
+                url=f"https://t.me/{channel['channel_username'].lstrip('@')}"
+            )
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton(text="✅ بررسی عضویت", callback_data="check_membership")
+    ])
+    
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# کیبوردهای پیشرفته برای برنامه مطالعاتی
+def create_study_plan_keyboard():
+    """
+    ایجاد کیبورد پیشرفته برای برنامه مطالعاتی
+    """
+    keyboard = [
+        [
+            InlineKeyboardButton(text="📝 برنامه روزانه", callback_data="study:daily"),
+            InlineKeyboardButton(text="📅 برنامه هفتگی", callback_data="study:weekly")
+        ],
+        [
+            InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="study:log"),
+            InlineKeyboardButton(text="✅ ثبت پیشرفت", callback_data="study:progress")
+        ],
+        [
+            InlineKeyboardButton(text="📊 آمار پیشرفت", callback_data="study:stats"),
+            InlineKeyboardButton(text="🎯 تعیین هدف", callback_data="study:goals")
+        ],
+        [
+            InlineKeyboardButton(text="📋 گزارش کامل", callback_data="study:report"),
+            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="study:refresh")
+        ],
+        [
+            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# کیبوردهای پیشرفته برای آمار مطالعه
+def create_stats_keyboard():
+    """
+    ایجاد کیبورد پیشرفته برای آمار مطالعه
+    """
+    keyboard = [
+        [
+            InlineKeyboardButton(text="📊 امروز", callback_data="stats:today"),
+            InlineKeyboardButton(text="📅 هفته", callback_data="stats:weekly"),
+            InlineKeyboardButton(text="📈 ماه", callback_data="stats:monthly")
+        ],
+        [
+            InlineKeyboardButton(text="📋 گزارش کامل", callback_data="stats:full"),
+            InlineKeyboardButton(text="📉 نمودارها", callback_data="stats:charts")
+        ],
+        [
+            InlineKeyboardButton(text="🏆 رکوردها", callback_data="stats:records"),
+            InlineKeyboardButton(text="🎯 اهداف", callback_data="stats:goals")
+        ],
+        [
+            InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="study:log"),
+            InlineKeyboardButton(text="📤 خروجی", callback_data="stats:export")
+        ],
+        [
+            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="stats:refresh"),
+            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
+        ]
+    ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
