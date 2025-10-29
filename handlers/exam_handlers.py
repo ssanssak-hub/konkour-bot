@@ -87,13 +87,40 @@ async def all_exams_handler(callback: types.CallbackQuery):
     )
 
 async def refresh_exam_handler(callback: types.CallbackQuery):
-    """هندلر دکمه بروزرسانی"""
+    """هندلر دکمه بروزرسانی - بدون تغییر callback.data"""
     exam_key = callback.data.replace("refresh:", "")
     
     if exam_key in EXAMS_1405:
-        # بروزرسانی آزمون خاص
-        callback.data = f"exam:{exam_key}"
-        await exam_callback_handler(callback)
+        # مستقیماً هندلر رو صدا بزن بدون تغییر callback.data
+        exam = EXAMS_1405[exam_key]
+        now = datetime.now()
+        
+        dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
+        future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
+        
+        if not future_dates:
+            countdown = "✅ برگزار شده"
+            total_days = 0
+        else:
+            target = min(future_dates)
+            countdown, total_days = format_time_remaining(target)
+        
+        message = f"""
+📘 <b>{exam['name']}</b>
+📅 تاریخ: {exam['persian_date']}
+🕒 ساعت: {exam['time']}
+
+{countdown}
+📆 تعداد کل روزهای باقی‌مانده: {total_days} روز
+
+🔄 اطلاعات بروزرسانی شد
+🎯 {random.choice(MOTIVATIONAL_MESSAGES)}
+"""
+        await callback.message.edit_text(
+            message, 
+            reply_markup=exam_actions_menu(exam_key), 
+            parse_mode="HTML"
+        )
         await callback.answer("🔄 اطلاعات بروزرسانی شد")
     else:
         await callback.answer("❌ آزمون یافت نشد")
@@ -108,9 +135,28 @@ async def next_exam_handler(callback: types.CallbackQuery):
     next_exam = get_next_exam()
     
     if next_exam:
-        # استفاده از هندلر موجود
-        callback.data = f"exam:{next_exam['key']}"
-        await exam_callback_handler(callback)
+        # مستقیماً نمایش بده بدون تغییر callback.data
+        exam = next_exam
+        now = datetime.now()
+        target = exam['date']
+        
+        countdown, total_days = format_time_remaining(target)
+        
+        message = f"""
+🎯 <b>نزدیک‌ترین آزمون: {exam['name']}</b>
+📅 تاریخ: {exam['persian_date']}
+🕒 ساعت: {exam['time']}
+
+{countdown}
+📆 تعداد کل روزهای باقی‌مانده: {total_days} روز
+
+💫 این نزدیک‌ترین آزمون به زمان حال است!
+"""
+        await callback.message.edit_text(
+            message,
+            reply_markup=exam_actions_menu(next_exam['key']),
+            parse_mode="HTML"
+        )
         await callback.answer("🎯 نزدیک‌ترین آزمون نمایش داده شد")
     else:
         await callback.answer("❌ هیچ آزمون آینده‌ای پیدا نشد", show_alert=True)
