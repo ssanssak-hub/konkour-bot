@@ -30,15 +30,38 @@ async def initialize_bot():
         await application.start()
         logger.info("✅ ربات initialize و start شد")
 
-        webhook_url = os.environ.get("WEBHOOK_URL", "https://konkour-bot-4i5p.onrender.com/webhook")
+        # دریافت و بررسی WEBHOOK_URL
+        webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
+        if not webhook_url:
+            logger.error("❌ WEBHOOK_URL تنظیم نشده")
+            # بدون وب‌هوک هم ادامه می‌دهیم (برای تست)
+            bot_initialized = True
+            return True
+            
+        # اطمینان از پایان /webhook
+        if not webhook_url.endswith('/webhook'):
+            webhook_url = webhook_url.rstrip('/') + '/webhook'
+        
+        logger.info(f"🔧 تنظیم وب‌هوک روی: {webhook_url}")
+        
+        # تنظیم وب‌هوک
         await application.bot.set_webhook(
             webhook_url,
-            allowed_updates=["message", "callback_query", "chat_member"],
-            drop_pending_updates=True
+            allowed_updates=["message", "callback_query", "chat_member", "inline_query"],
+            drop_pending_updates=True,
+            max_connections=40
         )
 
+        # بررسی وضعیت وب‌هوک
+        webhook_info = await application.bot.get_webhook_info()
+        logger.info(f"📊 وضعیت وب‌هوک: {webhook_info.url} - pending: {webhook_info.pending_update_count}")
+
+        if webhook_info.url != webhook_url:
+            logger.error(f"❌ وب‌هوک تنظیم نشد! انتظار: {webhook_url}, واقعی: {webhook_info.url}")
+        else:
+            logger.info("✅ وب‌هوک با موفقیت تنظیم شد")
+
         bot_initialized = True
-        logger.info(f"✅ وب‌هوک تنظیم شد: {webhook_url}")
         return True
 
     except Exception as e:
@@ -95,14 +118,23 @@ def webhook():
 
     try:
         update_data = request.get_json()
-        logger.info(f"📝 داده دریافتی: {update_data}")  # این خط رو اضافه کنید
         if not update_data:
             logger.error("❌ داده‌ای دریافت نشد")
             return jsonify({"error": "No data received"}), 400
 
         update_id = update_data.get('update_id', 'unknown')
         logger.info(f"📝 پردازش آپدیت: {update_id}")
-        logger.info(f"🔍 محتوای آپدیت: {update_data}")
+        
+        # لاگ جزئیات بیشتر برای دیباگ
+        if 'message' in update_data:
+            message = update_data['message']
+            chat_id = message.get('chat', {}).get('id')
+            text = message.get('text', '')
+            logger.info(f"💬 پیام از {chat_id}: {text}")
+        elif 'callback_query' in update_data:
+            callback = update_data['callback_query']
+            data = callback.get('data', '')
+            logger.info(f"🔘 کال‌بک: {data}")
 
         async def process_update():
             try:
@@ -120,7 +152,7 @@ def webhook():
         logger.error(f"❌ خطا در پردازش وب‌هوک: {e}")
         logger.error(traceback.format_exc())
         return jsonify({"error": "Internal server error"}), 500
-
+        
 # صفحه دیباگ
 @app.route('/debug')
 def debug():
