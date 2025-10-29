@@ -28,10 +28,38 @@ class ExamBot:
         self.setup_handlers()
         logger.info("✅ ربات کنکور ۱۴۰۵ آماده شد")
 
-    def setup_handlers(self):
-        self.application.add_handler(CommandHandler("start", self.start))
-        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_text))
-        self.application.add_handler(CallbackQueryHandler(self.handle_callback))
+def setup_handlers(self):
+    self.application.add_handler(CommandHandler("start", self.start))
+    
+    # هندلر برای دکمه‌های متنی منو
+    self.application.add_handler(MessageHandler(filters.Text(["⏳ زمان‌سنجی کنکورها"]), self.exams_menu))
+    self.application.add_handler(MessageHandler(filters.Text(["📅 برنامه مطالعاتی پیشرفته"]), self.study_plan_menu))
+    self.application.add_handler(MessageHandler(filters.Text(["📊 آمار مطالعه حرفه‌ای"]), self.stats_menu))
+    self.application.add_handler(MessageHandler(filters.Text(["👑 پنل مدیریت"]), self.admin_menu))
+    
+    # هندلر برای سایر پیام‌های متنی
+    self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_text))
+    self.application.add_handler(CallbackQueryHandler(self.handle_callback))
+
+async def exams_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """منوی کنکورها"""
+    await update.message.reply_text("🎯 انتخاب کنکور مورد نظر:", reply_markup=exams_menu())
+
+async def study_plan_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """منوی برنامه مطالعاتی"""
+    await update.message.reply_text("📅 برنامه مطالعاتی پیشرفته:", reply_markup=study_plan_menu())
+
+async def stats_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """منوی آمار مطالعه"""
+    await update.message.reply_text("📊 آمار مطالعه حرفه‌ای:", reply_markup=stats_menu())
+
+async def admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """منوی مدیریت"""
+    user = update.effective_user
+    if user.id != ADMIN_ID:
+        await update.message.reply_text("❌ دسترسی denied!")
+        return
+    await update.message.reply_text("👑 پنل مدیریت:", reply_markup=admin_menu())
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
