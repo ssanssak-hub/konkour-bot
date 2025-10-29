@@ -5,8 +5,12 @@ from aiogram.filters import Command, CommandStart
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiogram.fsm.context import FSMContext
 from aiohttp import web
+from dotenv import load_dotenv
 
-from config import BOT_TOKEN
+# بارگذاری متغیرهای محیطی
+load_dotenv()
+
+from config import BOT_TOKEN, ADMIN_ID
 from database import Database
 
 # ایمپورت هندلرها
