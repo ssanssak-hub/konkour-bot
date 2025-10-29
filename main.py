@@ -212,25 +212,50 @@ async def unknown_wrapper(message: types.Message):
 # --- توابع راه‌اندازی وب‌هوک ---
 async def on_startup(app: web.Application):
     """تنظیم وب‌هوک هنگام راه‌اندازی"""
-    webhook_url = os.environ.get("WEBHOOK_URL", "https://konkour-bot-4i5p.onrender.com") + "/webhook"
-    await bot.set_webhook(webhook_url)
-    logger.info(f"✅ وب‌هوک تنظیم شد: {webhook_url}")
+    # گرفتن آدرس وب‌هوک از متغیر محیطی
+    webhook_url = os.environ.get("WEBHOOK_URL")
+    if not webhook_url:
+        # اگر متغیر محیطی وجود ندارد، از آدرس پیش‌فرض استفاده کن
+        import socket
+        hostname = socket.gethostname()
+        webhook_url = f"https://{hostname}.onrender.com/webhook"
+    
+    logger.info(f"🔄 در حال تنظیم وب‌هوک: {webhook_url}")
+    
+    try:
+        await bot.set_webhook(webhook_url)
+        logger.info(f"✅ وب‌هوک با موفقیت تنظیم شد: {webhook_url}")
+    except Exception as e:
+        logger.error(f"❌ خطا در تنظیم وب‌هوک: {e}")
 
 async def on_shutdown(app: web.Application):
     """پاک کردن وب‌هوک هنگام خاموشی"""
-    await bot.delete_webhook()
-    logger.info("❌ وب‌هوک حذف شد")
+    try:
+        await bot.delete_webhook()
+        logger.info("✅ وب‌هوک حذف شد")
+    except Exception as e:
+        logger.error(f"❌ خطا در حذف وب‌هوک: {e}")
 
 def main():
     """تابع اصلی راه‌اندازی"""
     app = web.Application()
     
-    # ثبت هندلر وب‌هوک
+    # ایجاد هندلر وب‌هوک با آدرس درست
+    webhook_path = "/webhook"  # فقط /webhook نه /webhook/webhook
     webhook_requests_handler = SimpleRequestHandler(
         dispatcher=dp,
         bot=bot,
     )
-    webhook_requests_handler.register(app, path="/webhook")
+    
+    # ثبت هندلر با آدرس صحیح
+    webhook_requests_handler.register(app, path=webhook_path)
+    
+    # اضافه کردن route برای سلامت سرویس
+    async def health_check(request):
+        return web.Response(text="✅ ربات کنکور ۱۴۰۵ فعال است!")
+    
+    app.router.add_get('/', health_check)
+    app.router.add_get('/health', health_check)
     
     # تنظیم startup/shutdown
     app.on_startup.append(on_startup)
@@ -239,6 +264,7 @@ def main():
     # راه‌اندازی سرور
     port = int(os.environ.get("PORT", 10000))
     logger.info(f"🚀 سرور در حال راه‌اندازی روی پورت {port}...")
+    logger.info(f"📞 وب‌هوک path: {webhook_path}")
     
     web.run_app(app, host="0.0.0.0", port=port)
 
