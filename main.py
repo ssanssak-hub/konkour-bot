@@ -25,10 +25,14 @@ logger = logging.getLogger(__name__)
 
 class ExamBot:
     def __init__(self):
-        self.application = Application.builder().token(BOT_TOKEN).build()
-        self.setup_handlers()
-        logger.info("✅ ربات کنکور ۱۴۰۵ آماده شد")
-
+        try:
+            self.application = Application.builder().token(BOT_TOKEN).build()
+            self.setup_handlers()
+            logger.info("✅ ربات کنکور ۱۴۰۵ آماده شد")
+        except Exception as e:
+            logger.error(f"❌
+            خطا در ایجاد ربات: {e}")
+            raise
     def setup_handlers(self):
         # دستورات
         self.application.add_handler(CommandHandler("start", self.start))
