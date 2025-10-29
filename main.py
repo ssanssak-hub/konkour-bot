@@ -1,5 +1,6 @@
 import logging
 import random
+import traceback
 from datetime import datetime
 from telegram import Update
 from telegram.ext import (
@@ -31,6 +32,7 @@ class ExamBot:
     def setup_handlers(self):
         # دستورات
         self.application.add_handler(CommandHandler("start", self.start))
+        self.application.add_handler(CommandHandler("test", self.test_message))
         
         # هندلر برای دکمه‌های متنی منو
         self.application.add_handler(MessageHandler(filters.Text(["⏳ زمان‌سنجی کنکورها"]), self.show_exams_menu))
@@ -48,28 +50,67 @@ class ExamBot:
         user = update.effective_user
         logger.info(f"✅ دریافت /start از {user.first_name} ({user.id})")
 
-        welcome = f"""
-        👋 سلام {user.first_name} عزیز!
-        به ربات برنامه‌ریزی و شمارش معکوس کنکور ۱۴۰۵ خوش آمدی 🎯
+        try:
+            welcome = f"""
+👋 سلام {user.first_name} عزیز!
+به ربات برنامه‌ریزی و شمارش معکوس کنکور ۱۴۰۵ خوش آمدی 🎯
 
-        از منوی زیر یکی از گزینه‌ها رو انتخاب کن:
-        """
-        await update.message.reply_text(welcome, reply_markup=main_menu(), parse_mode='HTML')
+از منوی زیر یکی از گزینه‌ها رو انتخاب کن:
+"""
+            logger.info(f"🚀 تلاش برای ارسال پیام خوشآمدگویی به {user.id}")
+            
+            # اضافه کردن await و لاگ بیشتر
+            message = await update.message.reply_text(
+                welcome, 
+                reply_markup=main_menu(), 
+                parse_mode='HTML'
+            )
+            
+            logger.info(f"✅ پیام خوشآمدگویی با موفقیت ارسال شد. Message ID: {message.message_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در ارسال پیام خوشآمدگویی: {e}")
+            logger.error(traceback.format_exc())
+
+    async def test_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """تست ارسال پیام"""
+        try:
+            logger.info("🧪 درخواست تست پیام دریافت شد")
+            test_msg = await update.message.reply_text("🧪 تست پیام ساده - اگر این رو می‌بینید، ربات سالم است!")
+            logger.info(f"✅ تست پیام موفق. Message ID: {test_msg.message_id}")
+        except Exception as e:
+            logger.error(f"❌ خطا در تست پیام: {e}")
+            logger.error(traceback.format_exc())
 
     async def show_exams_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """نمایش منوی کنکورها"""
         logger.info("⏰ کاربر منوی کنکورها رو انتخاب کرد")
-        await update.message.reply_text("🎯 انتخاب کنکور مورد نظر:", reply_markup=exams_menu())
+        try:
+            message = await update.message.reply_text("🎯 انتخاب کنکور مورد نظر:", reply_markup=exams_menu())
+            logger.info(f"✅ منوی کنکورها ارسال شد. Message ID: {message.message_id}")
+        except Exception as e:
+            logger.error(f"❌ خطا در نمایش منوی کنکورها: {e}")
+            logger.error(traceback.format_exc())
 
     async def show_study_plan_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """نمایش منوی برنامه مطالعاتی"""
         logger.info("📅 کاربر منوی برنامه مطالعاتی رو انتخاب کرد")
-        await update.message.reply_text("📅 برنامه مطالعاتی پیشرفته:", reply_markup=study_plan_menu())
+        try:
+            message = await update.message.reply_text("📅 برنامه مطالعاتی پیشرفته:", reply_markup=study_plan_menu())
+            logger.info(f"✅ منوی برنامه مطالعاتی ارسال شد. Message ID: {message.message_id}")
+        except Exception as e:
+            logger.error(f"❌ خطا در نمایش منوی برنامه مطالعاتی: {e}")
+            logger.error(traceback.format_exc())
 
     async def show_stats_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """نمایش منوی آمار مطالعه"""
         logger.info("📊 کاربر منوی آمار مطالعه رو انتخاب کرد")
-        await update.message.reply_text("📊 آمار مطالعه حرفه‌ای:", reply_markup=stats_menu())
+        try:
+            message = await update.message.reply_text("📊 آمار مطالعه حرفه‌ای:", reply_markup=stats_menu())
+            logger.info(f"✅ منوی آمار مطالعه ارسال شد. Message ID: {message.message_id}")
+        except Exception as e:
+            logger.error(f"❌ خطا در نمایش منوی آمار مطالعه: {e}")
+            logger.error(traceback.format_exc())
 
     async def show_admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """نمایش منوی مدیریت"""
@@ -80,7 +121,12 @@ class ExamBot:
             await update.message.reply_text("❌ دسترسی denied!")
             return
             
-        await update.message.reply_text("👑 پنل مدیریت:", reply_markup=admin_menu())
+        try:
+            message = await update.message.reply_text("👑 پنل مدیریت:", reply_markup=admin_menu())
+            logger.info(f"✅ منوی مدیریت ارسال شد. Message ID: {message.message_id}")
+        except Exception as e:
+            logger.error(f"❌ خطا در نمایش منوی مدیریت: {e}")
+            logger.error(traceback.format_exc())
 
     async def handle_unknown_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """مدیریت پیام‌های متنی ناشناخته"""
@@ -88,10 +134,15 @@ class ExamBot:
         text = update.message.text
         logger.info(f"📝 کاربر {user.first_name} پیام فرستاد: {text}")
         
-        await update.message.reply_text(
-            "لطفاً از دکمه‌های منو استفاده کنید:",
-            reply_markup=main_menu()
-        )
+        try:
+            message = await update.message.reply_text(
+                "لطفاً از دکمه‌های منو استفاده کنید:",
+                reply_markup=main_menu()
+            )
+            logger.info(f"✅ پاسخ به پیام ناشناخته ارسال شد. Message ID: {message.message_id}")
+        except Exception as e:
+            logger.error(f"❌ خطا در پاسخ به پیام ناشناخته: {e}")
+            logger.error(traceback.format_exc())
 
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -99,13 +150,21 @@ class ExamBot:
         data = query.data
         logger.info(f"🔘 دکمه کلیک شد: {data}")
 
-        if data.startswith("exam_"):
-            exam_key = data.replace("exam_", "")
-            await self.send_exam_countdown(query, exam_key)
-        elif data == "back_to_main":
-            await query.edit_message_text("بازگشت به منوی اصلی:", reply_markup=main_menu())
-        elif data == "show_all_exams":
-            await self.show_all_exams_countdown(query)
+        try:
+            if data.startswith("exam_"):
+                exam_key = data.replace("exam_", "")
+                await self.send_exam_countdown(query, exam_key)
+            elif data == "back_to_main":
+                await query.edit_message_text("بازگشت به منوی اصلی:", reply_markup=main_menu())
+            elif data == "show_all_exams":
+                await self.show_all_exams_countdown(query)
+            else:
+                await query.edit_message_text("دستور نامعتبر!")
+                
+        except Exception as e:
+            logger.error(f"❌ خطا در پردازش کال‌بک: {e}")
+            logger.error(traceback.format_exc())
+            await query.edit_message_text("❌ خطا در پردازش درخواست!")
 
     async def send_exam_countdown(self, query, exam_key):
         if exam_key not in EXAMS_1405:
