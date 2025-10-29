@@ -37,17 +37,17 @@ def exams_menu():
                 label = EXAMS_1405[key]["name"]
                 row.append(InlineKeyboardButton(
                     text=f"🎓 {label}", 
-                    callback_data=f"exam_{key}"
+                    callback_data=f"exam:{key}"  # تغییر به : برای جداکننده
                 ))
         keyboard.append(row)
     
     # دکمه‌های پایینی
     keyboard.append([
-        InlineKeyboardButton(text="📋 همه کنکورها", callback_data="show_all_exams"),
-        InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_exams")
+        InlineKeyboardButton(text="📋 همه کنکورها", callback_data="exams:all"),
+        InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="exams:refresh")
     ])
     keyboard.append([
-        InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
+        InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
     ])
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -58,39 +58,44 @@ def exam_actions_menu(exam_key=None):
     
     if exam_key:
         keyboard.append([
-            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data=f"refresh_{exam_key}"),
-            InlineKeyboardButton(text="📊 جزئیات بیشتر", callback_data=f"details_{exam_key}")
+            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data=f"refresh:{exam_key}"),
+            InlineKeyboardButton(text="📊 جزئیات بیشتر", callback_data=f"details:{exam_key}")
         ])
     
     keyboard.append([
-        InlineKeyboardButton(text="📋 همه کنکورها", callback_data="show_all_exams"),
-        InlineKeyboardButton(text="🎯 آزمون بعدی", callback_data="next_exam")
+        InlineKeyboardButton(text="📋 همه کنکورها", callback_data="exams:all"),
+        InlineKeyboardButton(text="🎯 آزمون بعدی", callback_data="exams:next")
     ])
     keyboard.append([
-        InlineKeyboardButton(text="🔄 بروزرسانی همه", callback_data="refresh_exams")
+        InlineKeyboardButton(text="🔄 بروزرسانی همه", callback_data="exams:refresh_all")
     ])
     keyboard.append([
-        InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
+        InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
     ])
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
 # منوی برنامه مطالعاتی
 def study_plan_menu():
     keyboard = [
         [
-            InlineKeyboardButton(text="📝 ایجاد برنامه", callback_data="create_plan"),
-            InlineKeyboardButton(text="📊 مشاهده برنامه", callback_data="view_plan")
+            InlineKeyboardButton(text="📝 برنامه روزانه", callback_data="study:daily"),
+            InlineKeyboardButton(text="📅 برنامه هفتگی", callback_data="study:weekly")
         ],
         [
-            InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="log_study"),
-            InlineKeyboardButton(text="✅ ثبت پیشرفت", callback_data="log_progress")
+            InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="study:log"),
+            InlineKeyboardButton(text="✅ ثبت پیشرفت", callback_data="study:progress")
         ],
         [
-            InlineKeyboardButton(text="📈 آمار پیشرفت", callback_data="view_progress"),
-            InlineKeyboardButton(text="🎯 اهداف", callback_data="set_goals")
+            InlineKeyboardButton(text="📊 آمار پیشرفت", callback_data="study:stats"),
+            InlineKeyboardButton(text="🎯 تعیین هدف", callback_data="study:goals")
         ],
         [
-            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
+            InlineKeyboardButton(text="📋 گزارش کامل", callback_data="study:report"),
+            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="study:refresh")
+        ],
+        [
+            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -99,19 +104,25 @@ def study_plan_menu():
 def stats_menu():
     keyboard = [
         [
-            InlineKeyboardButton(text="📊 آمار امروز", callback_data="today_stats"),
-            InlineKeyboardButton(text="📅 آمار هفته", callback_data="weekly_stats")
+            InlineKeyboardButton(text="📊 امروز", callback_data="stats:today"),
+            InlineKeyboardButton(text="📅 هفته", callback_data="stats:weekly"),
+            InlineKeyboardButton(text="📈 ماه", callback_data="stats:monthly")
         ],
         [
-            InlineKeyboardButton(text="📈 نمودار پیشرفت", callback_data="progress_chart"),
-            InlineKeyboardButton(text="🏆 رکوردها", callback_data="records")
+            InlineKeyboardButton(text="📋 گزارش کامل", callback_data="stats:full"),
+            InlineKeyboardButton(text="📉 نمودارها", callback_data="stats:charts")
         ],
         [
-            InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="log_study"),
-            InlineKeyboardButton(text="📋 گزارش کامل", callback_data="full_report")
+            InlineKeyboardButton(text="🏆 رکوردها", callback_data="stats:records"),
+            InlineKeyboardButton(text="🎯 اهداف", callback_data="stats:goals")
         ],
         [
-            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
+            InlineKeyboardButton(text="⏱️ ثبت مطالعه", callback_data="study:log"),
+            InlineKeyboardButton(text="📤 خروجی", callback_data="stats:export")
+        ],
+        [
+            InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="stats:refresh"),
+            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -120,25 +131,25 @@ def stats_menu():
 def admin_menu():
     keyboard = [
         [
-            InlineKeyboardButton(text="📢 عضویت اجباری", callback_data="admin_mandatory_channels"),
-            InlineKeyboardButton(text="👥 مدیریت کاربران", callback_data="admin_users")
+            InlineKeyboardButton(text="📢 عضویت اجباری", callback_data="admin:channels"),
+            InlineKeyboardButton(text="👥 مدیریت کاربران", callback_data="admin:users")
         ],
         [
-            InlineKeyboardButton(text="📊 آمار ربات", callback_data="admin_stats"),
-            InlineKeyboardButton(text="⚙️ تنظیمات", callback_data="admin_settings")
+            InlineKeyboardButton(text="📊 آمار ربات", callback_data="admin:stats"),
+            InlineKeyboardButton(text="⚙️ تنظیمات", callback_data="admin:settings")
         ],
         [
-            InlineKeyboardButton(text="📣 ارسال پیام", callback_data="admin_broadcast"),
-            InlineKeyboardButton(text="🔍 لاگ‌ها", callback_data="admin_logs")
+            InlineKeyboardButton(text="📣 ارسال پیام", callback_data="admin:broadcast"),
+            InlineKeyboardButton(text="🔍 لاگ‌ها", callback_data="admin:logs")
         ],
         [
-            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="back_to_main")
+            InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 # دکمه بازگشت
-def back_button_menu(text="🔙 بازگشت", callback_data="back_to_main"):
+def back_button_menu(text="🔙 بازگشت", callback_data="main:back"):
     keyboard = [[
         InlineKeyboardButton(text=text, callback_data=callback_data)
     ]]
@@ -152,4 +163,40 @@ def confirm_cancel_menu(confirm_data="confirm", cancel_data="cancel"):
             InlineKeyboardButton(text="❌ لغو", callback_data=cancel_data)
         ]
     ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# کیبورد برای ثبت مطالعه
+def study_subjects_menu():
+    subjects = [
+        ("ریاضی", "math"),
+        ("فیزیک", "physics"), 
+        ("شیمی", "chemistry"),
+        ("زیست", "biology"),
+        ("ادبیات", "literature"),
+        ("عربی", "arabic"),
+        ("دینی", "religion"),
+        ("زبان", "english")
+    ]
+    
+    keyboard = []
+    for subject_name, subject_code in subjects:
+        emoji = "📐" if subject_code == "math" else \
+                "⚡" if subject_code == "physics" else \
+                "🧪" if subject_code == "chemistry" else \
+                "🔬" if subject_code == "biology" else \
+                "📖" if subject_code == "literature" else \
+                "🕌" if subject_code == "arabic" else \
+                "📿" if subject_code == "religion" else "🔠"
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"{emoji} {subject_name}", 
+                callback_data=f"study:subject:{subject_code}"
+            )
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton(text="🔙 بازگشت", callback_data="stats:back")
+    ])
+    
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
