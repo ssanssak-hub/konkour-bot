@@ -2,11 +2,10 @@ services:
   - type: web
     name: konkour-bot
     env: python
-    region: frankfurt  # نزدیک‌تر به ایران
+    region: frankfurt
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
-    autoDeploy: true
     envVars:
       - key: BOT_TOKEN
         value: "8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8"
@@ -14,3 +13,5 @@ services:
         value: "7703672187"
       - key: PORT
         value: "10000"
+      - key: WEBHOOK_URL
+        value: "https://konkour-bot-4i5p.onrender.com"
