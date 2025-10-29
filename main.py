@@ -116,10 +116,22 @@ async def back_main_wrapper(callback: types.CallbackQuery):
 async def safe_startup():
     """راه‌اندازی ایمن با Circuit Breaker"""
     try:
-        # راه‌اندازی وب‌هوک با محافظت
-        webhook_url = os.environ.get("WEBHOOK_URL", "").replace('/webhook', '') + '/webhook'
-        if not webhook_url.startswith('http'):
-            webhook_url = f"https://{os.environ.get('RENDER_SERVICE_NAME', '')}.onrender.com/webhook"
+        # راه‌اندازی وب‌هوک با منطق هوشمند برای Railway
+        webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
+        
+        # اگر WEBHOOK_URL تنظیم نشده، خودکار بساز برای Railway
+        if not webhook_url or not webhook_url.startswith(('http://', 'https://')):
+            # استفاده از متغیرهای Railway
+            railway_url = os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+            if railway_url:
+                webhook_url = f"{railway_url}/webhook"
+            else:
+                # اگر متغیرهای Railway موجود نبود، از BOT_TOKEN برای ساخت آدرس استفاده کن
+                webhook_url = f"https://{BOT_TOKEN.split(':')[0]}.railway.app/webhook"
+        
+        # مطمئن شویم که با /webhook پایان می‌یابد
+        if not webhook_url.endswith('/webhook'):
+            webhook_url = webhook_url.rstrip('/') + '/webhook'
         
         await webhook_breaker.call(bot.set_webhook, webhook_url)
         logger.info(f"✅ وب‌هوک تنظیم شد: {webhook_url}")
@@ -153,24 +165,28 @@ async def on_shutdown(app: web.Application):
     """هندلر خاموشی"""
     await safe_shutdown()
 
-# هندلر جدید برای بررسی پورت
-async def render_check_handler(request):
-    """هندلر مخصوص Render برای تشخیص پورت"""
-    return web.Response(text="🚀 Bot Server is Running!")
+# هندلرهای سلامت
+async def home_handler(request):
+    """هندلر صفحه اصلی"""
+    return web.Response(text="🎯 ربات کنکور فعال است - Railway")
+
+async def railway_check_handler(request):
+    """هندلر مخصوص Railway برای بررسی سلامت"""
+    return web.Response(text="🚀 Bot Server is Running on Railway!")
 
 def main():
     """تابع اصلی"""
     app = web.Application()
     
-    # اضافه کردن هندلر برای تشخیص پورت توسط Render
-    app.router.add_get('/render-check', render_check_handler)
+    # اضافه کردن هندلر برای Railway
+    app.router.add_get('/railway-check', railway_check_handler)
+    app.router.add_get('/', home_handler)
     
     # وب‌هوک
     webhook_requests_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
     webhook_requests_handler.register(app, path="/webhook")
     
     # routes سلامت
-    app.router.add_get('/', health_check_handler)
     app.router.add_get('/health', health_check_handler)
     app.router.add_get('/ready', readiness_check_handler)
     app.router.add_get('/metrics', health_check_handler)
@@ -179,9 +195,9 @@ def main():
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
     
-    # راه‌اندازی
-    port = int(os.environ.get("PORT", 10000))
-    logger.info(f"🚀 سرور مقاوم‌سازی شده روی پورت {port}")
+    # راه‌اندازی - Railway از پورت 8000 استفاده می‌کند
+    port = int(os.environ.get("PORT", 8000))
+    logger.info(f"🚀 سرور مقاوم‌سازی شده روی پورت {port} (Railway)")
     
     web.run_app(app, host="0.0.0.0", port=port)
 
