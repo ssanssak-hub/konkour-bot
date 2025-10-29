@@ -11,10 +11,10 @@ from dotenv import load_dotenv
 # بارگذاری متغیرهای محیطی
 load_dotenv()
 
-# ایمپورت سیستم مقاوم‌سازی
-from error_handlers import register_error_handlers
-from health_monitor import health_monitor, health_check_handler, readiness_check_handler
-from circuit_breaker import database_breaker, webhook_breaker
+# ایمپورت سیستم مقاوم‌سازی از پوشه utils
+from utils.error_handlers import register_error_handlers
+from utils.health_monitor import health_monitor, health_check_handler, readiness_check_handler
+from utils.circuit_breaker import database_breaker, webhook_breaker
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -38,9 +38,81 @@ dp = Dispatcher()
 # ثبت هندلرهای خطا
 register_error_handlers(dp)
 
-# --- ایمپورت و ثبت هندلرها ---
-# (همانند قبل، اما با استفاده از circuit breaker)
+# --- ایمپورت هندلرهای اصلی ---
+@dp.message(CommandStart())
+async def start_wrapper(message: types.Message):
+    from handlers.main_handlers import start_handler
+    await start_handler(message, bot)
 
+@dp.message(Command("test"))
+async def test_wrapper(message: types.Message):
+    from handlers.main_handlers import test_handler
+    await test_handler(message)
+
+@dp.message(Command("stats"))
+async def stats_wrapper(message: types.Message):
+    from handlers.main_handlers import stats_command_handler
+    await stats_command_handler(message)
+
+# --- هندلرهای منو ---
+@dp.message(F.text == "⏳ زمان‌سنجی کنکورها")
+async def exams_wrapper(message: types.Message):
+    from handlers.menu_handlers import exams_menu_handler
+    await exams_menu_handler(message)
+
+@dp.message(F.text == "📅 برنامه مطالعاتی پیشرفته")
+async def study_wrapper(message: types.Message):
+    from handlers.menu_handlers import study_plan_handler
+    await study_plan_handler(message)
+
+@dp.message(F.text == "📊 آمار مطالعه حرفه‌ای")
+async def stats_menu_wrapper(message: types.Message):
+    from handlers.menu_handlers import stats_handler
+    await stats_handler(message)
+
+@dp.message(F.text == "👑 پنل مدیریت")
+async def admin_wrapper(message: types.Message):
+    from handlers.menu_handlers import admin_handler
+    await admin_handler(message)
+
+# --- هندلرهای کنکور ---
+@dp.callback_query(F.data.startswith("exam:"))
+async def exam_wrapper(callback: types.CallbackQuery):
+    from handlers.exam_handlers import exam_callback_handler
+    await exam_callback_handler(callback)
+
+@dp.callback_query(F.data == "exams:all")
+async def all_exams_wrapper(callback: types.CallbackQuery):
+    from handlers.exam_handlers import all_exams_handler
+    await all_exams_handler(callback)
+
+@dp.callback_query(F.data.startswith("refresh:"))
+async def refresh_exam_wrapper(callback: types.CallbackQuery):
+    from handlers.exam_handlers import refresh_exam_handler
+    await refresh_exam_handler(callback)
+
+@dp.callback_query(F.data == "exams:refresh")
+async def refresh_all_wrapper(callback: types.CallbackQuery):
+    from handlers.exam_handlers import refresh_all_exams_handler
+    await refresh_all_exams_handler(callback)
+
+@dp.callback_query(F.data == "exams:next")
+async def next_exam_wrapper(callback: types.CallbackQuery):
+    from handlers.exam_handlers import next_exam_handler
+    await next_exam_handler(callback)
+
+@dp.callback_query(F.data.startswith("details:"))
+async def details_wrapper(callback: types.CallbackQuery):
+    from handlers.exam_handlers import exam_details_handler
+    await exam_details_handler(callback)
+
+# --- هندلرهای بازگشت ---
+@dp.callback_query(F.data == "main:back")
+async def back_main_wrapper(callback: types.CallbackQuery):
+    from handlers.back_handlers import back_to_main_handler
+    await back_to_main_handler(callback)
+
+# --- توابع اصلی ---
 async def safe_startup():
     """راه‌اندازی ایمن با Circuit Breaker"""
     try:
@@ -68,7 +140,6 @@ async def safe_shutdown():
     except Exception as e:
         logger.error(f"⚠️ خطا در خاموشی: {e}")
 
-# --- توابع اصلی ---
 async def on_startup(app: web.Application):
     """هندلر راه‌اندازی"""
     await safe_startup()
