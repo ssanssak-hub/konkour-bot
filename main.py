@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import datetime
 from telegram import Update
 from telegram.ext import (
@@ -10,7 +11,7 @@ from telegram.ext import (
     filters
 )
 
-from config import BOT_TOKEN, ADMIN_ID
+from config import BOT_TOKEN, ADMIN_ID, MOTIVATIONAL_MESSAGES
 from exam_data import EXAMS_1405
 from keyboards import main_menu, countdown_actions
 
@@ -59,33 +60,29 @@ class ExamBot:
         elif data == "back_to_main":
             await query.edit_message_text("بازگشت به منوی اصلی:", reply_markup=main_menu())
 
-async def send_exam_countdown(self, query, exam_key):
-    if exam_key not in EXAMS_1405:
-        await query.edit_message_text("❌ آزمون مورد نظر یافت نشد.")
-        return
+    async def send_exam_countdown(self, query, exam_key):
+        if exam_key not in EXAMS_1405:
+            await query.edit_message_text("❌ آزمون مورد نظر یافت نشد.")
+            return
 
-    exam = EXAMS_1405[exam_key]
-    now = datetime.now()
+        exam = EXAMS_1405[exam_key]
+        now = datetime.now()
 
-    # تبدیل تاریخ‌ها به لیست datetime کامل
-    dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
-    future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
+        # تبدیل تاریخ‌ها به لیست datetime کامل
+        dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
+        future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
 
-    if not future_dates:
-        countdown = "⛳ همه‌ی مراحل این آزمون برگزار شده‌اند."
-    else:
-        target = min(future_dates)
-        delta = target - now
-        countdown = self.format_modern_countdown(delta)
+        if not future_dates:
+            countdown = "⛳ همه‌ی مراحل این آزمون برگزار شده‌اند."
+        else:
+            target = min(future_dates)
+            delta = target - now
+            countdown = self.format_modern_countdown(delta)
 
-    # پیام انگیزشی تصادفی
-    try:
-        from random import choice
-        motivation = f"\n\n🎯 {choice(MOTIVATIONAL_MESSAGES)}"
-    except:
-        motivation = ""
+        # پیام انگیزشی تصادفی
+        motivation = f"\n\n🎯 {random.choice(MOTIVATIONAL_MESSAGES)}"
 
-    message = f"""
+        message = f"""
 📘 <b>{exam['name']}</b>
 📅 تاریخ: {exam['persian_date']}
 🕒 ساعت: {exam['time']}
@@ -93,17 +90,17 @@ async def send_exam_countdown(self, query, exam_key):
 {countdown}
 {motivation}
 """
-    await query.edit_message_text(message, reply_markup=countdown_actions(exam_key), parse_mode='HTML')
+        await query.edit_message_text(message, reply_markup=countdown_actions(exam_key), parse_mode='HTML')
 
-def format_modern_countdown(self, delta):
-    total_seconds = int(delta.total_seconds())
-    weeks = delta.days // 7
-    days = delta.days % 7
-    hours = total_seconds % (24 * 3600) // 3600
-    minutes = total_seconds % 3600 // 60
-    seconds = total_seconds % 60
+    def format_modern_countdown(self, delta):
+        total_seconds = int(delta.total_seconds())
+        weeks = delta.days // 7
+        days = delta.days % 7
+        hours = total_seconds % (24 * 3600) // 3600
+        minutes = total_seconds % 3600 // 60
+        seconds = total_seconds % 60
 
-    return f"""
+        return f"""
 ⏳ زمان باقی‌مانده:
 
 🗓 {weeks} هفته  
@@ -112,7 +109,7 @@ def format_modern_countdown(self, delta):
 🕑 {minutes} دقیقه  
 ⏱ {seconds} ثانیه
 """
-    
+
 # تابع برای app.py
 def get_application():
     bot = ExamBot()
