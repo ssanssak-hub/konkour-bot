@@ -82,7 +82,6 @@ class HealthMonitor:
     async def check_database_health(self) -> str:
         """بررسی سلامت دیتابیس"""
         try:
-            # ایمپورت داخل تابع برای جلوگیری از circular import
             from database import Database
             db = Database()
             with db.get_connection() as conn:
@@ -96,7 +95,7 @@ class HealthMonitor:
     async def check_webhook_health(self) -> str:
         """بررسی سلامت وب‌هوک"""
         try:
-            from main import bot  # ایمپورت داخل تابع
+            from main import bot
             webhook_info = await bot.get_webhook_info()
             if webhook_info.url:
                 return "healthy"
@@ -108,7 +107,7 @@ class HealthMonitor:
     async def check_cache_health(self) -> str:
         """بررسی سلامت کش"""
         try:
-            from main import _CACHE  # ایمپورت داخل تابع
+            from main import _CACHE
             cache_size = len(_CACHE)
             if cache_size < 1000:  # حداکثر 1000 آیتم در کش
                 return "healthy"
@@ -154,35 +153,25 @@ class HealthMonitor:
             self.metrics[metric_name] += value
     
     async def periodic_health_check(self):
-        """بررسی دوره‌ی سلامت - با مدیریت session"""
-        import aiohttp
-    
+        """بررسی دوره‌ی سلامت"""
         while True:
             try:
                 health_status = await self.check_system_health()
-            
+                
                 if health_status["status"] != "healthy":
                     logger.warning(f"🔍 گزارش سلامت: {health_status['status']}")
-                
+                    
                 # لاگ هر 5 دقیقه
                 if datetime.now().minute % 5 == 0:
                     logger.info(f"📊 گزارش سلامت دوره‌ای: {health_status}")
-                
-                # Keep alive با مدیریت session
-                if datetime.now().minute % 5 == 0:  # هر 5 دقیقه
-                    try:
-                        webhook_url = os.environ.get("WEBHOOK_URL", "").replace('/webhook', '')
-                        if webhook_url:
-                             async with aiohttp.ClientSession() as session:
-                                 async with session.get(f'{webhook_url}/health', timeout=10) as resp:
-                                     logger.info("🔄 Keep alive ping sent")
-                    except Exception as e:
-                        logger.warning(f"⚠️ Keep alive failed: {e}")
-                
+                    
             except Exception as e:
                 logger.error(f"❌ خطا در بررسی سلامت: {e}")
-        
+            
             await asyncio.sleep(60)  # هر 1 دقیقه
+
+# ایجاد نمونه全局 - این خط مهمه!
+health_monitor = HealthMonitor()
 
 # هندلر HTTP برای سلامت
 async def health_check_handler(request):
