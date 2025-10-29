@@ -8,6 +8,16 @@ load_dotenv()
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7703672187"))
 
+# تنظیمات دیتابیس - پشتیبانی از Railway
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./konkour_bot.db")
+
+# تنظیمات پورت برای Railway
+PORT = int(os.environ.get("PORT", 8000))
+
+# شناسایی محیط
+ENVIRONMENT = os.environ.get("RAILWAY_ENVIRONMENT", "development")
+IS_PRODUCTION = ENVIRONMENT == "production"
+
 MOTIVATIONAL_MESSAGES = [
     "🎯 هر روز یک قدم نزدیک‌تر به هدف! تو می‌تونی!",
     "💪 همین لحظه‌هایی که درس می‌خونی، آینده‌تو می‌سازه!",
@@ -35,5 +45,16 @@ MOTIVATIONAL_MESSAGES = [
     "💫 تو توانایی رسیدن به هر چیزی رو داری!"
 ]
 
-# تنظیمات دیتابیس
-DATABASE_URL = os.environ.get("DATABASE_URL", "konkour_bot.db")
+# تنظیمات لاگ بر اساس محیط
+if IS_PRODUCTION:
+    LOG_LEVEL = "INFO"
+else:
+    LOG_LEVEL = "DEBUG"
+
+# اطلاعات برنامه
+APP_INFO = {
+    "name": "ربات کنکور",
+    "version": "2.0.0",
+    "environment": ENVIRONMENT,
+    "platform": "Railway"
+}
