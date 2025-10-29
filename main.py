@@ -95,7 +95,7 @@ async def send_exam_countdown(self, query, exam_key):
 """
     await query.edit_message_text(message, reply_markup=countdown_actions(exam_key), parse_mode='HTML')
 
-def format_modern_countdown(delta):
+def format_modern_countdown(self, delta):
     total_seconds = int(delta.total_seconds())
     weeks = delta.days // 7
     days = delta.days % 7
@@ -112,6 +112,7 @@ def format_modern_countdown(delta):
 🕑 {minutes} دقیقه  
 ⏱ {seconds} ثانیه
 """
+    
 # تابع برای app.py
 def get_application():
     bot = ExamBot()
