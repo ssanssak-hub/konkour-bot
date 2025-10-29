@@ -2,12 +2,19 @@ import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 import random
 from datetime import datetime
+import os
 
-from config import MOTIVATIONAL_MESSAGES
+from config import BOT_TOKEN, MOTIVATIONAL_MESSAGES, ADMIN_ID
 from exam_data import EXAMS_1405
+from keyboards import (
+    main_menu, exams_menu, exam_actions_menu, 
+    study_plan_menu, stats_menu, admin_menu,
+    back_button_menu
+)
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -17,37 +24,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ایجاد ربات و دیسپچر
-bot = Bot(token="8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8")
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# منوی اصلی
-def main_menu():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
-            [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
-            [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-            [KeyboardButton(text="👑 پنل مدیریت")]
-        ],
-        resize_keyboard=True
-    )
+# تنظیمات وب‌هوک
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://konkour-bot-4i5p.onrender.com") + WEBHOOK_PATH
 
-# منوی کنکورها
-def exams_menu():
-    keyboard = []
-    keys = list(EXAMS_1405.keys())
-    for i in range(0, len(keys), 2):
-        row = []
-        for j in range(2):
-            if i + j < len(keys):
-                key = keys[i + j]
-                label = EXAMS_1405[key]["name"]
-                row.append(InlineKeyboardButton(text=f"🎓 {label}", callback_data=f"exam_{key}"))
-        keyboard.append(row)
-    keyboard.append([InlineKeyboardButton(text="📋 همه کنکورها", callback_data="show_all_exams")])
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+# --- هندلرهای اصلی ---
 
-# هندلر start
 @dp.message(CommandStart())
 async def start_handler(message: types.Message):
     user = message.from_user
@@ -57,34 +42,63 @@ async def start_handler(message: types.Message):
 👋 سلام {user.first_name} عزیز!
 به ربات کنکور ۱۴۰۵ خوش آمدی! 🎯
 
-از منوی زیر استفاده کن:
-"""
-    await message.answer(welcome, reply_markup=main_menu())
+📚 <b>امکانات ربات:</b>
+• ⏳ شمارش معکوس کنکورها
+• 📅 برنامه مطالعاتی پیشرفته  
+• 📊 آمار مطالعه حرفه‌ای
+• 💫 پیام‌های انگیزشی
 
-# هندلر test
+از منوی زیر یکی از گزینه‌ها رو انتخاب کن:
+"""
+    await message.answer(welcome, reply_markup=main_menu(), parse_mode="HTML")
+
 @dp.message(Command("test"))
 async def test_handler(message: types.Message):
     logger.info(f"🧪 دریافت /test از {message.from_user.id}")
-    await message.answer("✅ ربات با aiogram کار می‌کند! تست موفق.")
+    await message.answer("✅ ربات با aiogram + webhook کار می‌کند! تست موفق.")
 
-# هندلر منوی کنکورها
+# --- هندلرهای منوی اصلی ---
+
 @dp.message(F.text == "⏳ زمان‌سنجی کنکورها")
 async def exams_menu_handler(message: types.Message):
     logger.info(f"⏰ کاربر {message.from_user.id} منوی کنکورها را انتخاب کرد")
     await message.answer("🎯 انتخاب کنکور مورد نظر:", reply_markup=exams_menu())
 
-# هندلر سایر منوها (موقت)
-@dp.message(F.text.in_(["📅 برنامه مطالعاتی پیشرفته", "📊 آمار مطالعه حرفه‌ای", "👑 پنل مدیریت"]))
-async def other_menus_handler(message: types.Message):
-    await message.answer("🛠️ این بخش به زودی فعال خواهد شد...")
+@dp.message(F.text == "📅 برنامه مطالعاتی پیشرفته")
+async def study_plan_handler(message: types.Message):
+    logger.info(f"📅 کاربر {message.from_user.id} منوی برنامه مطالعاتی را انتخاب کرد")
+    await message.answer(
+        "📅 برنامه مطالعاتی پیشرفته:\n\n"
+        "🎯 این بخش به زودی فعال خواهد شد...",
+        reply_markup=study_plan_menu()
+    )
 
-# هندلر پیام‌های ناشناخته
-@dp.message()
-async def unknown_handler(message: types.Message):
-    logger.info(f"📝 پیام ناشناخته از {message.from_user.id}: {message.text}")
-    await message.answer("🤔 لطفاً از دکمه‌های منو استفاده کنید:", reply_markup=main_menu())
+@dp.message(F.text == "📊 آمار مطالعه حرفه‌ای")
+async def stats_handler(message: types.Message):
+    logger.info(f"📊 کاربر {message.from_user.id} منوی آمار مطالعه را انتخاب کرد")
+    await message.answer(
+        "📊 آمار مطالعه حرفه‌ای:\n\n"
+        "📈 این بخش به زودی فعال خواهد شد...",
+        reply_markup=stats_menu()
+    )
 
-# هندلر کلیک دکمه‌های اینلاین
+@dp.message(F.text == "👑 پنل مدیریت")
+async def admin_handler(message: types.Message):
+    user = message.from_user
+    logger.info(f"👑 کاربر {user.first_name} منوی مدیریت را انتخاب کرد")
+    
+    if user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+        
+    await message.answer(
+        "👑 پنل مدیریت:\n\n"
+        "🛠️ این بخش به زودی فعال خواهد شد...",
+        reply_markup=admin_menu()
+    )
+
+# --- هندلرهای کال‌بک ---
+
 @dp.callback_query(F.data.startswith("exam_"))
 async def exam_callback_handler(callback: types.CallbackQuery):
     exam_key = callback.data.replace("exam_", "")
@@ -107,46 +121,100 @@ async def exam_callback_handler(callback: types.CallbackQuery):
         delta = target - now
         days = delta.days
         hours = delta.seconds // 3600
-        countdown = f"⏳ {days} روز و {hours} ساعت باقی مانده"
+        minutes = (delta.seconds % 3600) // 60
+        countdown = f"⏳ {days} روز و {hours} ساعت و {minutes} دقیقه باقی مانده"
     
     message = f"""
 📘 <b>{exam['name']}</b>
-📅 {exam['persian_date']} - 🕒 {exam['time']}
+📅 تاریخ: {exam['persian_date']}
+🕒 ساعت: {exam['time']}
 
 {countdown}
 
 🎯 {random.choice(MOTIVATIONAL_MESSAGES)}
 """
-    await callback.message.edit_text(message, parse_mode="HTML")
+    await callback.message.edit_text(
+        message, 
+        reply_markup=exam_actions_menu(exam_key), 
+        parse_mode="HTML"
+    )
 
 @dp.callback_query(F.data == "show_all_exams")
 async def all_exams_handler(callback: types.CallbackQuery):
     logger.info(f"📋 کاربر {callback.from_user.id} همه کنکورها را انتخاب کرد")
     
-    message = "⏳ <b>کنکورهای ۱۴۰۵</b>\n\n"
+    message = "⏳ <b>زمان باقی‌مانده تا کنکورهای ۱۴۰۵</b>\n\n"
     
     for exam_key, exam in EXAMS_1405.items():
         now = datetime.now()
         dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
         future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
         
+        message += f"🎯 <b>{exam['name']}</b>\n"
+        message += f"📅 {exam['persian_date']} - 🕒 {exam['time']}\n"
+        
         if future_dates:
             target = min(future_dates)
             delta = target - now
-            countdown = f"{delta.days} روز باقی مانده"
+            message += f"⏳ {delta.days} روز و {delta.seconds // 3600} ساعت باقی مانده\n"
         else:
-            countdown = "✅ برگزار شده"
+            message += "✅ برگزار شده\n"
         
-        message += f"🎯 {exam['name']}\n"
-        message += f"📅 {exam['persian_date']} - {countdown}\n"
-        message += "─" * 20 + "\n\n"
+        message += "─" * 30 + "\n\n"
     
-    await callback.message.edit_text(message, parse_mode="HTML")
+    message += f"💫 <i>{random.choice(MOTIVATIONAL_MESSAGES)}</i>"
+    
+    await callback.message.edit_text(
+        message, 
+        reply_markup=exam_actions_menu(), 
+        parse_mode="HTML"
+    )
 
-# تابع اصلی
-async def main():
-    logger.info("🚀 راه‌اندازی ربات با aiogram...")
-    await dp.start_polling(bot)
+@dp.callback_query(F.data == "back_to_main")
+async def back_to_main_handler(callback: types.CallbackQuery):
+    logger.info(f"🏠 کاربر {callback.from_user.id} به منوی اصلی بازگشت")
+    await callback.message.edit_text(
+        "🏠 منوی اصلی:",
+        reply_markup=main_menu()
+    )
+
+# --- هندلر پیام‌های ناشناخته ---
+@dp.message()
+async def unknown_handler(message: types.Message):
+    logger.info(f"📝 پیام ناشناخته از {message.from_user.id}: {message.text}")
+    await message.answer(
+        "🤔 متوجه نشدم!\n\nلطفاً از دکمه‌های منو استفاده کنید:",
+        reply_markup=main_menu()
+    )
+
+# --- توابع راه‌اندازی وب‌هوک ---
+async def on_startup(bot: Bot):
+    """تنظیم وب‌هوک هنگام راه‌اندازی"""
+    await bot.set_webhook(WEBHOOK_URL)
+    logger.info(f"✅ وب‌هوک تنظیم شد: {WEBHOOK_URL}")
+
+async def on_shutdown(bot: Bot):
+    """پاک کردن وب‌هوک هنگام خاموشی"""
+    await bot.delete_webhook()
+    logger.info("❌ وب‌هوک حذف شد")
+
+def main():
+    """تابع اصلی راه‌اندازی"""
+    app = web.Application()
+    
+    webhook_requests_handler = SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot,
+    )
+    
+    webhook_requests_handler.register(app, path=WEBHOOK_PATH)
+    app.on_startup.append(on_startup)
+    app.on_shutdown.append(on_shutdown)
+    
+    port = int(os.environ.get("PORT", 10000))
+    logger.info(f"🚀 سرور در حال راه‌اندازی روی پورت {port}...")
+    
+    web.run_app(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
