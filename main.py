@@ -125,6 +125,20 @@ async def manage_reminders_wrapper(message: types.Message):
     from reminder.reminder_handlers import manage_reminders_handler
     await manage_reminders_handler(message)
 
+# --- هندلرهای عمومی برای دکمه بازگشت ---
+@dp.message(F.text == "🔙 بازگشت")
+async def back_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state:
+        await state.clear()
+    await reminder_main_handler(message)
+
+@dp.message(F.text == "🏠 منوی اصلی")
+async def main_menu_handler(message: types.Message, state: FSMContext):
+    await state.clear()
+    from handlers.main_handlers import start_handler
+    await start_handler(message, bot)
+
 # --- هندلرهای کنکور ---
 @dp.callback_query(F.data.startswith("exam:"))
 async def exam_wrapper(callback: types.CallbackQuery):
