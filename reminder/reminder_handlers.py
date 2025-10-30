@@ -1,5 +1,5 @@
 """
-هندلرهای سیستم ریمایندر - نسخه کامل و پیشرفته
+هندلرهای سیستم ریمایندر - نسخه کامل با تاریخ میلادی
 """
 import logging
 from datetime import datetime, timedelta
@@ -22,7 +22,7 @@ from reminder.reminder_keyboards import (
 )
 from reminder.reminder_database import reminder_db
 from reminder.reminder_utils import validator, formatter, analyzer
-from utils.time_utils import get_current_persian_datetime
+from utils.time_utils import get_current_persian_datetime, format_gregorian_date_for_display
 from exam_data import EXAMS_1405
 
 logger = logging.getLogger(__name__)
@@ -358,7 +358,7 @@ async def process_end_date(message: types.Message, state: FSMContext):
     
     # نمایش خلاصه و تأیید نهایی
     state_data = await state.get_data()
-    summary = formatter.create_reminder_summary(state_data, "exam")
+    summary = create_reminder_summary(state_data)
     
     await message.answer(
         f"✅ <b>خلاصه یادآوری کنکور</b>\n\n{summary}\n\n"
@@ -651,17 +651,28 @@ async def view_all_reminders(message: types.Message):
         for reminder in user_reminders:
             status = "🔔" if reminder['is_active'] else "🔕"
             exam_names = [EXAMS_1405[key]['name'] for key in reminder['exam_keys'] if key in EXAMS_1405]
+            
+            # تبدیل تاریخ‌های میلادی به شمسی برای نمایش
+            start_date_persian = format_gregorian_date_for_display(reminder['start_date'])
+            end_date_persian = format_gregorian_date_for_display(reminder['end_date'])
+            
             message_text += f"{status} کد {reminder['id']}: {', '.join(exam_names)}\n"
             message_text += f"   ⏰ ساعت: {', '.join(reminder['specific_times'])}\n"
-            message_text += f"   📅 تا: {reminder['end_date']}\n\n"
+            message_text += f"   📅 از: {start_date_persian} تا: {end_date_persian}\n\n"
     
     if personal_reminders:
         message_text += "📝 <b>یادآوری‌های شخصی:</b>\n"
         for reminder in personal_reminders:
             status = "🔔" if reminder['is_active'] else "🔕"
+            
+            # تبدیل تاریخ‌های میلادی به شمسی برای نمایش
+            start_date_persian = format_gregorian_date_for_display(reminder['start_date'])
+            end_date_text = format_gregorian_date_for_display(reminder['end_date']) if reminder['end_date'] else "همیشه"
+            
             message_text += f"{status} کد {reminder['id']}: {reminder['title']}\n"
             message_text += f"   ⏰ ساعت: {reminder['specific_time']}\n"
-            message_text += f"   🔁 تکرار: {reminder['repetition_type']}\n\n"
+            message_text += f"   🔁 تکرار: {reminder['repetition_type']}\n"
+            message_text += f"   📅 از: {start_date_persian} تا: {end_date_text}\n\n"
     
     # اضافه کردن دکمه‌های مدیریت
     await message.answer(
@@ -708,8 +719,8 @@ def create_reminder_summary(state_data: dict) -> str:
         f"🎯 <b>کنکورها:</b> {', '.join(exam_names) if exam_names else 'تعیین نشده'}\n"
         f"🗓️ <b>روزها:</b> {', '.join(selected_days) if selected_days else 'همه روزها'}\n"
         f"🕐 <b>ساعت:</b> {state_data.get('specific_time', 'تعیین نشده')}\n"
-        f"📅 <b>شروع:</b> {state_data.get('start_date', 'تعیین نشده')}\n"
-        f"📅 <b>پایان:</b> {state_data.get('end_date', 'تعیین نشده')}\n"
+        f"📅 <b>شروع:</b> {state_data.get('start_date', 'تعیین نشده')}\n"  # شمسی
+        f"📅 <b>پایان:</b> {state_data.get('end_date', 'تعیین نشده')}\n"   # شمسی
     )
     
     return summary
