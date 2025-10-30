@@ -41,32 +41,28 @@ class PersonalReminderStates(StatesGroup):
     confirmation = State()
 
 # هندلر اصلی منوی ریمایندر
-async def reminder_main_handler(update: types.Message | types.CallbackQuery):
-    """منوی اصلی ریمایندر - سازگار با Message و CallbackQuery"""
-    if isinstance(update, types.CallbackQuery):
-        message = update.message
-        edit_method = message.edit_text
-    else:
-        message = update
-        edit_method = message.answer
-    
-    await edit_method(
+# تغییر از callback به message handler
+async def reminder_main_handler(message: types.Message):
+    """منوی اصلی ریمایندر"""
+    await message.answer(
         "📅 <b>سیستم مدیریت یادآوری‌ها</b>\n\n"
         "لطفاً نوع یادآوری مورد نظر را انتخاب کنید:",
         reply_markup=create_reminder_main_menu(),
         parse_mode="HTML"
     )
 
+
 # --- هندلرهای ریمایندر کنکور ---
-async def start_exam_reminder(callback: types.CallbackQuery, state: FSMContext):
+async def start_exam_reminder(message: types.Message, state: FSMContext):
     """شروع ایجاد ریمایندر کنکور"""
     await state.set_state(ExamReminderStates.selecting_exams)
-    await callback.message.edit_text(
+    await message.answer(
         "🎯 <b>یادآوری کنکورها</b>\n\n"
         "لطفاً کنکورهای مورد نظر را انتخاب کنید:",
-        reply_markup=create_exam_selection_keyboard(),
+        reply_markup=create_exam_selection_menu(),
         parse_mode="HTML"
     )
+
 
 async def process_exam_selection(callback: types.CallbackQuery, state: FSMContext):
     """پردازش انتخاب کنکورها"""
