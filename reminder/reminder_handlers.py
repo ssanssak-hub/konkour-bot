@@ -390,8 +390,9 @@ async def process_confirmation(message: types.Message, state: FSMContext):
                 "🎉 <b>یادآوری کنکور با موفقیت ایجاد شد!</b>\n\n"
                 f"📝 کد یادآوری: <code>{reminder_id}</code>\n"
                 f"⏰ اولین یادآوری: امروز ساعت {state_data['specific_time']}\n\n"
-                "می‌توانید یادآوری‌های خود را از بخش مدیریت مشاهده کنید.",
-                "کاربر گرامی یادآوری ثبت شده شما ممکن است با یک دقیقه تاخیر برای شما ارسال‌ شود ، لطفاً شکیبا باشید🎈 از طرف سَنس | SanssAK .",
+                "می‌توانید یادآوری‌های خود را از بخش مدیریت مشاهده کنید.\n\n"
+                "💡 <i>کاربر گرامی یادآوری ثبت شده شما ممکن است با یک دقیقه تاخیر برای شما ارسال شود، لطفاً شکیبا باشید🎈</i>\n"
+                "<i>از طرف سَنس | SanssAK</i>",
                 reply_markup=create_reminder_main_menu(),
                 parse_mode="HTML"
             )
@@ -427,21 +428,6 @@ async def process_confirmation(message: types.Message, state: FSMContext):
             "📅 لطفاً تاریخ پایان را وارد کنید:",
             reply_markup=create_back_only_menu()
         )
-
-# --- هندلرهای ریمایندر شخصی ---
-async def start_personal_reminder(message: types.Message, state: FSMContext):
-    """شروع ایجاد ریمایندر شخصی"""
-    await state.set_state(PersonalReminderStates.entering_title)
-    await state.update_data(reminder_data={})
-    
-    await message.answer(
-        "📝 <b>یادآوری شخصی</b>\n\n"
-        "لطفاً عنوان یادآوری را وارد کنید:\n\n"
-        "💡 <i>مثال: مرور فصل ۳ ریاضی</i>\n\n"
-        "یا برای بازگشت: 🔙 بازگشت",
-        reply_markup=create_back_only_menu(),
-        parse_mode="HTML"
-    )
 
 async def process_personal_title(message: types.Message, state: FSMContext):
     """پردازش عنوان ریمایندر شخصی"""
