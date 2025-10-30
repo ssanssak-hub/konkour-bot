@@ -5,12 +5,6 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from dotenv import load_dotenv
-# ایمپورت سیستم ریمایندر
-from reminder import (
-    setup_reminder_system, 
-    ExamReminderStates, 
-    PersonalReminderStates
-)
 
 # بارگذاری متغیرهای محیطی
 load_dotenv()
@@ -20,7 +14,11 @@ from utils.error_handlers import register_error_handlers
 from utils.health_monitor import health_monitor
 
 # ایمپورت سیستم ریمایندر
-from reminder import setup_reminder_system
+from reminder import (
+    setup_reminder_system, 
+    ExamReminderStates, 
+    PersonalReminderStates
+)
 
 # تنظیمات لاگ
 logging.basicConfig(
