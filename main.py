@@ -205,20 +205,20 @@ async def manage_reminder_callback_wrapper(callback: types.CallbackQuery):
     from reminder.reminder_handlers import handle_reminder_management_callback
     await handle_reminder_management_callback(callback)
 
-# --- هندلرهای ریمایندر خودکار برای کاربران ---
+# --- هندلرهای یادآوری خودکار برای کاربران عادی ---
 @dp.message(F.text == "📋 لیست یادآوری‌ها")
 async def list_auto_reminders_wrapper(message: types.Message):
-    from reminder.auto_reminder_admin import user_auto_reminders_list
+    from reminder.auto_reminder_handlers import user_auto_reminders_list
     await user_auto_reminders_list(message)
-    
+
 @dp.message(F.text == "✅ فعال کردن")
 async def enable_auto_reminders_wrapper(message: types.Message):
-    from reminder.auto_reminder_admin import toggle_user_auto_reminder
+    from reminder.auto_reminder_handlers import toggle_user_auto_reminder
     await toggle_user_auto_reminder(message)
 
 @dp.message(F.text == "❌ غیرفعال کردن")
 async def disable_auto_reminders_wrapper(message: types.Message):
-    from reminder.auto_reminder_admin import toggle_user_auto_reminder
+    from reminder.auto_reminder_handlers import toggle_user_auto_reminder
     await toggle_user_auto_reminder(message)
 
 @dp.message(Command("test_reminder"))
