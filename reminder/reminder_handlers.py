@@ -565,6 +565,85 @@ async def process_repetition_selection(message: types.Message, state: FSMContext
             parse_mode="HTML"
         )
 
+async def process_personal_days_selection(message: types.Message, state: FSMContext):
+    """پردازش انتخاب روزهای هفته برای ریمایندر شخصی"""
+    text = message.text
+    
+    if text == "✅ همه روزها":
+        await state.update_data(days_of_week=[0, 1, 2, 3, 4, 5, 6])
+        await message.answer(
+            "✅ همه روزهای هفته انتخاب شدند\n\n"
+            "برای ادامه روی '➡️ ادامه' کلیک کنید",
+            reply_markup=create_days_selection_menu()
+        )
+        
+    elif text == "🗑️ پاک کردن":
+        await state.update_data(days_of_week=[])
+        await message.answer(
+            "🗑️ همه روزها پاک شد\n\n"
+            "لطفاً روزهای مورد نظر را انتخاب کنید"
+        )
+        
+    elif text == "➡️ ادامه":
+        state_data = await state.get_data()
+        selected_days = state_data.get('days_of_week', [])
+        
+        if not selected_days:
+            await message.answer(
+                "❌ لطفاً حداقل یک روز انتخاب کنید",
+                reply_markup=create_days_selection_menu()
+            )
+            return
+        
+        await state.set_state(PersonalReminderStates.entering_time)
+        current_time = get_current_persian_datetime()
+        
+        await message.answer(
+            "🕐 <b>ورود ساعت یادآوری</b>\n\n"
+            f"⏰ زمان فعلی: {current_time['full_time']}\n\n"
+            "لطفاً ساعت دلخواه را به فرمت HH:MM وارد کنید:",
+            reply_markup=create_time_input_menu(),
+            parse_mode="HTML"
+        )
+    
+    elif text == "🔙 بازگشت":
+        await state.set_state(PersonalReminderStates.selecting_repetition)
+        await message.answer(
+            "لطفاً نوع تکرار را انتخاب کنید:",
+            reply_markup=create_repetition_type_menu()
+        )
+    
+    else:
+        days_map = {
+            "شنبه": 0, "یکشنبه": 1, "دوشنبه": 2,
+            "سه‌شنبه": 3, "چهارشنبه": 4, "پنجشنبه": 5, "جمعه": 6
+        }
+        
+        if text in days_map:
+            state_data = await state.get_data()
+            selected_days = state_data.get('days_of_week', [])
+            day_index = days_map[text]
+            
+            if day_index in selected_days:
+                selected_days.remove(day_index)
+                action_text = f"❌ {text} حذف شد"
+            else:
+                selected_days.append(day_index)
+                action_text = f"✅ {text} اضافه شد"
+            
+            await state.update_data(days_of_week=selected_days)
+            
+            # نمایش وضعیت فعلی
+            current_days = [day for day in days_map if days_map[day] in selected_days]
+            days_text = "، ".join(current_days) if current_days else "هیچ روزی"
+            
+            await message.answer(
+                f"{action_text}\n\n"
+                f"📋 روزهای انتخاب شده: {days_text}\n"
+                f"برای ادامه روی '➡️ ادامه' کلیک کنید"
+            )
+
+
 # --- هندلرهای یادآوری خودکار ---
 async def start_auto_reminders(message: types.Message):
     """منوی یادآوری خودکار"""
