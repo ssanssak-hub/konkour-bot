@@ -36,7 +36,7 @@ class ReminderScheduler:
                 await asyncio.sleep(self.check_interval)
             except Exception as e:
                 logger.error(f"خطا در سیستم ریمایندر: {e}")
-                await asyncio.sleep(10)  # انتظار در صورت خطا
+                await asyncio.sleep(10)
                 
     async def stop_scheduler(self):
         """توقف سیستم زمان‌بندی"""
@@ -45,72 +45,55 @@ class ReminderScheduler:
         
     async def check_and_send_reminders(self):
         """چک و ارسال ریمایندرهای due"""
-        now = datetime.now(TEHRAN_TIMEZONE)
-        current_time_str = now.strftime("%H:%M")
-        current_date_str = now.strftime("%Y-%m-%d")
-        current_weekday = now.weekday()
-        
-        logger.debug(f"🔍 چک ریمایندرها - زمان: {current_time_str} - روز: {current_weekday}")
-        
-        # چک ریمایندرهای کنکور
-        await self.check_exam_reminders(now, current_time_str, current_weekday)
-        
-        # چک ریمایندرهای شخصی
-        await self.check_personal_reminders(now, current_time_str, current_weekday)
-        
-    async def check_exam_reminders(self, now: datetime, current_time_str: str, current_weekday: int):
-        """چک ریمایندرهای کنکور"""
         try:
-            # دریافت همه ریمایندرهای فعال کنکور
-            all_reminders = []
-            # TODO: این تابع رو در دیتابیس اضافه کنیم
-            # all_reminders = reminder_db.get_active_exam_reminders()
+            now = datetime.now(TEHRAN_TIMEZONE)
+            current_time_str = now.strftime("%H:%M")
+            current_date_str = now.strftime("%Y-%m-%d")
+            current_weekday = now.weekday()
             
-            for reminder in all_reminders:
-                try:
-                    # چک فعال بودن
-                    if not reminder['is_active']:
-                        continue
-                        
-                    # چک روز هفته
-                    if current_weekday not in reminder['days_of_week']:
-                        continue
-                        
-                    # چک ساعت (تبدیل فرمت زمان)
-                    persian_times_map = {
-                        "08:00": "۸:۰۰", "10:00": "۱۰:۰۰", "12:00": "۱۲:۰۰", "14:00": "۱۴:۰۰",
-                        "16:00": "۱۶:۰۰", "18:00": "۱۸:۰۰", "20:00": "۲۰:۰۰", "22:00": "۲۲:۰۰"
-                    }
-                    
-                    current_time_persian = persian_times_map.get(current_time_str, current_time_str)
-                    if current_time_persian not in reminder['specific_times']:
-                        continue
-                        
-                    # چک تاریخ (شروع و پایان)
-                    if not self.is_date_in_range(now, reminder['start_date'], reminder['end_date']):
-                        continue
-                        
-                    # ارسال ریمایندر
-                    await self.send_exam_reminder(reminder)
-                    
-                except Exception as e:
-                    logger.error(f"خطا در پردازش ریمایندر {reminder['id']}: {e}")
-                    
-        except Exception as e:
-            logger.error(f"خطا در چک ریمایندرهای کنکور: {e}")
+            logger.info(f"🔍 چک ریمایندرها - زمان: {current_time_str} - روز: {current_weekday}")
+            
+            # دریافت ریمایندرهای due از دیتابیس
+            due_reminders = reminder_db.get_due_reminders(
+                current_date_str, 
+                current_time_str, 
+                current_weekday
+            )
+            
+            if due_reminders:
+                logger.info(f"📤 پیدا شد {len(due_reminders)} ریمایندر برای ارسال")
+                for reminder in due_reminders:
+                    await self.send_reminder(reminder)
+            else:
+                logger.debug("✅ هیچ ریمایندری برای ارسال پیدا نشد")
                 
-    async def check_personal_reminders(self, now: datetime, current_time_str: str, current_weekday: int):
-        """چک ریمایندرهای شخصی"""
-        # TODO: پیاده‌سازی مشابه ریمایندرهای کنکور
-        pass
-        
+        except Exception as e:
+            logger.error(f"خطا در چک ریمایندرها: {e}")
+
+    async def send_reminder(self, reminder: Dict[str, Any]):
+        """ارسال ریمایندر"""
+        try:
+            user_id = reminder['user_id']
+            
+            if reminder['reminder_type'] == 'exam':
+                await self.send_exam_reminder(reminder)
+            elif reminder['reminder_type'] == 'personal':
+                await self.send_personal_reminder(reminder)
+                
+            # ثبت لاگ ارسال
+            reminder_db.log_reminder_sent(user_id, reminder['id'], reminder['reminder_type'])
+            
+            logger.info(f"✅ ریمایندر برای کاربر {user_id} ارسال شد")
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در ارسال ریمایندر: {e}")
+
     async def send_exam_reminder(self, reminder: Dict[str, Any]):
         """ارسال ریمایندر کنکور"""
         try:
             user_id = reminder['user_id']
-            exam_keys = reminder['exam_keys']
             
-            for exam_key in exam_keys:
+            for exam_key in reminder['exam_keys']:
                 if exam_key in EXAMS_1405:
                     exam = EXAMS_1405[exam_key]
                     message = await self.create_exam_reminder_message(exam)
@@ -121,14 +104,35 @@ class ReminderScheduler:
                         parse_mode="HTML"
                     )
                     
-                    # لاگ ارسال
-                    self.log_reminder_sent(user_id, reminder['id'], 'exam')
-                    
-                    logger.info(f"📤 ریمایندر کنکور {exam['name']} برای کاربر {user_id} ارسال شد")
+                    logger.info(f"🎯 ریمایندر کنکور {exam['name']} برای کاربر {user_id} ارسال شد")
                     
         except Exception as e:
-            logger.error(f"خطا در ارسال ریمایندر: {e}")
+            logger.error(f"خطا در ارسال ریمایندر کنکور: {e}")
+
+    async def send_personal_reminder(self, reminder: Dict[str, Any]):
+        """ارسال ریمایندر شخصی"""
+        try:
+            user_id = reminder['user_id']
             
+            message = (
+                f"⏰ <b>یادآوری شخصی</b>\n\n"
+                f"📝 {reminder['title']}\n\n"
+                f"📄 {reminder['message']}\n\n"
+                f"🕒 <i>زمان یادآوری: {datetime.now(TEHRAN_TIMEZONE).strftime('%H:%M')}</i>\n"
+                f"💪 <b>موفق باشید!</b>"
+            )
+            
+            await self.bot.send_message(
+                chat_id=user_id,
+                text=message,
+                parse_mode="HTML"
+            )
+            
+            logger.info(f"📝 ریمایندر شخصی برای کاربر {user_id} ارسال شد")
+            
+        except Exception as e:
+            logger.error(f"خطا در ارسال ریمایندر شخصی: {e}")
+
     async def create_exam_reminder_message(self, exam: Dict[str, Any]) -> str:
         """ایجاد پیام ریمایندر کنکور"""
         from datetime import datetime
@@ -163,28 +167,23 @@ class ReminderScheduler:
         )
         
         return message
-        
-    def is_date_in_range(self, current_date: datetime, start_date: str, end_date: str) -> bool:
-        """چک کردن قرار داشتن تاریخ در بازه"""
-        # TODO: پیاده‌سازی منطق چک تاریخ شمسی
-        # فعلاً True برمی‌گردانیم
-        return True
-        
-    def log_reminder_sent(self, user_id: int, reminder_id: int, reminder_type: str):
-        """ثبت لاگ ارسال ریمایندر"""
-        # TODO: اضافه کردن به دیتابیس
-        pass
-        
-    async def send_test_reminder(self, user_id: int):
-        """ارسال ریمایندر تستی"""
-        test_exam = EXAMS_1405["ریاضی_فنی"]
-        message = await self.create_exam_reminder_message(test_exam)
-        
-        await self.bot.send_message(
-            chat_id=user_id,
-            text=message,
-            parse_mode="HTML"
-        )
+
+    async def send_test_reminder_now(self, user_id: int):
+        """ارسال ریمایندر تستی فوری"""
+        try:
+            test_exam = EXAMS_1405["ریاضی_فنی"]
+            message = await self.create_exam_reminder_message(test_exam)
+            
+            await self.bot.send_message(
+                chat_id=user_id,
+                text=f"🧪 <b>تست سیستم ریمایندر</b>\n\n{message}",
+                parse_mode="HTML"
+            )
+            
+            logger.info(f"🧪 ریمایندر تستی برای کاربر {user_id} ارسال شد")
+            
+        except Exception as e:
+            logger.error(f"خطا در ارسال ریمایندر تستی: {e}")
 
 # ایجاد instance اصلی
 reminder_scheduler = None
