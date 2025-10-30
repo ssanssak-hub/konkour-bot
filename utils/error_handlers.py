@@ -1,11 +1,11 @@
-#error_handlers.py
+# error_handlers.py
 """
-هندلرهای全局 خطا برای ربات
+هندلرهای全局 خطا برای ربات - سازگار با Aiogram 3.x
 """
 import logging
 import traceback
-from typing import Any
-from aiogram import Dispatcher, types
+from aiogram import Dispatcher
+from aiogram.types import ErrorEvent
 from aiogram.exceptions import (
     TelegramAPIError, TelegramNetworkError, 
     TelegramRetryAfter, TelegramBadRequest,
@@ -16,16 +16,19 @@ from aiogram.exceptions import (
 
 logger = logging.getLogger(__name__)
 
-async def global_error_handler(update: types.Update, exception: Exception) -> bool:
+async def global_error_handler(event: ErrorEvent) -> bool:
     """
-    هندلر全局 برای تمام خطاهای ربات
+    هندلر全局 برای تمام خطاهای ربات - Aiogram 3.x
     """
     try:
+        exception = event.exception
+        update = event.update
+        
         # لاگ کامل خطا
         error_info = {
             "error_type": type(exception).__name__,
             "error_message": str(exception),
-            "update_type": update.update_type if update else "Unknown",
+            "update_type": update.event_type if update else "Unknown",
             "traceback": traceback.format_exc()
         }
         
@@ -39,7 +42,6 @@ async def global_error_handler(update: types.Update, exception: Exception) -> bo
             
         elif isinstance(exception, TelegramBadRequest):
             logger.error(f"❌ درخواست نامعتبر: {exception}")
-            # معمولاً مشکل از سمت ماست - نیاز به fix داره
             return True
             
         elif isinstance(exception, TelegramForbiddenError):
@@ -65,7 +67,6 @@ async def global_error_handler(update: types.Update, exception: Exception) -> bo
         # خطاهای دیتابیس
         elif "database" in str(exception).lower() or "sql" in str(exception).lower():
             logger.critical(f"🗄️ خطای دیتابیس: {exception}")
-            # تلاش برای reconnect
             await handle_database_error()
             return True
             
@@ -111,21 +112,7 @@ async def handle_memory_error():
     except Exception as e:
         logger.error(f"❌ پاکسازی حافظه ناموفق: {e}")
 
-async def message_error_handler(update: types.Update, exception: Exception) -> bool:
-    """هندلر مخصوص خطاهای مربوط به پیام‌ها"""
-    if update.message:
-        try:
-            await update.message.answer(
-                "❌ متأسفانه در پردازش درخواست شما خطایی رخ داد.\n"
-                "لطفاً稍后 مجدداً尝试 کنید یا با پشتیبانی تماس بگیرید."
-            )
-        except:
-            pass  # اگر حتی ارسال پیام خطا هم fail شد
-    return True
-
 def register_error_handlers(dp: Dispatcher) -> None:
     """ثبت تمام هندلرهای خطا"""
     dp.errors.register(global_error_handler)
-    dp.errors.register(message_error_handler)
-    
     logger.info("✅ هندلرهای خطا ثبت شدند")
