@@ -41,9 +41,16 @@ class PersonalReminderStates(StatesGroup):
     confirmation = State()
 
 # هندلر اصلی منوی ریمایندر
-async def reminder_main_handler(callback: types.CallbackQuery):
-    """منوی اصلی ریمایندر"""
-    await callback.message.edit_text(
+async def reminder_main_handler(update: types.Message | types.CallbackQuery):
+    """منوی اصلی ریمایندر - سازگار با Message و CallbackQuery"""
+    if isinstance(update, types.CallbackQuery):
+        message = update.message
+        edit_method = message.edit_text
+    else:
+        message = update
+        edit_method = message.answer
+    
+    await edit_method(
         "📅 <b>سیستم مدیریت یادآوری‌ها</b>\n\n"
         "لطفاً نوع یادآوری مورد نظر را انتخاب کنید:",
         reply_markup=create_reminder_main_menu(),
