@@ -700,6 +700,102 @@ async def process_personal_time_input(message: types.Message, state: FSMContext)
         parse_mode="HTML"
     )
 
+async def process_personal_start_date(message: types.Message, state: FSMContext):
+    """پردازش تاریخ شروع برای ریمایندر شخصی"""
+    if message.text == "🔙 بازگشت":
+        await state.set_state(PersonalReminderStates.entering_time)
+        await message.answer(
+            "🕐 لطفاً ساعت را وارد کنید:",
+            reply_markup=create_time_input_menu()
+        )
+        return
+    
+    if message.text == "📅 امروز":
+        current_date = get_current_persian_datetime()
+        start_date = f"{current_date['year']}/{current_date['month']:02d}/{current_date['day']:02d}"
+        await message.answer(f"✅ تاریخ شروع: {start_date}")
+    else:
+        start_date = message.text
+    
+    await state.update_data(start_date=start_date)
+    await state.set_state(PersonalReminderStates.confirmation)
+    
+    # نمایش خلاصه و تأیید نهایی
+    state_data = await state.get_data()
+    summary = formatter.create_reminder_summary(state_data, "personal")
+    
+    await message.answer(
+        f"✅ <b>خلاصه یادآوری شخصی</b>\n\n{summary}\n\n"
+        "آیا مایل به ایجاد این یادآوری هستید؟",
+        reply_markup=create_confirmation_menu(),
+        parse_mode="HTML"
+    )
+
+async def process_personal_confirmation(message: types.Message, state: FSMContext):
+    """پردازش تأیید نهایی ریمایندر شخصی"""
+    text = message.text
+    
+    if text == "✅ تأیید و ایجاد":
+        state_data = await state.get_data()
+        
+        try:
+            # ذخیره در دیتابیس
+            reminder_id = reminder_db.add_personal_reminder(
+                user_id=message.from_user.id,
+                title=state_data['title'],
+                message=state_data['message'],
+                repetition_type=state_data['repetition_type'],
+                specific_time=state_data['specific_time'],
+                start_date=state_data['start_date'],
+                days_of_week=state_data.get('days_of_week', []),
+                custom_days_interval=state_data.get('custom_days_interval'),
+                end_date=state_data.get('end_date'),
+                max_occurrences=state_data.get('max_occurrences')
+            )
+            
+            await message.answer(
+                "🎉 <b>یادآوری شخصی با موفقیت ایجاد شد!</b>\n\n"
+                f"📝 کد یادآوری: <code>{reminder_id}</code>\n"
+                f"⏰ اولین یادآوری: فردا ساعت {state_data['specific_time']}\n\n"
+                "می‌توانید یادآوری‌های خود را از بخش مدیریت مشاهده کنید.",
+                reply_markup=create_reminder_main_menu(),
+                parse_mode="HTML"
+            )
+            
+            logger.info(f"✅ ریمایندر شخصی {reminder_id} برای کاربر {message.from_user.id} ایجاد شد")
+            
+        except Exception as e:
+            await message.answer(
+                "❌ <b>خطا در ایجاد یادآوری!</b>\n\n"
+                "لطفاً مجدداً تلاش کنید.",
+                reply_markup=create_reminder_main_menu(),
+                parse_mode="HTML"
+            )
+            logger.error(f"خطا در ایجاد ریمایندر شخصی: {e}")
+        
+        await state.clear()
+    
+    elif text == "✏️ ویرایش":
+        await state.set_state(PersonalReminderStates.entering_title)
+        await message.answer(
+            "لطفاً عنوان یادآوری را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+    
+    elif text == "❌ لغو":
+        await message.answer(
+            "❌ <b>ایجاد یادآوری لغو شد</b>",
+            reply_markup=create_reminder_main_menu(),
+            parse_mode="HTML"
+        )
+        await state.clear()
+    
+    elif text == "🔙 بازگشت":
+        await state.set_state(PersonalReminderStates.entering_start_date)
+        await message.answer(
+            "📅 لطفاً تاریخ شروع را وارد کنید:",
+            reply_markup=create_date_input_menu()
+        )
 
 # --- هندلرهای یادآوری خودکار ---
 async def start_auto_reminders(message: types.Message):
