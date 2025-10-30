@@ -198,6 +198,10 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     logger.info("🗑️ وب‌هوک حذف شد + پیام‌های pending پاک شد")
     
+    # شروع سیستم ریمایندر در event loop اصلی
+    asyncio.create_task(reminder_scheduler.start_scheduler())
+    logger.info("🚀 سیستم ریمایندر شروع به کار کرد")
+    
     logger.info("🔄 شروع Polling روی Railway...")
     
     # شروع دریافت پیام‌ها
