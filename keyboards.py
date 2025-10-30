@@ -283,3 +283,17 @@ def create_stats_keyboard():
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+def create_reminder_main_menu():
+    """منوی اصلی ریمایندر"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="⏰ یادآوری کنکورها")],
+            [KeyboardButton(text="📝 یادآوری شخصی")],
+            [KeyboardButton(text="🤖 یادآوری خودکار")],
+            [KeyboardButton(text="📋 مدیریت یادآوری")],
+            [KeyboardButton(text="🏠 منوی اصلی")]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="گزینه مورد نظر را انتخاب کنید..."
+    )
