@@ -18,7 +18,7 @@ from reminder import setup_reminder_system
 from reminder.reminder_handlers import (
     ExamReminderStates, PersonalReminderStates, ManagementStates
 )
-
+from reminder.auto_reminder_scheduler import init_auto_reminder_scheduler
 # تنظیمات لاگ
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
