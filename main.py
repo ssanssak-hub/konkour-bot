@@ -77,6 +77,7 @@ async def stats_menu_wrapper(message: types.Message):
     from handlers.menu_handlers import stats_handler
     await stats_handler(message)
 
+# 🔽 فقط این یک هندلر برای مدیریت یادآوری‌ها
 @dp.message(F.text == "🔔 مدیریت یادآوری‌ها")
 async def reminders_wrapper(message: types.Message):
     from reminder.reminder_handlers import reminder_main_handler
