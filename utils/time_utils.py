@@ -9,9 +9,9 @@ import pytz
 TEHRAN_TIMEZONE = pytz.timezone('Asia/Tehran')
 
 def get_tehran_time():
-    """دریافت زمان فعلی تهران"""
+    """دریافت زمان فعلی تهران با تایم‌زون"""
     return datetime.now(TEHRAN_TIMEZONE)
-
+    
 def gregorian_to_jalali(gy, gm, gd):
     """
     تبدیل تاریخ میلادی به شمسی
