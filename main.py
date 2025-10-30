@@ -116,25 +116,20 @@ async def back_main_wrapper(callback: types.CallbackQuery):
 async def safe_startup():
     """راه‌اندازی ایمن با Circuit Breaker"""
     try:
-        # راه‌اندازی وب‌هوک با منطق هوشمند برای Railway
-        webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
+        # ابتدا وب‌هوک قبلی رو حذف کن
+        await bot.delete_webhook()
+        logger.info("🗑️ وب‌هوک قبلی حذف شد")
         
-        # اگر WEBHOOK_URL تنظیم نشده، خودکار بساز برای Railway
-        if not webhook_url or not webhook_url.startswith(('http://', 'https://')):
-            # استفاده از متغیرهای Railway
-            railway_url = os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("RAILWAY_PUBLIC_DOMAIN")
-            if railway_url:
-                webhook_url = f"{railway_url}/webhook"
-            else:
-                # اگر متغیرهای Railway موجود نبود، از BOT_TOKEN برای ساخت آدرس استفاده کن
-                webhook_url = f"https://{BOT_TOKEN.split(':')[0]}.railway.app/webhook"
+        # ساخت آدرس وب‌هوک
+        webhook_url = "https://8381121739.railway.app/webhook"
         
-        # مطمئن شویم که با /webhook پایان می‌یابد
-        if not webhook_url.endswith('/webhook'):
-            webhook_url = webhook_url.rstrip('/') + '/webhook'
+        # تنظیم وب‌هوک
+        await bot.set_webhook(webhook_url)
+        logger.info(f"🎯 وب‌هوک تنظیم شد: {webhook_url}")
         
-        await webhook_breaker.call(bot.set_webhook, webhook_url)
-        logger.info(f"✅ وب‌هوک تنظیم شد: {webhook_url}")
+        # بررسی وضعیت
+        webhook_info = await bot.get_webhook_info()
+        logger.info(f"📡 وضعیت وب‌هوک: {webhook_info}")
         
         # شروع مانیتورینگ سلامت
         asyncio.create_task(health_monitor.periodic_health_check())
@@ -182,8 +177,11 @@ def main():
     app.router.add_get('/railway-check', railway_check_handler)
     app.router.add_get('/', home_handler)
     
-    # وب‌هوک
-    webhook_requests_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
+    # 🔴 🔴 🔴 تصحیح این بخش - مشکل اصلی اینجا بود!
+    webhook_requests_handler = SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot
+    )
     webhook_requests_handler.register(app, path="/webhook")
     
     # routes سلامت
