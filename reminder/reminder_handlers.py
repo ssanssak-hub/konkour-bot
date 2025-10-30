@@ -291,6 +291,52 @@ async def confirm_reminder_creation(callback: types.CallbackQuery, state: FSMCon
         )
         await state.clear()
 
+async def process_confirmation(message: types.Message, state: FSMContext):
+    """پردازش تأیید نهایی"""
+    text = message.text
+    
+    if text == "✅ تأیید و ایجاد":
+        state_data = await state.get_data()
+        
+        # ذخیره در دیتابیس
+        reminder_id = reminder_db.add_exam_reminder(
+            user_id=message.from_user.id,
+            exam_keys=state_data['selected_exams'],
+            days_of_week=state_data['selected_days'],
+            specific_times=state_data['selected_times'],
+            start_date=state_data['start_date'],
+            end_date=state_data['end_date']
+        )
+        
+        await message.answer(
+            "🎉 <b>یادآوری با موفقیت ایجاد شد!</b>\n\n"
+            f"📝 کد یادآوری: <code>{reminder_id}</code>\n"
+            "از منوی مدیریت می‌توانید یادآوری‌های خود را مشاهده و مدیریت کنید.",
+            reply_markup=create_reminder_main_menu(),
+            parse_mode="HTML"
+        )
+        
+        await state.clear()
+    
+    elif text == "✏️ ویرایش":
+        await state.set_state(ExamReminderStates.selecting_exams)
+        await start_exam_reminder(message, state)
+    
+    elif text == "❌ لغو":
+        await message.answer(
+            "❌ <b>ایجاد یادآوری لغو شد</b>",
+            reply_markup=create_reminder_main_menu(),
+            parse_mode="HTML"
+        )
+        await state.clear()
+    
+    elif text == "🔙 بازگشت":
+        await state.set_state(ExamReminderStates.selecting_end_date)
+        await message.answer(
+            "📅 لطفاً تاریخ پایان را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+
 # --- توابع کمکی ---
 def create_reminder_summary(state_data: dict) -> str:
     """ایجاد خلاصه ریمایندر"""
