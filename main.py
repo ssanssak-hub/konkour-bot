@@ -298,6 +298,17 @@ async def auto_admin_confirmation_wrapper(message: types.Message, state: FSMCont
     from reminder.auto_reminder_admin import process_admin_confirmation
     await process_admin_confirmation(message, state)
 
+# --- هندلرهای callback برای ادمین ---
+@dp.callback_query(F.data.startswith("auto_admin_"))
+async def auto_admin_callback_wrapper(callback: types.CallbackQuery):
+    from reminder.auto_reminder_admin import handle_auto_reminder_admin_callback
+    await handle_auto_reminder_admin_callback(callback)
+
+@dp.callback_query(F.data == "auto_admin:back")
+async def auto_admin_back_wrapper(callback: types.CallbackQuery):
+    from reminder.auto_reminder_admin import handle_auto_reminder_admin_callback
+    await handle_auto_reminder_admin_callback(callback)
+
 # --- هندلر callback برای ریمایندرهای خودکار ---
 @dp.callback_query(F.data.startswith("auto_"))
 async def auto_reminder_callback_wrapper(callback: types.CallbackQuery):
