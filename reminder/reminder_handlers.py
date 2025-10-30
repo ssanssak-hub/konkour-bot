@@ -1059,7 +1059,27 @@ async def handle_reminder_management_callback(callback: types.CallbackQuery):
         await manage_reminders_handler(callback.message)
         return
     
-    if data.startswith("manage_toggle:"):
+    if data.startswith("manage_delete:"):
+        _, reminder_type, reminder_id = data.split(":")
+        reminder_id = int(reminder_id)
+        
+        success = reminder_db.delete_reminder(reminder_type, reminder_id)
+        
+        if success:
+            await callback.answer("✅ یادآوری حذف شد")
+            await callback.message.edit_text(
+                f"✅ <b>یادآوری حذف شد</b>\n\n"
+                f"کد یادآوری: {reminder_id}\n\n"
+                f"برای بازگشت به منوی مدیریت از دکمه زیر استفاده کنید:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="🔙 بازگشت به مدیریت", callback_data="manage:back")
+                ]]),
+                parse_mode="HTML"
+            )
+        else:
+            await callback.answer("❌ خطا در حذف یادآوری")
+    
+    elif data.startswith("manage_toggle:"):
         _, reminder_type, reminder_id = data.split(":")
         reminder_id = int(reminder_id)
         
@@ -1093,27 +1113,7 @@ async def handle_reminder_management_callback(callback: types.CallbackQuery):
             )
         else:
             await callback.answer("❌ خطا در تغییر وضعیت")
-    
-    elif data.startswith("manage_delete:"):
-        _, reminder_type, reminder_id = data.split(":")
-        reminder_id = int(reminder_id)
-        
-        success = reminder_db.delete_reminder(reminder_type, reminder_id)
-        
-        if success:
-            await callback.answer("✅ یادآوری حذف شد")
-            await callback.message.edit_text(
-                f"✅ <b>یادآوری حذف شد</b>\n\n"
-                f"کد یادآوری: {reminder_id}\n\n"
-                f"برای بازگشت به منوی مدیریت از دکمه زیر استفاده کنید:",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                    InlineKeyboardButton(text="🔙 بازگشت به مدیریت", callback_data="manage:back")
-                ]]),
-                parse_mode="HTML"
-            )
-        else:
-            await callback.answer("❌ خطا در حذف یادآوری")
-
+            
 # --- توابع کمکی ---
 def create_reminder_summary(state_data: dict) -> str:
     """ایجاد خلاصه ریمایندر"""
