@@ -119,6 +119,12 @@ async def admin_wrapper(message: types.Message):
     from handlers.menu_handlers import admin_handler
     await admin_handler(message)
 
+# --- هندلرهای مدیریت ریمایندر ---
+@dp.message(F.text == "📊 مدیریت یادآوری‌ها")
+async def manage_reminders_wrapper(message: types.Message):
+    from reminder.reminder_handlers import manage_reminders_handler
+    await manage_reminders_handler(message)
+
 # --- هندلرهای کنکور ---
 @dp.callback_query(F.data.startswith("exam:"))
 async def exam_wrapper(callback: types.CallbackQuery):
