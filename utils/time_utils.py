@@ -136,7 +136,7 @@ def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     """
     فرمت‌بندی زمان باقی‌مانده به صورت دقیق و بازگشت تعداد کل روزها
     """
-    now = get_tehran_time()
+    now = get_tehran_time()  # این تابع باید datetime با تایم‌زون برگرداند
     
     # اطمینان از اینکه target_date هم در تایم‌زون تهران باشد
     if target_date.tzinfo is None:
@@ -144,12 +144,20 @@ def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     else:
         target_date = target_date.astimezone(TEHRAN_TIMEZONE)
     
+    # اطمینان از اینکه now هم در تایم‌زون تهران باشد
+    if now.tzinfo is None:
+        now = TEHRAN_TIMEZONE.localize(now)
+    else:
+        now = now.astimezone(TEHRAN_TIMEZONE)
+    
     if target_date <= now:
         return "✅ برگزار شده", 0
     
     delta = target_date - now
     total_seconds = int(delta.total_seconds())
     total_days = delta.days
+    
+    # بقیه کد بدون تغییر...
     
     # محاسبه اجزای زمان
     weeks = total_seconds // (7 * 24 * 3600)
