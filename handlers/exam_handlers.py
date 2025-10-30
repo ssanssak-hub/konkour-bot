@@ -28,26 +28,32 @@ async def exam_callback_handler(callback: types.CallbackQuery):
     exam = EXAMS_1405[exam_key]
     now = datetime.now()
     
+    # تبدیل تاریخ‌ها به datetime
     dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
-    future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
+    exam_dates = [datetime(*d) for d in dates]
     
-    if not future_dates:
-        countdown = "✅ برگزار شده"
-        total_days = 0
-    else:
-        target = min(future_dates)
-        countdown, total_days = format_time_remaining(target)
+    # محاسبه زمان باقی‌مانده برای همه تاریخ‌ها
+    from utils.time_utils import calculate_multiple_dates_countdown, format_exam_dates
+    countdowns = calculate_multiple_dates_countdown(exam_dates)
     
-    message = f"""
-📘 <b>{exam['name']}</b>
-📅 تاریخ: {exam['persian_date']}
-🕒 ساعت: {exam['time']}
-
-{countdown}
-📆 تعداد کل روزهای باقی‌مانده: {total_days} روز
-
-🎯 {random.choice(MOTIVATIONAL_MESSAGES)}
-"""
+    # ساخت پیام
+    message = f"📘 <b>{exam['name']}</b>\n\n"
+    
+    # نمایش تاریخ‌ها با روز هفته
+    message += f"🗓️ <b>تاریخ‌های برگزاری:</b>\n"
+    message += format_exam_dates(exam_dates)
+    message += "\n\n"
+    
+    # نمایش زمان باقی‌مانده برای هر تاریخ
+    message += f"⏳ <b>زمان باقی‌مانده:</b>\n"
+    for i, countdown in enumerate(countdowns, 1):
+        if countdown['status'] == 'passed':
+            message += f"{i}. ✅ برگزار شده\n"
+        else:
+            message += f"{i}. {countdown['countdown']} ({countdown['days_remaining']} روز)\n"
+    
+    message += f"\n🎯 {random.choice(MOTIVATIONAL_MESSAGES)}"
+    
     await callback.message.edit_text(
         message, 
         reply_markup=exam_actions_menu(exam_key), 
