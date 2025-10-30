@@ -1055,7 +1055,13 @@ async def handle_reminder_management_callback(callback: types.CallbackQuery):
     data = callback.data
     
     if data == "manage:back":
-        await callback.message.delete()
+        try:
+            # حذف پیام فعلی و نمایش منوی مدیریت
+            await callback.message.delete()
+        except:
+            # اگر حذف پیام ممکن نبود، فقط منوی جدید نمایش بده
+            pass
+        
         await manage_reminders_handler(callback.message)
         return
     
@@ -1067,6 +1073,8 @@ async def handle_reminder_management_callback(callback: types.CallbackQuery):
         
         if success:
             await callback.answer("✅ یادآوری حذف شد")
+            
+            # به جای ویرایش پیام، پیام جدید بفرست
             await callback.message.edit_text(
                 f"✅ <b>یادآوری حذف شد</b>\n\n"
                 f"کد یادآوری: {reminder_id}\n\n"
@@ -1101,6 +1109,7 @@ async def handle_reminder_management_callback(callback: types.CallbackQuery):
         if success:
             status_text = "فعال" if new_status else "غیرفعال"
             await callback.answer(f"✅ یادآوری {status_text} شد")
+            
             await callback.message.edit_text(
                 f"✅ <b>وضعیت یادآوری تغییر کرد</b>\n\n"
                 f"کد یادآوری: {reminder_id}\n"
