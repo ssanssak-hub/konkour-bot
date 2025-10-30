@@ -11,19 +11,21 @@ from .reminder_handlers import (
     process_times_selection,
     process_start_date,
     process_end_date,
-    confirm_reminder_creation,
+    process_confirmation,
     manage_reminders_handler,
     ExamReminderStates,
     PersonalReminderStates
 )
 from .reminder_keyboards import (
     create_reminder_main_menu,
-    create_exam_selection_keyboard,
-    create_days_of_week_keyboard,
-    create_time_selection_keyboard,
-    create_repetition_type_keyboard,
-    create_confirmation_keyboard,
-    create_management_keyboard
+    create_exam_selection_menu,
+    create_days_selection_menu,
+    create_time_selection_menu,
+    create_repetition_type_menu,
+    create_confirmation_menu,
+    create_management_menu,
+    create_back_only_menu,
+    remove_menu
 )
 from .reminder_scheduler import ReminderScheduler, init_reminder_scheduler
 from .reminder_utils import (
@@ -46,19 +48,21 @@ __all__ = [
     'process_times_selection',
     'process_start_date',
     'process_end_date',
-    'confirm_reminder_creation',
+    'process_confirmation',
     'manage_reminders_handler',
     'ExamReminderStates',
     'PersonalReminderStates',
     
     # کیبوردها
     'create_reminder_main_menu',
-    'create_exam_selection_keyboard',
-    'create_days_of_week_keyboard',
-    'create_time_selection_keyboard',
-    'create_repetition_type_keyboard',
-    'create_confirmation_keyboard',
-    'create_management_keyboard',
+    'create_exam_selection_menu',
+    'create_days_selection_menu',
+    'create_time_selection_menu',
+    'create_repetition_type_menu',
+    'create_confirmation_menu',
+    'create_management_menu',
+    'create_back_only_menu',
+    'remove_menu',
     
     # زمان‌بندی
     'ReminderScheduler',
