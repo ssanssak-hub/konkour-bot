@@ -1,5 +1,5 @@
 """
-سیستم زمان‌بندی و ارسال ریمایندرها - نسخه پیشرفته
+سیستم زمان‌بندی و ارسال ریمایندرها - نسخه کامل با تاریخ میلادی
 """
 import asyncio
 import logging
@@ -65,14 +65,14 @@ class ReminderScheduler:
         try:
             now = datetime.now(TEHRAN_TIMEZONE)
             current_time_str = now.strftime("%H:%M")
-            current_date_str = now.strftime("%Y-%m-%d")
+            current_date_str = now.strftime("%Y-%m-%d")  # میلادی
             current_weekday = now.weekday()  # 0=Monday, 6=Sunday
             
             self.last_check = now
             
-            logger.debug(f"🔍 چک ریمایندرها - زمان: {current_time_str} - تاریخ: {current_date_str} - روز هفته: {current_weekday}")
+            logger.debug(f"🔍 چک ریمایندرها - زمان: {current_time_str} - تاریخ میلادی: {current_date_str} - روز هفته: {current_weekday}")
             
-            # دریافت ریمایندرهای due از دیتابیس
+            # دریافت ریمایندرهای due از دیتابیس - با تاریخ میلادی
             due_reminders = reminder_db.get_due_reminders(
                 current_date_str, 
                 current_time_str, 
