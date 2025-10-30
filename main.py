@@ -77,6 +77,37 @@ async def stats_menu_wrapper(message: types.Message):
     from handlers.menu_handlers import stats_handler
     await stats_handler(message)
 
+# --- هندلرهای state برای ریمایندر ---
+@dp.message(ExamReminderStates.selecting_exams)
+async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_exam_selection
+    await process_exam_selection(message, state)
+
+@dp.message(ExamReminderStates.selecting_days)
+async def exam_reminder_days_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_days_selection
+    await process_days_selection(message, state)
+
+@dp.message(ExamReminderStates.selecting_times)
+async def exam_reminder_times_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_times_selection
+    await process_times_selection(message, state)
+
+@dp.message(ExamReminderStates.selecting_start_date)
+async def exam_reminder_start_date_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_start_date
+    await process_start_date(message, state)
+
+@dp.message(ExamReminderStates.selecting_end_date)
+async def exam_reminder_end_date_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_end_date
+    await process_end_date(message, state)
+
+@dp.message(ExamReminderStates.confirmation)
+async def exam_reminder_confirmation_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_confirmation
+    await process_confirmation(message, state)
+
 # 🔽 فقط این یک هندلر برای مدیریت یادآوری‌ها
 @dp.message(F.text == "🔔 مدیریت یادآوری‌ها")
 async def reminders_wrapper(message: types.Message):
