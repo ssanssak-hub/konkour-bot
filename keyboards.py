@@ -14,12 +14,12 @@ def main_menu():
             [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
             [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
             [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
+            [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],  # اضافه شده
             [KeyboardButton(text="👑 پنل مدیریت")]
         ],
         resize_keyboard=True,
         input_field_placeholder="یک گزینه انتخاب کنید..."
     )
-
 # حذف منو
 def remove_menu():
     return ReplyKeyboardRemove()
