@@ -245,10 +245,116 @@ class ReminderDatabase:
             cursor.execute(f'DELETE FROM {table} WHERE id = ?', (reminder_id,))
             return cursor.rowcount > 0
 
-    def get_due_reminders(self, target_date: str, target_time: str) -> List[Dict[str, Any]]:
+    def get_due_reminders(self, target_date: str, target_time: str, target_weekday: int) -> List[Dict[str, Any]]:
         """دریافت ریمایندرهای due برای تاریخ و زمان مشخص"""
-        # این تابع رو بعداً کامل می‌کنم
-        return []
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # تبدیل زمان فارسی به انگلیسی برای تطابق
+                time_map = {
+                    "۸:۰۰": "08:00", "۱۰:۰۰": "10:00", "۱۲:۰۰": "12:00", "۱۴:۰۰": "14:00",
+                    "۱۶:۰۰": "16:00", "۱۸:۰۰": "18:00", "۲۰:۰۰": "20:00", "۲۲:۰۰": "22:00"
+                }
+                
+                target_time_english = time_map.get(target_time, target_time)
+                
+                # دریافت ریمایندرهای کنکور
+                cursor.execute('''
+                    SELECT * FROM exam_reminders 
+                    WHERE is_active = TRUE 
+                    AND json_extract(days_of_week, '$') LIKE ?
+                    AND json_extract(specific_times, '$') LIKE ?
+                    AND start_date <= ? 
+                    AND end_date >= ?
+                ''', (
+                    f'%{target_weekday}%',
+                    f'%"{target_time}"%',
+                    target_date,
+                    target_date
+                ))
+                
+                reminders = []
+                for row in cursor.fetchall():
+                    reminders.append({
+                        'id': row[0],
+                        'user_id': row[1],
+                        'exam_keys': json.loads(row[2]),
+                        'days_of_week': json.loads(row[3]),
+                        'specific_times': json.loads(row[4]),
+                        'specific_dates': json.loads(row[5]),
+                        'start_date': row[6],
+                        'end_date': row[7],
+                        'is_active': bool(row[8]),
+                        'reminder_type': 'exam'
+                    })
+                
+                # دریافت ریمایندرهای شخصی
+                cursor.execute('''
+                    SELECT * FROM personal_reminders 
+                    WHERE is_active = TRUE 
+                    AND specific_time = ?
+                    AND start_date <= ? 
+                    AND (end_date >= ? OR end_date IS NULL)
+                ''', (target_time, target_date, target_date))
+                
+                for row in cursor.fetchall():
+                    reminders.append({
+                        'id': row[0],
+                        'user_id': row[1],
+                        'title': row[2],
+                        'message': row[3],
+                        'repetition_type': row[4],
+                        'days_of_week': json.loads(row[5]),
+                        'specific_time': row[6],
+                        'custom_days_interval': row[7],
+                        'start_date': row[8],
+                        'end_date': row[9],
+                        'max_occurrences': row[10],
+                        'is_active': bool(row[11]),
+                        'reminder_type': 'personal'
+                    })
+                
+                return reminders
+                
+        except Exception as e:
+            logger.error(f"خطا در دریافت ریمایندرهای due: {e}")
+            return []
+
+    def get_active_exam_reminders(self) -> List[Dict[str, Any]]:
+        """دریافت همه ریمایندرهای کنکور فعال"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM exam_reminders WHERE is_active = TRUE')
+            
+            reminders = []
+            for row in cursor.fetchall():
+                reminders.append({
+                    'id': row[0],
+                    'user_id': row[1],
+                    'exam_keys': json.loads(row[2]),
+                    'days_of_week': json.loads(row[3]),
+                    'specific_times': json.loads(row[4]),
+                    'specific_dates': json.loads(row[5]),
+                    'start_date': row[6],
+                    'end_date': row[7],
+                    'is_active': bool(row[8]),
+                    'reminder_type': 'exam'
+                })
+            
+            return reminders
+
+    def log_reminder_sent(self, user_id: int, reminder_id: int, reminder_type: str):
+        """ثبت لاگ ارسال ریمایندر"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO reminder_logs (user_id, reminder_id, reminder_type)
+                    VALUES (?, ?, ?)
+                ''', (user_id, reminder_id, reminder_type))
+        except Exception as e:
+            logger.error(f"خطا در ثبت لاگ ریمایندر: {e}")
 
 # ایجاد instance اصلی
 reminder_db = ReminderDatabase()
