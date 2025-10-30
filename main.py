@@ -209,6 +209,15 @@ async def enable_auto_reminders_wrapper(message: types.Message):
 async def disable_auto_reminders_wrapper(message: types.Message):
     await message.answer("❌ یادآوری خودکار غیرفعال شد")
 
+@dp.message(Command("test_reminder"))
+async def test_reminder_wrapper(message: types.Message):
+    """تست سیستم ریمایندر"""
+    try:
+        await reminder_scheduler.send_test_reminder_now(message.from_user.id)
+        await message.answer("✅ ریمایندر تستی ارسال شد!")
+    except Exception as e:
+        await message.answer(f"❌ خطا در ارسال ریمایندر: {e}")
+        
 # --- هندلرهای state برای ریمایندر کنکور ---
 @dp.message(ExamReminderStates.selecting_exams)
 async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
