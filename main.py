@@ -34,7 +34,7 @@ _CACHE = {}
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGlpea9fx8")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-    
+
 # ثبت هندلرهای خطا
 register_error_handlers(dp)
 
@@ -112,6 +112,13 @@ async def back_main_wrapper(callback: types.CallbackQuery):
     from handlers.back_handlers import back_to_main_handler
     await back_to_main_handler(callback)
 
+# --- هندلر دیباگ (باید آخر باشه) ---
+@dp.message()
+async def debug_all_messages(message: types.Message):
+    """هندلر دیباگ برای لاگ تمام پیام‌ها"""
+    logger.info(f"🔔 پیام دریافت شد: user_id={message.from_user.id}, text='{message.text}'")
+    await message.answer("🤖 ربات فعال است! پیام شما: " + (message.text or "بدون متن"))
+
 # --- توابع اصلی ---
 async def safe_startup():
     """راه‌اندازی ایمن با Circuit Breaker"""
@@ -173,12 +180,10 @@ async def home_handler(request):
 async def railway_check_handler(request):
     """هندلر مخصوص Railway برای بررسی سلامت"""
     return web.Response(text="🚀 Bot Server is Running on Railway!")
-
-@dp.message()
-async def debug_all_messages(message: types.Message):
-    """هندلر دیباگ برای لاگ تمام پیام‌ها"""
-    logger.info(f"🔔 پیام دریافت شد: user_id={message.from_user.id}, text='{message.text}'")
-    await message.answer("🤖 ربات فعال است! پیام شما: " + message.text)
+    
+async def webhook_test_handler(request):
+    """هندلر تست وب‌هوک"""
+    return web.Response(text="Webhook endpoint is working!")
 
 def main():
     """تابع اصلی"""
@@ -186,9 +191,10 @@ def main():
     
     # اضافه کردن هندلر برای Railway
     app.router.add_get('/railway-check', railway_check_handler)
+    app.router.add_get('/webhook-test', webhook_test_handler)
     app.router.add_get('/', home_handler)
     
-    # 🔴 🔴 🔴 تصحیح این بخش - مشکل اصلی اینجا بود!
+    # ثبت هندلر وب‌هوک
     webhook_requests_handler = SimpleRequestHandler(
         dispatcher=dp,
         bot=bot
