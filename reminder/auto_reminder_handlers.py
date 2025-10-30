@@ -15,10 +15,6 @@ logger = logging.getLogger(__name__)
 async def user_auto_reminders_list(message: types.Message):
     """لیست ریمایندرهای خودکار برای کاربران عادی"""
     auto_reminders = auto_reminder_system.get_active_auto_reminders()
-    user_reminders = auto_reminder_system.get_user_auto_reminders(message.from_user.id)
-    
-    # ایجاد مپ برای وضعیت فعال بودن هر ریمایندر برای کاربر
-    user_reminders_map = {ur['auto_reminder_id']: ur['is_active'] for ur in user_reminders}
     
     if not auto_reminders:
         await message.answer(
@@ -32,7 +28,10 @@ async def user_auto_reminders_list(message: types.Message):
     message_text += "این ریمایندرها به صورت خودکار در زمان‌های مهم برای شما ارسال می‌شوند:\n\n"
     
     for reminder in auto_reminders:
-        user_status = user_reminders_map.get(reminder['id'], True)  # پیش‌فرض فعال
+        # 🔥 تغییر: همیشه وضعیت "فعال" نمایش داده می‌شه مگر کاربر صراحتاً غیرفعال کرده باشه
+        user_reminders = auto_reminder_system.get_user_auto_reminders(message.from_user.id)
+        user_status = not any(ur['auto_reminder_id'] == reminder['id'] and not ur['is_active'] for ur in user_reminders)
+        
         status_icon = "✅" if user_status else "❌"
         status_text = "فعال" if user_status else "غیرفعال"
         
