@@ -31,14 +31,21 @@ async def exam_callback_handler(callback: types.CallbackQuery):
     from utils.time_utils import get_current_persian_datetime, calculate_multiple_dates_countdown, format_exam_dates, create_datetime_with_tehran_timezone
     current_time = get_current_persian_datetime()
     
-    # تبدیل تاریخ‌های آزمون به datetime با تایم‌زون تهران
+    # تبدیل تاریخ‌های آزمون به datetime با تایم‌زون تهران و ساعت صحیح
     dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
     exam_dates = []
     
     for date_tuple in dates:
+        # استخراج ساعت از زمان آزمون
+        time_parts = exam["time"].split(":")
+        hour = int(time_parts[0])
+        minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+        
         if len(date_tuple) == 3:  # (year, month, day)
-            exam_dates.append(create_datetime_with_tehran_timezone(*date_tuple, 8, 0, 0))  # ساعت 8 صبح
-        else:  # (year, month, day, hour, minute)
+            exam_dates.append(create_datetime_with_tehran_timezone(
+                date_tuple[0], date_tuple[1], date_tuple[2], hour, minute, 0
+            ))
+        else:  # اگر ساعت هم در تاریخ باشد
             exam_dates.append(create_datetime_with_tehran_timezone(*date_tuple))
     
     # محاسبه زمان باقی‌مانده برای همه تاریخ‌ها
@@ -48,7 +55,8 @@ async def exam_callback_handler(callback: types.CallbackQuery):
     message = f"🕒 <b>زمان فعلی تهران:</b> {current_time['full_date']}\n"
     message += f"⏰ <b>ساعت:</b> {current_time['full_time']}\n\n"
     
-    message += f"📘 <b>{exam['name']}</b>\n\n"
+    message += f"📘 <b>{exam['name']}</b>\n"
+    message += f"🕐 <b>ساعت برگزاری:</b> {exam['time']} به وقت تهران\n\n"
     
     # نمایش تاریخ‌های برگزاری به شمسی با تایم‌زون تهران
     message += f"🗓️ <b>تاریخ‌های برگزاری:</b>\n"
@@ -56,12 +64,21 @@ async def exam_callback_handler(callback: types.CallbackQuery):
     message += "\n\n"
     
     # نمایش زمان باقی‌مانده برای هر تاریخ
-    message += f"⏳ <b>زمان باقی‌مانده:</b>\n"
-    for i, countdown in enumerate(countdowns, 1):
+    if len(countdowns) > 1:
+        message += f"⏳ <b>زمان باقی‌مانده:</b>\n"
+        for i, countdown in enumerate(countdowns, 1):
+            if countdown['status'] == 'passed':
+                message += f"{i}. ✅ برگزار شده\n"
+            else:
+                message += f"{i}. {countdown['countdown']} ({countdown['days_remaining']} روز)\n"
+    else:
+        # برای آزمون‌های تک‌روزه
+        countdown = countdowns[0]
         if countdown['status'] == 'passed':
-            message += f"{i}. ✅ برگزار شده\n"
+            message += f"⏳ <b>وضعیت:</b> ✅ برگزار شده\n"
         else:
-            message += f"{i}. {countdown['countdown']} ({countdown['days_remaining']} روز)\n"
+            message += f"⏳ <b>زمان باقی‌مانده:</b> {countdown['countdown']}\n"
+            message += f"📆 <b>تعداد روزهای باقی‌مانده:</b> {countdown['days_remaining']} روز\n"
     
     message += f"\n🎯 {random.choice(MOTIVATIONAL_MESSAGES)}"
     
