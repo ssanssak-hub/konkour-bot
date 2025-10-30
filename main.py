@@ -230,7 +230,18 @@ async def test_reminder_wrapper(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ خطا در ارسال ریمایندر: {e}")
 
-# --- هندلرهای ریمایندر خودکار برای ادمین ---
+# --- هندلرهای callback برای کاربران عادی ---
+@dp.callback_query(F.data.startswith("auto_toggle:"))
+async def auto_user_toggle_wrapper(callback: types.CallbackQuery):
+    from reminder.auto_reminder_handlers import handle_auto_reminder_user_callback
+    await handle_auto_reminder_user_callback(callback)
+
+@dp.callback_query(F.data == "auto_user:back")
+async def auto_user_back_wrapper(callback: types.CallbackQuery):
+    from reminder.auto_reminder_handlers import handle_auto_reminder_user_callback
+    await handle_auto_reminder_user_callback(callback)
+
+# --- هندلرهای مدیریت ریمایندر خودکار برای ادمین ---
 @dp.message(F.text == "🤖 مدیریت ریمایندرهای خودکار")
 async def auto_reminders_admin_wrapper(message: types.Message):
     from reminder.auto_reminder_admin import auto_reminders_admin_handler
@@ -245,6 +256,21 @@ async def list_auto_reminders_admin_wrapper(message: types.Message):
 async def add_auto_reminder_wrapper(message: types.Message, state: FSMContext):
     from reminder.auto_reminder_admin import start_add_auto_reminder
     await start_add_auto_reminder(message, state)
+
+@dp.message(F.text == "🗑️ حذف")
+async def delete_auto_reminder_wrapper(message: types.Message):
+    from reminder.auto_reminder_admin import delete_auto_reminder_handler
+    await delete_auto_reminder_handler(message)
+
+@dp.message(F.text == "🔔 فعال کردن")
+async def enable_auto_admin_wrapper(message: types.Message):
+    from reminder.auto_reminder_admin import toggle_auto_reminder_status
+    await toggle_auto_reminder_status(message)
+
+@dp.message(F.text == "🔕 غیرفعال کردن")
+async def disable_auto_admin_wrapper(message: types.Message):
+    from reminder.auto_reminder_admin import toggle_auto_reminder_status
+    await toggle_auto_reminder_status(message)
 
 # --- هندلر callback برای ریمایندرهای خودکار ---
 @dp.callback_query(F.data.startswith("auto_"))
