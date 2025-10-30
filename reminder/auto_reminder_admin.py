@@ -261,3 +261,85 @@ async def toggle_user_auto_reminder(message: types.Message):
         reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
         parse_mode="HTML"
     )
+
+async def handle_auto_reminder_callback(callback: types.CallbackQuery):
+    """پردازش کلیک‌های ریمایندر خودکار"""
+    data = callback.data
+    
+    if data == "auto_reminders:back":
+        await callback.message.delete()
+        await user_auto_reminders_list(callback.message)
+        return
+    
+    if data.startswith("auto_toggle:"):
+        reminder_id = int(data.split(":")[1])
+        
+        # تغییر وضعیت ریمایندر خودکار برای کاربر
+        try:
+            with reminder_db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # بررسی وجود رکورد
+                cursor.execute(
+                    'SELECT * FROM user_auto_reminders WHERE user_id = ? AND auto_reminder_id = ?',
+                    (callback.from_user.id, reminder_id)
+                )
+                existing = cursor.fetchone()
+                
+                if existing:
+                    # تغییر وضعیت
+                    new_status = not existing['is_active']
+                    cursor.execute(
+                        'UPDATE user_auto_reminders SET is_active = ? WHERE user_id = ? AND auto_reminder_id = ?',
+                        (new_status, callback.from_user.id, reminder_id)
+                    )
+                else:
+                    # افزودن جدید
+                    cursor.execute(
+                        'INSERT INTO user_auto_reminders (user_id, auto_reminder_id, is_active) VALUES (?, ?, ?)',
+                        (callback.from_user.id, reminder_id, True)
+                    )
+                    new_status = True
+                
+                conn.commit()
+                
+                status_text = "فعال" if new_status else "غیرفعال"
+                await callback.answer(f"✅ ریمایندر خودکار {status_text} شد")
+                
+                # بروزرسانی پیام
+                await callback.message.edit_reply_markup(
+                    reply_markup=await create_auto_reminders_keyboard(callback.from_user.id)
+                )
+                
+        except Exception as e:
+            logger.error(f"خطا در تغییر وضعیت ریمایندر خودکار: {e}")
+            await callback.answer("❌ خطا در تغییر وضعیت")
+
+async def create_auto_reminders_keyboard(user_id: int):
+    """ایجاد کیبورد ریمایندرهای خودکار"""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    
+    auto_reminders = get_all_auto_reminders()
+    user_reminders = reminder_db.get_user_auto_reminders(user_id)
+    user_reminders_map = {ur['auto_reminder_id']: ur['is_active'] for ur in user_reminders}
+    
+    keyboard = []
+    for reminder in auto_reminders:
+        if not reminder['is_active']:
+            continue
+            
+        user_status = user_reminders_map.get(reminder['id'], False)
+        status_text = "🔔 غیرفعال کن" if user_status else "✅ فعال کن"
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"{reminder['title']} - {status_text}",
+                callback_data=f"auto_toggle:{reminder['id']}"
+            )
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton(text="🔙 بازگشت", callback_data="auto_reminders:back")
+    ])
+    
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
