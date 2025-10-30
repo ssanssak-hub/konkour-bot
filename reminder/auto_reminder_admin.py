@@ -1,120 +1,28 @@
 """
-سیستم مدیریت ریمایندرهای خودکار برای ادمین
+مدیریت ریمایندرهای خودکار برای ادمین
 """
 import logging
 from aiogram import types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from typing import List, Dict, Any
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from reminder.reminder_database import reminder_db
-from reminder.reminder_keyboards import (
-    create_back_only_menu,
-    create_auto_reminders_admin_menu
-)
+from reminder.auto_reminder_system import auto_reminder_system
+from reminder.reminder_keyboards import create_auto_reminders_admin_menu, create_back_only_menu
+from exam_data import EXAMS_1405
 
 logger = logging.getLogger(__name__)
 
 # حالت‌های FSM برای مدیریت ریمایندرهای خودکار
 class AutoReminderAdminStates(StatesGroup):
-    adding_reminder = State()
+    adding_title = State()
+    adding_message = State()
+    adding_days = State()
+    selecting_exams = State()
+    confirmation = State()
     editing_reminder = State()
     deleting_reminder = State()
 
-# --- توابع دیتابیس برای ریمایندرهای خودکار ---
-def add_auto_reminder(title: str, message: str, days_before_exam: int, exam_keys: List[str], admin_id: int) -> int:
-    """افزودن ریمایندر خودکار جدید"""
-    try:
-        with reminder_db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO auto_reminders (title, message, days_before_exam, exam_keys, created_by_admin)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (title, message, days_before_exam, json.dumps(exam_keys), admin_id))
-            return cursor.lastrowid
-    except Exception as e:
-        logger.error(f"خطا در افزودن ریمایندر خودکار: {e}")
-        return None
-
-def get_all_auto_reminders() -> List[Dict[str, Any]]:
-    """دریافت همه ریمایندرهای خودکار"""
-    try:
-        with reminder_db.get_connection() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM auto_reminders ORDER BY days_before_exam DESC')
-            
-            reminders = []
-            for row in cursor.fetchall():
-                reminders.append({
-                    'id': row['id'],
-                    'title': row['title'],
-                    'message': row['message'],
-                    'days_before_exam': row['days_before_exam'],
-                    'exam_keys': json.loads(row['exam_keys']),
-                    'is_active': bool(row['is_active']),
-                    'created_by_admin': row['created_by_admin'],
-                    'created_at': row['created_at']
-                })
-            return reminders
-    except Exception as e:
-        logger.error(f"خطا در دریافت ریمایندرهای خودکار: {e}")
-        return []
-
-def update_auto_reminder(reminder_id: int, title: str = None, message: str = None, 
-                        days_before_exam: int = None, exam_keys: List[str] = None, 
-                        is_active: bool = None) -> bool:
-    """ویرایش ریمایندر خودکار"""
-    try:
-        with reminder_db.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            update_fields = []
-            params = []
-            
-            if title is not None:
-                update_fields.append("title = ?")
-                params.append(title)
-            if message is not None:
-                update_fields.append("message = ?")
-                params.append(message)
-            if days_before_exam is not None:
-                update_fields.append("days_before_exam = ?")
-                params.append(days_before_exam)
-            if exam_keys is not None:
-                update_fields.append("exam_keys = ?")
-                params.append(json.dumps(exam_keys))
-            if is_active is not None:
-                update_fields.append("is_active = ?")
-                params.append(is_active)
-            
-            if not update_fields:
-                return False
-                
-            params.append(reminder_id)
-            cursor.execute(f'''
-                UPDATE auto_reminders 
-                SET {', '.join(update_fields)} 
-                WHERE id = ?
-            ''', params)
-            
-            return cursor.rowcount > 0
-    except Exception as e:
-        logger.error(f"خطا در ویرایش ریمایندر خودکار: {e}")
-        return False
-
-def delete_auto_reminder(reminder_id: int) -> bool:
-    """حذف ریمایندر خودکار"""
-    try:
-        with reminder_db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM auto_reminders WHERE id = ?', (reminder_id,))
-            return cursor.rowcount > 0
-    except Exception as e:
-        logger.error(f"خطا در حذف ریمایندر خودکار: {e}")
-        return False
-
-# --- هندلرهای ادمین ---
 async def auto_reminders_admin_handler(message: types.Message):
     """منوی مدیریت ریمایندرهای خودکار برای ادمین"""
     from config import ADMIN_ID
@@ -123,7 +31,7 @@ async def auto_reminders_admin_handler(message: types.Message):
         await message.answer("❌ دسترسی denied!")
         return
         
-    auto_reminders = get_all_auto_reminders()
+    auto_reminders = auto_reminder_system.get_all_auto_reminders()
     active_count = len([r for r in auto_reminders if r['is_active']])
     
     await message.answer(
@@ -139,7 +47,7 @@ async def auto_reminders_admin_handler(message: types.Message):
 
 async def list_auto_reminders_admin(message: types.Message):
     """نمایش لیست ریمایندرهای خودکار برای ادمین"""
-    auto_reminders = get_all_auto_reminders()
+    auto_reminders = auto_reminder_system.get_all_auto_reminders()
     
     if not auto_reminders:
         await message.answer(
@@ -177,8 +85,7 @@ async def start_add_auto_reminder(message: types.Message, state: FSMContext):
         await message.answer("❌ دسترسی denied!")
         return
         
-    await state.set_state(AutoReminderAdminStates.adding_reminder)
-    await state.update_data(step="title")
+    await state.set_state(AutoReminderAdminStates.adding_title)
     
     await message.answer(
         "➕ <b>افزودن ریمایندر خودکار جدید</b>\n\n"
@@ -189,157 +96,354 @@ async def start_add_auto_reminder(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
-# --- هندلرهای کاربران عادی ---
-async def user_auto_reminders_list(message: types.Message):
-    """لیست ریمایندرهای خودکار برای کاربران عادی"""
-    auto_reminders = get_all_auto_reminders()
-    user_reminders = reminder_db.get_user_auto_reminders(message.from_user.id)
+async def process_add_title(message: types.Message, state: FSMContext):
+    """پردازش عنوان ریمایندر خودکار"""
+    if message.text == "🔙 بازگشت":
+        await state.clear()
+        await auto_reminders_admin_handler(message)
+        return
     
-    # ایجاد مپ برای وضعیت فعال بودن هر ریمایندر برای کاربر
-    user_reminders_map = {ur['auto_reminder_id']: ur['is_active'] for ur in user_reminders}
-    
-    message_text = "🤖 <b>ریمایندرهای خودکار</b>\n\n"
-    message_text += "این ریمایندرها به صورت خودکار در زمان‌های مهم فعال می‌شوند:\n\n"
-    
-    for reminder in auto_reminders:
-        if not reminder['is_active']:
-            continue
-            
-        user_status = user_reminders_map.get(reminder['id'], False)
-        status_icon = "✅" if user_status else "❌"
-        status_text = "فعال" if user_status else "غیرفعال"
-        
-        message_text += (
-            f"{status_icon} <b>{reminder['title']}</b>\n"
-            f"⏰ {reminder['days_before_exam']} روز قبل از کنکور\n"
-            f"📝 {reminder['message']}\n"
-            f"🔔 وضعیت: {status_text}\n"
-            f"────────────────────\n\n"
-        )
+    await state.update_data(title=message.text)
+    await state.set_state(AutoReminderAdminStates.adding_message)
     
     await message.answer(
-        message_text,
-        reply_markup=create_auto_reminders_menu(),
+        "📄 <b>متن ریمایندر</b>\n\n"
+        "لطفاً متن کامل ریمایندر را وارد کنید:\n\n"
+        "💡 <i>این متن برای کاربران ارسال خواهد شد</i>\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
+        reply_markup=create_back_only_menu(),
         parse_mode="HTML"
     )
 
-async def toggle_user_auto_reminder(message: types.Message):
-    """تغییر وضعیت ریمایندر خودکار برای کاربر"""
-    auto_reminders = get_all_auto_reminders()
-    active_reminders = [r for r in auto_reminders if r['is_active']]
-    
-    if not active_reminders:
+async def process_add_message(message: types.Message, state: FSMContext):
+    """پردازش متن ریمایندر خودکار"""
+    if message.text == "🔙 بازگشت":
+        await state.set_state(AutoReminderAdminStates.adding_title)
         await message.answer(
-            "❌ هیچ ریمایندر خودکار فعالی موجود نیست",
-            reply_markup=create_auto_reminders_menu()
+            "لطفاً عنوان ریمایندر را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+        return
+    
+    await state.update_data(message=message.text)
+    await state.set_state(AutoReminderAdminStates.adding_days)
+    
+    await message.answer(
+        "⏰ <b>تعداد روزهای قبل از کنکور</b>\n\n"
+        "لطفاً تعداد روزهای قبل از کنکور را وارد کنید:\n\n"
+        "💡 <i>مثال: برای یادآوری ۷ روز قبل، عدد ۷ را وارد کنید</i>\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
+        reply_markup=create_back_only_menu(),
+        parse_mode="HTML"
+    )
+
+# ادامۀ توابع برای ادمین...
+async def process_add_days(message: types.Message, state: FSMContext):
+    """پردازش تعداد روزهای قبل از کنکور"""
+    if message.text == "🔙 بازگشت":
+        await state.set_state(AutoReminderAdminStates.adding_message)
+        await message.answer(
+            "لطفاً متن ریمایندر را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+        return
+    
+    try:
+        days = int(message.text)
+        if days < 1 or days > 365:
+            await message.answer(
+                "❌ تعداد روز نامعتبر!\n\n"
+                "لطفاً عددی بین ۱ تا ۳۶۵ وارد کنید:",
+                reply_markup=create_back_only_menu()
+            )
+            return
+        
+        await state.update_data(days_before_exam=days, selected_exams=[])
+        await state.set_state(AutoReminderAdminStates.selecting_exams)
+        
+        await message.answer(
+            "🎯 <b>انتخاب کنکورها</b>\n\n"
+            "لطفاً کنکورهای مورد نظر را انتخاب کنید:\n\n"
+            "💡 <i>این ریمایندر برای کنکورهای انتخاب شده ارسال خواهد شد</i>",
+            reply_markup=create_exam_selection_menu(),  # از reminder_keyboards استفاده کن
+            parse_mode="HTML"
+        )
+        
+    except ValueError:
+        await message.answer(
+            "❌ لطفاً یک عدد معتبر وارد کنید!",
+            reply_markup=create_back_only_menu()
+        )
+
+async def process_admin_exam_selection(message: types.Message, state: FSMContext):
+    """پردازش انتخاب کنکورها توسط ادمین"""
+    text = message.text
+    
+    if text == "✅ انتخاب همه":
+        await state.update_data(selected_exams=list(EXAMS_1405.keys()))
+        await message.answer("✅ همه کنکورها انتخاب شدند")
+        
+    elif text == "➡️ ادامه":
+        state_data = await state.get_data()
+        selected_exams = state_data.get('selected_exams', [])
+        
+        if not selected_exams:
+            await message.answer("❌ لطفاً حداقل یک کنکور انتخاب کنید")
+            return
+        
+        await state.set_state(AutoReminderAdminStates.confirmation)
+        
+        # نمایش خلاصه
+        summary = await create_auto_reminder_summary(state_data)
+        
+        await message.answer(
+            f"✅ <b>خلاصه ریمایندر خودکار</b>\n\n{summary}\n\n"
+            "آیا مایل به ایجاد این ریمایندر هستید؟",
+            reply_markup=create_confirmation_menu(),  # از reminder_keyboards استفاده کن
+            parse_mode="HTML"
+        )
+    
+    elif text == "🔙 بازگشت":
+        await state.set_state(AutoReminderAdminStates.adding_days)
+        await message.answer(
+            "لطفاً تعداد روزهای قبل از کنکور را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+    
+    else:
+        exam_map = {
+            "🎯 علوم انسانی": "علوم_انسانی",
+            "📐 ریاضی و فنی": "ریاضی_فنی", 
+            "🔬 علوم تجربی": "علوم_تجربی",
+            "🎨 هنر": "هنر",
+            "🔠 زبان خارجه": "زبان_خارجه",
+            "👨‍🏫 فرهنگیان": "فرهنگیان"
+        }
+        
+        if text in exam_map:
+            state_data = await state.get_data()
+            selected_exams = state_data.get('selected_exams', [])
+            exam_key = exam_map[text]
+            
+            if exam_key in selected_exams:
+                selected_exams.remove(exam_key)
+                await message.answer(f"❌ {text} حذف شد")
+            else:
+                selected_exams.append(exam_key)
+                await message.answer(f"✅ {text} اضافه شد")
+            
+            await state.update_data(selected_exams=selected_exams)
+
+async def process_admin_confirmation(message: types.Message, state: FSMContext):
+    """پردازش تأیید نهایی ریمایندر خودکار"""
+    text = message.text
+    
+    if text == "✅ تأیید و ایجاد":
+        state_data = await state.get_data()
+        
+        try:
+            # ذخیره در دیتابیس
+            reminder_id = auto_reminder_system.add_auto_reminder(
+                title=state_data['title'],
+                message=state_data['message'],
+                days_before_exam=state_data['days_before_exam'],
+                exam_keys=state_data['selected_exams'],
+                admin_id=message.from_user.id,
+                is_global=True
+            )
+            
+            await message.answer(
+                "🎉 <b>ریمایندر خودکار با موفقیت ایجاد شد!</b>\n\n"
+                f"📝 کد ریمایندر: <code>{reminder_id}</code>\n"
+                f"📝 عنوان: {state_data['title']}\n"
+                f"⏰ ارسال: {state_data['days_before_exam']} روز قبل از کنکور\n\n"
+                "این ریمایندر برای همه کاربران فعال خواهد بود.",
+                reply_markup=create_auto_reminders_admin_menu(),
+                parse_mode="HTML"
+            )
+            
+            logger.info(f"✅ ریمایندر خودکار {reminder_id} توسط ادمین {message.from_user.id} ایجاد شد")
+            
+        except Exception as e:
+            await message.answer(
+                "❌ <b>خطا در ایجاد ریمایندر!</b>\n\n"
+                "لطفاً مجدداً تلاش کنید.",
+                reply_markup=create_auto_reminders_admin_menu(),
+                parse_mode="HTML"
+            )
+            logger.error(f"خطا در ایجاد ریمایندر خودکار: {e}")
+        
+        await state.clear()
+    
+    elif text == "✏️ ویرایش":
+        await state.set_state(AutoReminderAdminStates.adding_title)
+        await message.answer(
+            "لطفاً عنوان ریمایندر را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+    
+    elif text == "❌ لغو":
+        await message.answer(
+            "❌ <b>ایجاد ریمایندر لغو شد</b>",
+            reply_markup=create_auto_reminders_admin_menu(),
+            parse_mode="HTML"
+        )
+        await state.clear()
+
+async def delete_auto_reminder_handler(message: types.Message):
+    """حذف ریمایندر خودکار"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+        
+    auto_reminders = auto_reminder_system.get_all_auto_reminders()
+    
+    if not auto_reminders:
+        await message.answer(
+            "📭 <b>هیچ ریمایندر خودکاری برای حذف وجود ندارد</b>",
+            reply_markup=create_auto_reminders_admin_menu(),
+            parse_mode="HTML"
         )
         return
     
     # ایجاد کیبورد برای انتخاب ریمایندر
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    
     keyboard = []
-    for reminder in active_reminders:
-        user_reminders = reminder_db.get_user_auto_reminders(message.from_user.id)
-        user_status = any(ur['auto_reminder_id'] == reminder['id'] and ur['is_active'] for ur in user_reminders)
-        status_text = "🔔 غیرفعال کن" if user_status else "✅ فعال کن"
-        
+    for reminder in auto_reminders:
         keyboard.append([
             InlineKeyboardButton(
-                text=f"{reminder['title']} - {status_text}",
-                callback_data=f"auto_toggle:{reminder['id']}"
+                text=f"🗑️ {reminder['id']} - {reminder['title']}",
+                callback_data=f"auto_admin_delete:{reminder['id']}"
             )
         ])
     
     keyboard.append([
-        InlineKeyboardButton(text="🔙 بازگشت", callback_data="auto_reminders:back")
+        InlineKeyboardButton(text="🔙 بازگشت", callback_data="auto_admin:back")
     ])
     
     await message.answer(
-        "🔔 <b>مدیریت ریمایندرهای خودکار</b>\n\n"
+        "🗑️ <b>حذف ریمایندر خودکار</b>\n\n"
+        "⚠️ <b>توجه: این عمل غیرقابل بازگشت است!</b>\n\n"
+        "لطفاً ریمایندر مورد نظر را برای حذف انتخاب کنید:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
+        parse_mode="HTML"
+    )
+
+async def toggle_auto_reminder_status(message: types.Message):
+    """تغییر وضعیت فعال/غیرفعال ریمایندر خودکار"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+        
+    auto_reminders = auto_reminder_system.get_all_auto_reminders()
+    
+    if not auto_reminders:
+        await message.answer(
+            "📭 <b>هیچ ریمایندر خودکاری وجود ندارد</b>",
+            reply_markup=create_auto_reminders_admin_menu(),
+            parse_mode="HTML"
+        )
+        return
+    
+    # ایجاد کیبورد برای انتخاب ریمایندر
+    keyboard = []
+    for reminder in auto_reminders:
+        status_text = "🔕 غیرفعال کن" if reminder['is_active'] else "🔔 فعال کن"
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"{reminder['title']} - {status_text}",
+                callback_data=f"auto_admin_toggle:{reminder['id']}"
+            )
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton(text="🔙 بازگشت", callback_data="auto_admin:back")
+    ])
+    
+    await message.answer(
+        "🔔 <b>تغییر وضعیت ریمایندرهای خودکار</b>\n\n"
         "لطفاً ریمایندر مورد نظر را برای تغییر وضعیت انتخاب کنید:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
         parse_mode="HTML"
     )
 
-async def handle_auto_reminder_callback(callback: types.CallbackQuery):
-    """پردازش کلیک‌های ریمایندر خودکار"""
-    data = callback.data
+async def handle_auto_reminder_admin_callback(callback: types.CallbackQuery):
+    """پردازش کلیک‌های مدیریت ریمایندر خودکار برای ادمین"""
+    from config import ADMIN_ID
     
-    if data == "auto_reminders:back":
-        await callback.message.delete()
-        await user_auto_reminders_list(callback.message)
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("❌ دسترسی denied!")
         return
     
-    if data.startswith("auto_toggle:"):
+    data = callback.data
+    
+    if data == "auto_admin:back":
+        await callback.message.delete()
+        await auto_reminders_admin_handler(callback.message)
+        return
+    
+    if data.startswith("auto_admin_delete:"):
         reminder_id = int(data.split(":")[1])
         
-        # تغییر وضعیت ریمایندر خودکار برای کاربر
-        try:
-            with reminder_db.get_connection() as conn:
-                cursor = conn.cursor()
-                
-                # بررسی وجود رکورد
-                cursor.execute(
-                    'SELECT * FROM user_auto_reminders WHERE user_id = ? AND auto_reminder_id = ?',
-                    (callback.from_user.id, reminder_id)
-                )
-                existing = cursor.fetchone()
-                
-                if existing:
-                    # تغییر وضعیت
-                    new_status = not existing['is_active']
-                    cursor.execute(
-                        'UPDATE user_auto_reminders SET is_active = ? WHERE user_id = ? AND auto_reminder_id = ?',
-                        (new_status, callback.from_user.id, reminder_id)
-                    )
-                else:
-                    # افزودن جدید
-                    cursor.execute(
-                        'INSERT INTO user_auto_reminders (user_id, auto_reminder_id, is_active) VALUES (?, ?, ?)',
-                        (callback.from_user.id, reminder_id, True)
-                    )
-                    new_status = True
-                
-                conn.commit()
-                
-                status_text = "فعال" if new_status else "غیرفعال"
-                await callback.answer(f"✅ ریمایندر خودکار {status_text} شد")
-                
-                # بروزرسانی پیام
-                await callback.message.edit_reply_markup(
-                    reply_markup=await create_auto_reminders_keyboard(callback.from_user.id)
-                )
-                
-        except Exception as e:
-            logger.error(f"خطا در تغییر وضعیت ریمایندر خودکار: {e}")
+        success = auto_reminder_system.delete_auto_reminder(reminder_id)
+        
+        if success:
+            await callback.answer("✅ ریمایندر حذف شد")
+            await callback.message.edit_text(
+                f"✅ <b>ریمایندر خودکار حذف شد</b>\n\n"
+                f"کد ریمایندر: {reminder_id}\n\n"
+                f"برای بازگشت به منوی مدیریت از دکمه زیر استفاده کنید:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="🔙 بازگشت به مدیریت", callback_data="auto_admin:back")
+                ]]),
+                parse_mode="HTML"
+            )
+        else:
+            await callback.answer("❌ خطا در حذف ریمایندر")
+    
+    elif data.startswith("auto_admin_toggle:"):
+        reminder_id = int(data.split(":")[1])
+        
+        # دریافت وضعیت فعلی
+        auto_reminders = auto_reminder_system.get_all_auto_reminders()
+        current_reminder = next((r for r in auto_reminders if r['id'] == reminder_id), None)
+        
+        if not current_reminder:
+            await callback.answer("❌ ریمایندر پیدا نشد")
+            return
+        
+        new_status = not current_reminder['is_active']
+        success = auto_reminder_system.update_auto_reminder(reminder_id, is_active=new_status)
+        
+        if success:
+            status_text = "فعال" if new_status else "غیرفعال"
+            await callback.answer(f"✅ ریمایندر {status_text} شد")
+            await callback.message.edit_text(
+                f"✅ <b>وضعیت ریمایندر تغییر کرد</b>\n\n"
+                f"کد ریمایندر: {reminder_id}\n"
+                f"وضعیت جدید: {status_text}\n\n"
+                f"برای بازگشت به منوی مدیریت از دکمه زیر استفاده کنید:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="🔙 بازگشت به مدیریت", callback_data="auto_admin:back")
+                ]]),
+                parse_mode="HTML"
+            )
+        else:
             await callback.answer("❌ خطا در تغییر وضعیت")
 
-async def create_auto_reminders_keyboard(user_id: int):
-    """ایجاد کیبورد ریمایندرهای خودکار"""
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+async def create_auto_reminder_summary(state_data: dict) -> str:
+    """ایجاد خلاصه ریمایندر خودکار"""
+    exam_names = [EXAMS_1405[key]['name'] for key in state_data.get('selected_exams', []) if key in EXAMS_1405]
     
-    auto_reminders = get_all_auto_reminders()
-    user_reminders = reminder_db.get_user_auto_reminders(user_id)
-    user_reminders_map = {ur['auto_reminder_id']: ur['is_active'] for ur in user_reminders}
+    summary = (
+        f"📝 <b>عنوان:</b> {state_data.get('title', 'تعیین نشده')}\n"
+        f"📄 <b>متن:</b> {state_data.get('message', 'تعیین نشده')}\n"
+        f"⏰ <b>ارسال:</b> {state_data.get('days_before_exam', 'تعیین نشده')} روز قبل از کنکور\n"
+        f"🎯 <b>کنکورها:</b> {', '.join(exam_names) if exam_names else 'تعیین نشده'}\n"
+        f"🌍 <b>دسترسی:</b> همه کاربران\n"
+    )
     
-    keyboard = []
-    for reminder in auto_reminders:
-        if not reminder['is_active']:
-            continue
-            
-        user_status = user_reminders_map.get(reminder['id'], False)
-        status_text = "🔔 غیرفعال کن" if user_status else "✅ فعال کن"
-        
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f"{reminder['title']} - {status_text}",
-                callback_data=f"auto_toggle:{reminder['id']}"
-            )
-        ])
-    
-    keyboard.append([
-        InlineKeyboardButton(text="🔙 بازگشت", callback_data="auto_reminders:back")
-    ])
-    
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    return summary
