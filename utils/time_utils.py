@@ -2,7 +2,7 @@
 ابزارهای کار با زمان و تاریخ
 """
 from datetime import datetime, timedelta
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, List
 
 def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     """
@@ -90,3 +90,61 @@ def format_study_time(minutes: int) -> str:
             return f"{days} روز و {hours} ساعت"
         else:
             return f"{days} روز"
+
+def get_persian_weekday(date: datetime) -> str:
+    """
+    تبدیل روز هفته به فارسی
+    """
+    weekdays = {
+        0: "دوشنبه",
+        1: "سه‌شنبه", 
+        2: "چهارشنبه",
+        3: "پنجشنبه",
+        4: "جمعه",
+        5: "شنبه",
+        6: "یکشنبه"
+    }
+    return weekdays[date.weekday()]
+
+def format_exam_dates(dates: List[datetime]) -> str:
+    """
+    فرمت‌بندی تاریخ‌های آزمون به صورت کامل
+    """
+    if not dates:
+        return "تاریخ تعیین نشده"
+    
+    result = []
+    for date in dates:
+        weekday = get_persian_weekday(date)
+        date_str = date.strftime("%Y/%m/%d")
+        time_str = date.strftime("%H:%M")
+        result.append(f"📅 {weekday} - {date_str} ساعت {time_str}")
+    
+    return "\n".join(result)
+
+def calculate_multiple_dates_countdown(dates: List[datetime]) -> List[Dict[str, Any]]:
+    """
+    محاسبه زمان باقی‌مانده برای چندین تاریخ
+    """
+    now = datetime.now()
+    result = []
+    
+    for date in dates:
+        if date <= now:
+            result.append({
+                'date': date,
+                'status': 'passed',
+                'countdown': '✅ برگزار شده',
+                'days_remaining': 0
+            })
+        else:
+            delta = date - now
+            countdown_text, days_remaining = format_time_remaining(date)
+            result.append({
+                'date': date,
+                'status': 'upcoming', 
+                'countdown': countdown_text,
+                'days_remaining': days_remaining
+            })
+    
+    return result
