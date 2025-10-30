@@ -35,6 +35,12 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "8381121739:AAFB2YBMomBh9xhoI3Qn0VVuGaGl
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+@dp.message()
+async def debug_all_messages(message: types.Message):
+    """هندلر دیباگ برای لاگ تمام پیام‌ها"""
+    logger.info(f"🔔 پیام دریافت شد: user_id={message.from_user.id}, text='{message.text}'")
+    await message.answer("🤖 ربات فعال است! پیام شما: " + message.text)
+    
 # ثبت هندلرهای خطا
 register_error_handlers(dp)
 
