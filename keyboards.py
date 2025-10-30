@@ -67,7 +67,7 @@ def exam_actions_menu(exam_key=None):
         InlineKeyboardButton(text="🎯 آزمون بعدی", callback_data="exams:next")
     ])
     keyboard.append([
-        InlineKeyboardButton(text="🔄 بروزرسانی همه", callback_data="exams:refresh_all")
+        InlineKeyboardButton(text="🔄 بروزرسانی همه", callback_data="exams:refresh")
     ])
     keyboard.append([
         InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
