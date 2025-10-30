@@ -181,19 +181,23 @@ async def stats_reminders_wrapper(message: types.Message):
 
 @dp.message(F.text == "🔔 فعال")
 async def activate_reminders_wrapper(message: types.Message):
-    await message.answer("🔄 به زودی: فعال کردن یادآوری‌ها")
+    from reminder.reminder_handlers import toggle_reminder_status
+    await toggle_reminder_status(message)
 
 @dp.message(F.text == "🔕 غیرفعال")
 async def deactivate_reminders_wrapper(message: types.Message):
-    await message.answer("🔄 به زودی: غیرفعال کردن یادآوری‌ها")
-
+    from reminder.reminder_handlers import toggle_reminder_status
+    await toggle_reminder_status(message)
+    
 @dp.message(F.text == "✏️ ویرایش")
 async def edit_reminders_wrapper(message: types.Message):
-    await message.answer("🔄 به زودی: ویرایش یادآوری‌ها")
+    from reminder.reminder_handlers import edit_reminder_handler
+    await edit_reminder_handler(message)
 
 @dp.message(F.text == "🗑️ حذف")
 async def delete_reminders_wrapper(message: types.Message):
-    await message.answer("🔄 به زودی: حذف یادآوری‌ها")
+    from reminder.reminder_handlers import delete_reminder_handler
+    await delete_reminder_handler(message)
 
 # --- هندلرهای یادآوری خودکار ---
 @dp.message(F.text == "📋 لیست یادآوری‌ها")
