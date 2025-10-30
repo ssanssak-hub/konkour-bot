@@ -113,6 +113,30 @@ def create_auto_reminders_menu():
         resize_keyboard=True
     )
 
+def create_auto_reminders_admin_menu():
+    """منوی مدیریت ریمایندرهای خودکار برای ادمین"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📋 لیست ریمایندرها")],
+            [KeyboardButton(text="➕ افزودن جدید")],
+            [KeyboardButton(text="✏️ ویرایش"), KeyboardButton(text="🗑️ حذف")],
+            [KeyboardButton(text="✅ فعال کردن"), KeyboardButton(text="❌ غیرفعال کردن")],
+            [KeyboardButton(text="🔙 بازگشت")]
+        ],
+        resize_keyboard=True
+    )
+
+def create_auto_reminders_user_menu():
+    """منوی ریمایندرهای خودکار برای کاربران عادی"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📋 لیست ریمایندرها")],
+            [KeyboardButton(text="✅ فعال کردن"), KeyboardButton(text="❌ غیرفعال کردن")],
+            [KeyboardButton(text="🔙 بازگشت")]
+        ],
+        resize_keyboard=True
+    )
+
 def create_back_only_menu():
     """فقط دکمه بازگشت"""
     return ReplyKeyboardMarkup(
