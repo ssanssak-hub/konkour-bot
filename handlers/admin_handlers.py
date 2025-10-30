@@ -11,6 +11,23 @@ from database import Database
 logger = logging.getLogger(__name__)
 db = Database()
 
+async def admin_callback_handler(callback: types.CallbackQuery, state: FSMContext):
+    """هندلر اصلی برای callback_dataهای admin"""
+    data = callback.data
+    
+    if data == "admin:channels":
+        await admin_channels_handler(callback)
+    elif data == "admin:add_channel":
+        await admin_add_channel_handler(callback, state)
+    elif data == "admin:back":
+        await callback.message.edit_text(
+            "👑 <b>پنل مدیریت</b>",
+            reply_markup=admin_menu(),
+            parse_mode="HTML"
+        )
+    else:
+        await callback.answer("⚠️ این قابلیت به زودی اضافه می‌شود")
+
 async def admin_channels_handler(callback: types.CallbackQuery):
     """مدیریت کانال‌های اجباری"""
     channels = db.get_mandatory_channels()
