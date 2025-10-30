@@ -60,41 +60,44 @@ class ReminderScheduler:
         
     async def check_exam_reminders(self, now: datetime, current_time_str: str, current_weekday: int):
         """چک ریمایندرهای کنکور"""
-        # تبدیل زمان به فرمت فارسی برای تطابق
-        persian_times_map = {
-            "08:00": "۰۸:۰۰", "10:00": "۱۰:۰۰", "12:00": "۱۲:۰۰", "14:00": "۱۴:۰۰",
-            "16:00": "۱۶:۰۰", "18:00": "۱۸:۰۰", "20:00": "۲۰:۰۰", "22:00": "۲۲:۰۰"
-        }
-        
-        current_time_persian = persian_times_map.get(current_time_str, current_time_str)
-        
-        # دریافت همه ریمایندرهای فعال
-        # TODO: این تابع رو در دیتابیس اضافه کنیم
-        all_reminders = []  # برای تست
-        
-        for reminder in all_reminders:
-            try:
-                # چک فعال بودن
-                if not reminder['is_active']:
-                    continue
+        try:
+            # دریافت همه ریمایندرهای فعال کنکور
+            all_reminders = []
+            # TODO: این تابع رو در دیتابیس اضافه کنیم
+            # all_reminders = reminder_db.get_active_exam_reminders()
+            
+            for reminder in all_reminders:
+                try:
+                    # چک فعال بودن
+                    if not reminder['is_active']:
+                        continue
+                        
+                    # چک روز هفته
+                    if current_weekday not in reminder['days_of_week']:
+                        continue
+                        
+                    # چک ساعت (تبدیل فرمت زمان)
+                    persian_times_map = {
+                        "08:00": "۸:۰۰", "10:00": "۱۰:۰۰", "12:00": "۱۲:۰۰", "14:00": "۱۴:۰۰",
+                        "16:00": "۱۶:۰۰", "18:00": "۱۸:۰۰", "20:00": "۲۰:۰۰", "22:00": "۲۲:۰۰"
+                    }
                     
-                # چک روز هفته
-                if current_weekday not in reminder['days_of_week']:
-                    continue
+                    current_time_persian = persian_times_map.get(current_time_str, current_time_str)
+                    if current_time_persian not in reminder['specific_times']:
+                        continue
+                        
+                    # چک تاریخ (شروع و پایان)
+                    if not self.is_date_in_range(now, reminder['start_date'], reminder['end_date']):
+                        continue
+                        
+                    # ارسال ریمایندر
+                    await self.send_exam_reminder(reminder)
                     
-                # چک ساعت
-                if current_time_persian not in reminder['specific_times']:
-                    continue
+                except Exception as e:
+                    logger.error(f"خطا در پردازش ریمایندر {reminder['id']}: {e}")
                     
-                # چک تاریخ (شروع و پایان)
-                if not self.is_date_in_range(now, reminder['start_date'], reminder['end_date']):
-                    continue
-                    
-                # ارسال ریمایندر
-                await self.send_exam_reminder(reminder)
-                
-            except Exception as e:
-                logger.error(f"خطا در پردازش ریمایندر {reminder['id']}: {e}")
+        except Exception as e:
+            logger.error(f"خطا در چک ریمایندرهای کنکور: {e}")
                 
     async def check_personal_reminders(self, now: datetime, current_time_str: str, current_weekday: int):
         """چک ریمایندرهای شخصی"""
