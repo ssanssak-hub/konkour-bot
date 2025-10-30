@@ -213,10 +213,28 @@ class ReminderScheduler:
         # اطلاعات زمان فعلی
         current_time = get_current_persian_datetime()
         
-        # محاسبه زمان باقی‌مانده
-        now = datetime.now(TEHRAN_TIMEZONE)
+        # محاسبه زمان باقی‌مانده - حل مشکل تایم‌زون
+        now = datetime.now(TEHRAN_TIMEZONE)  # مطمئن شو now هم aware هست
+        
         dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
-        exam_dates = [datetime(*d) for d in dates]
+        exam_dates = []
+        
+        for date_tuple in dates:
+            # ایجاد datetime با تایم‌زون تهران
+            if len(date_tuple) == 3:  # (year, month, day)
+                # استخراج ساعت از زمان آزمون
+                time_parts = exam["time"].split(":")
+                hour = int(time_parts[0])
+                minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+                
+                exam_date = datetime(date_tuple[0], date_tuple[1], date_tuple[2], hour, minute, 0)
+                exam_date = TEHRAN_TIMEZONE.localize(exam_date)  # تبدیل به aware
+            else:
+                # اگر ساعت هم در تاریخ باشد
+                exam_date = datetime(*date_tuple)
+                exam_date = TEHRAN_TIMEZONE.localize(exam_date)  # تبدیل به aware
+                
+            exam_dates.append(exam_date)
         
         future_dates = [d for d in exam_dates if d > now]
         
@@ -239,7 +257,9 @@ class ReminderScheduler:
             f"💪 <b>موفق باشید!</b>"
         )
         
-        return message
+        return message    
+    
+
 
     async def send_test_reminder_now(self, user_id: int):
         """ارسال ریمایندر تستی فوری"""
