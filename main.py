@@ -260,6 +260,36 @@ async def personal_reminder_message_wrapper(message: types.Message, state: FSMCo
     from reminder.reminder_handlers import process_personal_message
     await process_personal_message(message, state)
 
+@dp.message(PersonalReminderStates.selecting_repetition)
+async def personal_reminder_repetition_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_repetition_selection
+    await process_repetition_selection(message, state)
+
+@dp.message(PersonalReminderStates.selecting_days)
+async def personal_reminder_days_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_personal_days_selection
+    await process_personal_days_selection(message, state)
+
+@dp.message(PersonalReminderStates.entering_time)
+async def personal_reminder_time_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_personal_time_input
+    await process_personal_time_input(message, state)
+
+@dp.message(PersonalReminderStates.entering_start_date)
+async def personal_reminder_start_date_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_personal_start_date
+    await process_personal_start_date(message, state)
+
+@dp.message(PersonalReminderStates.confirmation)
+async def personal_reminder_confirmation_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_personal_confirmation
+    await process_personal_confirmation(message, state)
+
+@dp.message(PersonalReminderStates.entering_custom_interval)
+async def personal_reminder_custom_interval_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_personal_custom_interval
+    await process_personal_custom_interval(message, state)
+
 # --- هندلر عمومی بازگشت ---
 @dp.message(F.text == "🔙 بازگشت")
 async def back_handler(message: types.Message, state: FSMContext):
