@@ -389,7 +389,7 @@ async def process_confirmation(message: types.Message, state: FSMContext):
             await message.answer(
                 "🎉 <b>یادآوری کنکور با موفقیت ایجاد شد!</b>\n\n"
                 f"📝 کد یادآوری: <code>{reminder_id}</code>\n"
-                f"⏰ اولین یادآوری: فردا ساعت {state_data['specific_time']}\n\n"
+                f"⏰ اولین یادآوری: امروز ساعت {state_data['specific_time']}\n\n"
                 "می‌توانید یادآوری‌های خود را از بخش مدیریت مشاهده کنید.",
                 reply_markup=create_reminder_main_menu(),
                 parse_mode="HTML"
