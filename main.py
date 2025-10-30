@@ -116,29 +116,34 @@ async def back_main_wrapper(callback: types.CallbackQuery):
 async def safe_startup():
     """راه‌اندازی ایمن با Circuit Breaker"""
     try:
-        # ابتدا وب‌هوک قبلی رو حذف کن
-        await bot.delete_webhook()
-        logger.info("🗑️ وب‌هوک قبلی حذف شد")
+        logger.info("🚀 شروع راه‌اندازی ربات...")
         
-        # ساخت آدرس وب‌هوک
+        # ۱. حذف وب‌هوک قبلی و پاکسازی پیام‌های pending
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("🗑️ وب‌هوک قبلی حذف شد + پیام‌های pending پاک شد")
+        
+        # ۲. ساخت آدرس وب‌هوک
         webhook_url = "https://8381121739.railway.app/webhook"
+        logger.info(f"🔗 آدرس وب‌هوک: {webhook_url}")
         
-        # تنظیم وب‌هوک
+        # ۳. تنظیم وب‌هوک جدید
         await bot.set_webhook(webhook_url)
-        logger.info(f"🎯 وب‌هوک تنظیم شد: {webhook_url}")
+        logger.info(f"✅ وب‌هوک تنظیم شد: {webhook_url}")
         
-        # بررسی وضعیت
+        # ۴. بررسی وضعیت وب‌هوک
         webhook_info = await bot.get_webhook_info()
         logger.info(f"📡 وضعیت وب‌هوک: {webhook_info}")
         
-        # شروع مانیتورینگ سلامت
+        # ۵. شروع مانیتورینگ سلامت
         asyncio.create_task(health_monitor.periodic_health_check())
         logger.info("✅ مانیتور سلامت فعال شد")
+        
+        logger.info("🎉 راه‌اندازی با موفقیت انجام شد")
         
     except Exception as e:
         logger.critical(f"❌ راه‌اندازی ناموفق: {e}")
         raise
-
+        
 async def safe_shutdown():
     """خاموشی ایمن"""
     try:
