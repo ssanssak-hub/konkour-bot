@@ -643,6 +643,63 @@ async def process_personal_days_selection(message: types.Message, state: FSMCont
                 f"برای ادامه روی '➡️ ادامه' کلیک کنید"
             )
 
+async def process_personal_time_input(message: types.Message, state: FSMContext):
+    """پردازش ورود ساعت برای ریمایندر شخصی"""
+    if message.text == "🔙 بازگشت":
+        state_data = await state.get_data()
+        repetition_type = state_data.get('repetition_type')
+        
+        if repetition_type == "weekly":
+            await state.set_state(PersonalReminderStates.selecting_days)
+            await message.answer(
+                "🗓️ انتخاب روزهای هفته:",
+                reply_markup=create_days_selection_menu()
+            )
+        else:
+            await state.set_state(PersonalReminderStates.selecting_repetition)
+            await message.answer(
+                "لطفاً نوع تکرار را انتخاب کنید:",
+                reply_mekup=create_repetition_type_menu()
+            )
+        return
+    
+    time_str = message.text
+    
+    # تبدیل اعداد فارسی به انگلیسی
+    persian_to_english = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+    time_str = time_str.translate(persian_to_english)
+    
+    # اعتبارسنجی فرمت زمان
+    import re
+    time_pattern = re.compile(r'^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$')
+    
+    if not time_pattern.match(time_str):
+        await message.answer(
+            "❌ <b>فرمت زمان نامعتبر!</b>\n\n"
+            "لطفاً ساعت را به فرمت HH:MM وارد کنید:\n"
+            "• مثال: <code>08:30</code>\n"
+            "• مثال: <code>14:45</code>\n\n"
+            "لطفاً مجدداً وارد کنید:",
+            parse_mode="HTML",
+            reply_markup=create_time_input_menu()
+        )
+        return
+    
+    await state.update_data(specific_time=time_str)
+    await state.set_state(PersonalReminderStates.entering_start_date)
+    
+    current_date = get_current_persian_datetime()
+    await message.answer(
+        "📅 <b>تاریخ شروع یادآوری</b>\n\n"
+        f"📆 تاریخ امروز: {current_date['full_date']}\n\n"
+        "لطفاً تاریخ شروع را به فرمت YYYY/MM/DD وارد کنید:\n"
+        "• مثال: <code>1404/08/15</code>\n\n"
+        "یا برای شروع از امروز: 📅 امروز\n"
+        "یا برای بازگشت: 🔙 بازگشت",
+        reply_markup=create_date_input_menu(),
+        parse_mode="HTML"
+    )
+
 
 # --- هندلرهای یادآوری خودکار ---
 async def start_auto_reminders(message: types.Message):
