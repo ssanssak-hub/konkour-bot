@@ -1,8 +1,8 @@
 """
-هندلرهای سیستم ریمایندر
+هندلرهای سیستم ریمایندر - نسخه کامل و پیشرفته
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from aiogram import F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -21,7 +21,9 @@ from reminder.reminder_keyboards import (
     remove_menu
 )
 from reminder.reminder_database import reminder_db
+from reminder.reminder_utils import validator, formatter, analyzer
 from utils.time_utils import get_current_persian_datetime
+from exam_data import EXAMS_1405
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,7 @@ class PersonalReminderStates(StatesGroup):
     entering_time = State()
     entering_start_date = State()
     entering_end_date = State()
+    entering_custom_interval = State()
     confirmation = State()
 
 # حالت‌های FSM برای مدیریت
@@ -55,8 +58,13 @@ class ManagementStates(StatesGroup):
 # --- هندلرهای اصلی ریمایندر ---
 async def reminder_main_handler(message: types.Message):
     """منوی اصلی ریمایندر"""
+    user_stats = reminder_db.get_reminder_stats(message.from_user.id)
+    
     await message.answer(
         "📅 <b>سیستم مدیریت یادآوری‌ها</b>\n\n"
+        f"📊 آمار شما:\n"
+        f"• 📝 کل یادآوری‌ها: {user_stats.get('user_total_reminders', 0)}\n"
+        f"• 📤 ارسال شده: {user_stats.get('user_total_sent', 0)}\n\n"
         "لطفاً نوع یادآوری مورد نظر را انتخاب کنید:",
         reply_markup=create_reminder_main_menu(),
         parse_mode="HTML"
@@ -66,9 +74,12 @@ async def reminder_main_handler(message: types.Message):
 async def start_exam_reminder(message: types.Message, state: FSMContext):
     """شروع ایجاد ریمایندر کنکور"""
     await state.set_state(ExamReminderStates.selecting_exams)
+    await state.update_data(selected_exams=[])
+    
     await message.answer(
         "🎯 <b>یادآوری کنکورها</b>\n\n"
-        "لطفاً کنکورهای مورد نظر را انتخاب کنید:",
+        "لطفاً کنکورهای مورد نظر را انتخاب کنید:\n\n"
+        "💡 <i>می‌توانید چندین کنکور انتخاب کنید</i>",
         reply_markup=create_exam_selection_menu(),
         parse_mode="HTML"
     )
@@ -78,24 +89,31 @@ async def process_exam_selection(message: types.Message, state: FSMContext):
     text = message.text
     
     if text == "✅ انتخاب همه":
-        await state.update_data(selected_exams=[
-            "علوم_انسانی", "ریاضی_فنی", "علوم_تجربی", 
-            "هنر", "زبان_خارجه", "فرهنگیان"
-        ])
-        await message.answer("✅ همه کنکورها انتخاب شدند")
+        await state.update_data(selected_exams=list(EXAMS_1405.keys()))
+        await message.answer(
+            "✅ همه کنکورها انتخاب شدند\n\n"
+            "برای ادامه روی '➡️ ادامه' کلیک کنید",
+            reply_markup=create_exam_selection_menu()
+        )
         
     elif text == "➡️ ادامه":
         state_data = await state.get_data()
         selected_exams = state_data.get('selected_exams', [])
         
         if not selected_exams:
-            await message.answer("❌ لطفاً حداقل یک کنکور انتخاب کنید")
+            await message.answer(
+                "❌ لطفاً حداقل یک کنکور انتخاب کنید",
+                reply_markup=create_exam_selection_menu()
+            )
             return
         
         await state.set_state(ExamReminderStates.selecting_days)
+        await state.update_data(selected_days=[])
+        
         await message.answer(
             "🗓️ <b>انتخاب روزهای هفته</b>\n\n"
-            "لطفاً روزهایی که می‌خواهید یادآوری دریافت کنید را انتخاب کنید:",
+            "لطفاً روزهایی که می‌خواهید یادآوری دریافت کنید را انتخاب کنید:\n\n"
+            "💡 <i>می‌توانید چندین روز انتخاب کنید</i>",
             reply_markup=create_days_selection_menu(),
             parse_mode="HTML"
         )
@@ -121,12 +139,20 @@ async def process_exam_selection(message: types.Message, state: FSMContext):
             
             if exam_key in selected_exams:
                 selected_exams.remove(exam_key)
-                await message.answer(f"❌ {text} حذف شد")
+                action_text = f"❌ {text} حذف شد"
             else:
                 selected_exams.append(exam_key)
-                await message.answer(f"✅ {text} اضافه شد")
+                action_text = f"✅ {text} اضافه شد"
             
             await state.update_data(selected_exams=selected_exams)
+            
+            # نمایش وضعیت فعلی
+            current_count = len(selected_exams)
+            await message.answer(
+                f"{action_text}\n\n"
+                f"📋 انتخاب‌های فعلی: {current_count} کنکور\n"
+                f"برای ادامه روی '➡️ ادامه' کلیک کنید"
+            )
 
 async def process_days_selection(message: types.Message, state: FSMContext):
     """پردازش انتخاب روزهای هفته"""
@@ -134,27 +160,41 @@ async def process_days_selection(message: types.Message, state: FSMContext):
     
     if text == "✅ همه روزها":
         await state.update_data(selected_days=[0, 1, 2, 3, 4, 5, 6])
-        await message.answer("✅ همه روزها انتخاب شدند")
+        await message.answer(
+            "✅ همه روزهای هفته انتخاب شدند\n\n"
+            "برای ادامه روی '➡️ ادامه' کلیک کنید",
+            reply_markup=create_days_selection_menu()
+        )
         
     elif text == "🗑️ پاک کردن":
         await state.update_data(selected_days=[])
-        await message.answer("🗑️ همه روزها پاک شد")
+        await message.answer(
+            "🗑️ همه روزها پاک شد\n\n"
+            "لطفاً روزهای مورد نظر را انتخاب کنید"
+        )
         
     elif text == "➡️ ادامه":
         state_data = await state.get_data()
         selected_days = state_data.get('selected_days', [])
         
         if not selected_days:
-            await message.answer("❌ لطفاً حداقل یک روز انتخاب کنید")
+            await message.answer(
+                "❌ لطفاً حداقل یک روز انتخاب کنید",
+                reply_markup=create_days_selection_menu()
+            )
             return
         
         await state.set_state(ExamReminderStates.entering_time)
         current_time = get_current_persian_datetime()
+        
         await message.answer(
             "🕐 <b>ورود ساعت یادآوری</b>\n\n"
             f"⏰ زمان فعلی: {current_time['full_time']}\n\n"
+            "⚠️ <b>توجه: فقط از اعداد انگلیسی استفاده کنید</b>\n\n"
             "لطفاً ساعت دلخواه را به فرمت زیر وارد کنید:\n"
-            "مثال: <code>۰۸:۳۰</code> یا <code>14:45</code>\n\n"
+            "• مثال: <code>08:30</code>\n"
+            "• مثال: <code>14:45</code>\n\n"
+            "💡 <i>ساعت باید بین 00:00 تا 23:59 باشد</i>\n\n"
             "یا برای بازگشت: 🔙 بازگشت",
             reply_markup=create_time_input_menu(),
             parse_mode="HTML"
@@ -177,15 +217,25 @@ async def process_days_selection(message: types.Message, state: FSMContext):
             
             if day_index in selected_days:
                 selected_days.remove(day_index)
-                await message.answer(f"❌ {text} حذف شد")
+                action_text = f"❌ {text} حذف شد"
             else:
                 selected_days.append(day_index)
-                await message.answer(f"✅ {text} اضافه شد")
+                action_text = f"✅ {text} اضافه شد"
             
             await state.update_data(selected_days=selected_days)
+            
+            # نمایش وضعیت فعلی
+            current_days = [day for day in days_map if days_map[day] in selected_days]
+            days_text = "، ".join(current_days) if current_days else "هیچ روزی"
+            
+            await message.answer(
+                f"{action_text}\n\n"
+                f"📋 روزهای انتخاب شده: {days_text}\n"
+                f"برای ادامه روی '➡️ ادامه' کلیک کنید"
+            )
 
 async def process_time_input(message: types.Message, state: FSMContext):
-    """پردازش ورود ساعت"""
+    """پردازش ورود ساعت با اعتبارسنجی پیشرفته"""
     if message.text == "🔙 بازگشت":
         await state.set_state(ExamReminderStates.selecting_days)
         await message.answer(
@@ -195,11 +245,31 @@ async def process_time_input(message: types.Message, state: FSMContext):
         return
     
     time_str = message.text
-    # اعتبارسنجی ساده فرمت زمان
-    if not (len(time_str) in [4, 5] and ':' in time_str):
-        await message.answer("❌ فرمت زمان نامعتبر! لطفاً به فرمت HH:MM وارد کنید")
+    
+    # تبدیل اعداد فارسی به انگلیسی
+    persian_to_english = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+    time_str = time_str.translate(persian_to_english)
+    
+    # اعتبارسنجی فرمت زمان
+    import re
+    time_pattern = re.compile(r'^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$')
+    
+    if not time_pattern.match(time_str):
+        await message.answer(
+            "❌ <b>فرمت زمان نامعتبر!</b>\n\n"
+            "⚠️ <b>لطفاً فقط از اعداد انگلیسی استفاده کنید:</b>\n"
+            "• ✅ صحیح: <code>08:30</code>, <code>14:45</code>, <code>9:05</code>\n"
+            "• ❌ غلط: <code>۰۸:۳۰</code>, <code>۸:۳۰</code>, <code>24:70</code>\n\n"
+            "📝 فرمت صحیح: <b>HH:MM</b>\n"
+            "• ساعت: 00 تا 23\n"
+            "• دقیقه: 00 تا 59\n\n"
+            "لطفاً مجدداً وارد کنید:",
+            parse_mode="HTML",
+            reply_markup=create_time_input_menu()
+        )
         return
     
+    # زمان معتبر است
     await state.update_data(specific_time=time_str)
     await state.set_state(ExamReminderStates.entering_start_date)
     
@@ -207,8 +277,9 @@ async def process_time_input(message: types.Message, state: FSMContext):
     await message.answer(
         "📅 <b>تاریخ شروع یادآوری</b>\n\n"
         f"📆 تاریخ امروز: {current_date['full_date']}\n\n"
+        "⚠️ <b>توجه: فقط از اعداد انگلیسی استفاده کنید</b>\n"
         "لطفاً تاریخ شروع را به فرمت زیر وارد کنید:\n"
-        "مثال: <code>1404/08/15</code>\n\n"
+        "• مثال: <code>1404/08/15</code>\n\n"
         "یا برای شروع از امروز: 📅 امروز\n"
         "یا برای بازگشت: 🔙 بازگشت",
         reply_markup=create_date_input_menu(),
@@ -231,15 +302,26 @@ async def process_start_date(message: types.Message, state: FSMContext):
         await message.answer(f"✅ تاریخ شروع: {start_date}")
     else:
         start_date = message.text
+        # اعتبارسنجی ساده تاریخ
+        if not validator.validate_persian_date(start_date.replace('/', '')):
+            await message.answer(
+                "❌ فرمت تاریخ نامعتبر!\n\n"
+                "لطفاً تاریخ را به فرمت <code>1404/08/15</code> وارد کنید:",
+                parse_mode="HTML",
+                reply_markup=create_date_input_menu()
+            )
+            return
     
     await state.update_data(start_date=start_date)
     await state.set_state(ExamReminderStates.entering_end_date)
     
     await message.answer(
         "📅 <b>تاریخ پایان یادآوری</b>\n\n"
+        "⚠️ <b>توجه: فقط از اعداد انگلیسی استفاده کنید</b>\n\n"
         "لطفاً تاریخ پایان را به فرمت زیر وارد کنید:\n"
-        "مثال: <code>1405/04/11</code>\n"
-        "یا بنویسید: <code>همیشه</code>\n\n"
+        "• مثال: <code>1405/04/11</code>\n"
+        "• یا بنویسید: <code>همیشه</code>\n\n"
+        "💡 <i>یادآوری تا این تاریخ ادامه خواهد یافت</i>\n\n"
         "یا برای بازگشت: 🔙 بازگشت",
         reply_markup=create_back_only_menu(),
         parse_mode="HTML"
@@ -257,14 +339,26 @@ async def process_end_date(message: types.Message, state: FSMContext):
     
     end_date = message.text
     if end_date.lower() == "همیشه":
-        end_date = "1405/12/29"
+        end_date = "1405/12/29"  # پایان سال 1405
+        await message.answer(f"✅ تاریخ پایان: {end_date} (همیشه)")
+    else:
+        # اعتبارسنجی ساده تاریخ
+        if not validator.validate_persian_date(end_date.replace('/', '')):
+            await message.answer(
+                "❌ فرمت تاریخ نامعتبر!\n\n"
+                "لطفاً تاریخ را به فرمت <code>1405/04/11</code> وارد کنید\n"
+                "یا بنویسید <code>همیشه</code>:",
+                parse_mode="HTML",
+                reply_markup=create_back_only_menu()
+            )
+            return
     
     await state.update_data(end_date=end_date)
     await state.set_state(ExamReminderStates.confirmation)
     
     # نمایش خلاصه و تأیید نهایی
     state_data = await state.get_data()
-    summary = create_reminder_summary(state_data)
+    summary = formatter.create_reminder_summary(state_data, "exam")
     
     await message.answer(
         f"✅ <b>خلاصه یادآوری کنکور</b>\n\n{summary}\n\n"
@@ -280,23 +374,36 @@ async def process_confirmation(message: types.Message, state: FSMContext):
     if text == "✅ تأیید و ایجاد":
         state_data = await state.get_data()
         
-        # ذخیره در دیتابیس
-        reminder_id = reminder_db.add_exam_reminder(
-            user_id=message.from_user.id,
-            exam_keys=state_data['selected_exams'],
-            days_of_week=state_data['selected_days'],
-            specific_times=[state_data['specific_time']],
-            start_date=state_data['start_date'],
-            end_date=state_data['end_date']
-        )
-        
-        await message.answer(
-            "🎉 <b>یادآوری کنکور با موفقیت ایجاد شد!</b>\n\n"
-            f"📝 کد یادآوری: <code>{reminder_id}</code>\n"
-            "می‌توانید یادآوری‌های خود را از بخش مدیریت مشاهده کنید.",
-            reply_markup=create_reminder_main_menu(),
-            parse_mode="HTML"
-        )
+        try:
+            # ذخیره در دیتابیس
+            reminder_id = reminder_db.add_exam_reminder(
+                user_id=message.from_user.id,
+                exam_keys=state_data['selected_exams'],
+                days_of_week=state_data['selected_days'],
+                specific_times=[state_data['specific_time']],
+                start_date=state_data['start_date'],
+                end_date=state_data['end_date']
+            )
+            
+            await message.answer(
+                "🎉 <b>یادآوری کنکور با موفقیت ایجاد شد!</b>\n\n"
+                f"📝 کد یادآوری: <code>{reminder_id}</code>\n"
+                f"⏰ اولین یادآوری: فردا ساعت {state_data['specific_time']}\n\n"
+                "می‌توانید یادآوری‌های خود را از بخش مدیریت مشاهده کنید.",
+                reply_markup=create_reminder_main_menu(),
+                parse_mode="HTML"
+            )
+            
+            logger.info(f"✅ ریمایندر کنکور {reminder_id} برای کاربر {message.from_user.id} ایجاد شد")
+            
+        except Exception as e:
+            await message.answer(
+                "❌ <b>خطا در ایجاد یادآوری!</b>\n\n"
+                "لطفاً مجدداً تلاش کنید.",
+                reply_markup=create_reminder_main_menu(),
+                parse_mode="HTML"
+            )
+            logger.error(f"خطا در ایجاد ریمایندر کنکور: {e}")
         
         await state.clear()
     
@@ -323,10 +430,12 @@ async def process_confirmation(message: types.Message, state: FSMContext):
 async def start_personal_reminder(message: types.Message, state: FSMContext):
     """شروع ایجاد ریمایندر شخصی"""
     await state.set_state(PersonalReminderStates.entering_title)
+    
     await message.answer(
         "📝 <b>یادآوری شخصی</b>\n\n"
         "لطفاً عنوان یادآوری را وارد کنید:\n\n"
-        "مثال: <code>مرور فصل ۳ ریاضی</code>",
+        "💡 <i>مثال: مرور فصل ۳ ریاضی</i>\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
         reply_markup=create_back_only_menu(),
         parse_mode="HTML"
     )
@@ -338,13 +447,22 @@ async def process_personal_title(message: types.Message, state: FSMContext):
         await reminder_main_handler(message)
         return
     
+    if len(message.text) > 100:
+        await message.answer(
+            "❌ عنوان خیلی طولانی است!\n\n"
+            "لطفاً عنوانی کوتاه‌تر (حداکثر ۱۰۰ کاراکتر) وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+        return
+    
     await state.update_data(title=message.text)
     await state.set_state(PersonalReminderStates.entering_message)
     
     await message.answer(
         "📄 <b>متن یادآوری</b>\n\n"
         "لطفاً متن کامل یادآوری را وارد کنید:\n\n"
-        "مثال: <code>وقت مرور فصل ۳ ریاضی و حل تمرین‌های صفحه ۸۵</code>",
+        "💡 <i>مثال: وقت مرور فصل ۳ ریاضی و حل تمرین‌های صفحه ۸۵</i>\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
         reply_markup=create_back_only_menu(),
         parse_mode="HTML"
     )
@@ -359,15 +477,91 @@ async def process_personal_message(message: types.Message, state: FSMContext):
         )
         return
     
+    if len(message.text) > 500:
+        await message.answer(
+            "❌ متن خیلی طولانی است!\n\n"
+            "لطفاً متنی کوتاه‌تر (حداکثر ۵۰۰ کاراکتر) وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+        return
+    
     await state.update_data(message=message.text)
     await state.set_state(PersonalReminderStates.selecting_repetition)
     
     await message.answer(
         "🔁 <b>نوع تکرار یادآوری</b>\n\n"
-        "لطفاً نوع تکرار را انتخاب کنید:",
+        "لطفاً نوع تکرار را انتخاب کنید:\n\n"
+        "• 🔘 یکبار - فقط یکبار ارسال می‌شود\n"
+        "• 🔄 روزانه - هر روز در ساعت مشخص\n"
+        "• 📅 هفتگی - روزهای مشخص هفته\n"
+        "• 🗓️ ماهانه - هر ماه در تاریخ مشخص\n"
+        "• ⚙️ سفارشی - با فاصله روزهای مشخص\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
         reply_markup=create_repetition_type_menu(),
         parse_mode="HTML"
     )
+
+async def process_repetition_selection(message: types.Message, state: FSMContext):
+    """پردازش انتخاب نوع تکرار"""
+    if message.text == "🔙 بازگشت":
+        await state.set_state(PersonalReminderStates.entering_message)
+        await message.answer(
+            "لطفاً متن یادآوری را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+        return
+    
+    repetition_map = {
+        "🔘 یکبار": "once",
+        "🔄 روزانه": "daily", 
+        "📅 هفتگی": "weekly",
+        "🗓️ ماهانه": "monthly",
+        "⚙️ سفارشی": "custom"
+    }
+    
+    if message.text not in repetition_map:
+        await message.answer(
+            "❌ گزینه نامعتبر!\n\n"
+            "لطفاً از گزینه‌های موجود انتخاب کنید:",
+            reply_markup=create_repetition_type_menu()
+        )
+        return
+    
+    repetition_type = repetition_map[message.text]
+    await state.update_data(repetition_type=repetition_type)
+    
+    if repetition_type == "weekly":
+        await state.set_state(PersonalReminderStates.selecting_days)
+        await state.update_data(days_of_week=[])
+        
+        await message.answer(
+            "🗓️ <b>انتخاب روزهای هفته</b>\n\n"
+            "لطفاً روزهایی که می‌خواهید یادآوری دریافت کنید را انتخاب کنید:",
+            reply_markup=create_days_selection_menu(),
+            parse_mode="HTML"
+        )
+    elif repetition_type == "custom":
+        await state.set_state(PersonalReminderStates.entering_custom_interval)
+        
+        await message.answer(
+            "⚙️ <b>فاصله تکرار سفارشی</b>\n\n"
+            "لطفاً فاصله روزهای بین یادآوری‌ها را وارد کنید:\n\n"
+            "💡 <i>مثال: برای یادآوری هر ۳ روز یکبار، عدد ۳ را وارد کنید</i>\n\n"
+            "یا برای بازگشت: 🔙 بازگشت",
+            reply_markup=create_back_only_menu(),
+            parse_mode="HTML"
+        )
+    else:
+        await state.set_state(PersonalReminderStates.entering_time)
+        current_time = get_current_persian_datetime()
+        
+        await message.answer(
+            "🕐 <b>ورود ساعت یادآوری</b>\n\n"
+            f"⏰ زمان فعلی: {current_time['full_time']}\n\n"
+            "لطفاً ساعت دلخواه را به فرمت HH:MM وارد کنید:",
+            reply_markup=create_time_input_menu(),
+            parse_mode="HTML"
+        )
 
 # --- هندلرهای یادآوری خودکار ---
 async def start_auto_reminders(message: types.Message):
@@ -375,13 +569,14 @@ async def start_auto_reminders(message: types.Message):
     await message.answer(
         "🤖 <b>یادآوری خودکار</b>\n\n"
         "این سیستم به صورت خودکار در زمان‌های مهم یادآوری ارسال می‌کند.\n\n"
-        "ویژگی‌ها:\n"
+        "📋 <b>یادآوری‌های موجود:</b>\n"
         "• 📅 ۹۰ روز قبل از کنکور\n"
-        "• 🗓️ ۳۰ روز قبل از کنکور\n"
+        "• 🗓️ ۳۰ روز قبل از کنکور\n"  
         "• 📊 ۱۵ روز قبل از کنکور\n"
         "• ⏰ ۷ روز قبل از کنکور\n"
         "• 🔔 ۳ روز قبل از کنکور\n"
         "• 🎯 ۱ روز قبل از کنکور\n\n"
+        "💡 <i>این یادآوری‌ها برای همه کنکورها فعال می‌شوند</i>\n\n"
         "لطفاً عمل مورد نظر را انتخاب کنید:",
         reply_markup=create_auto_reminders_menu(),
         parse_mode="HTML"
@@ -419,12 +614,17 @@ async def manage_reminders_handler(message: types.Message):
     total_count = len(user_reminders) + len(personal_reminders)
     active_count = len([r for r in user_reminders + personal_reminders if r['is_active']])
     
+    stats = analyzer.calculate_reminder_stats(user_reminders + personal_reminders)
+    
     await message.answer(
         f"📋 <b>مدیریت یادآوری‌ها</b>\n\n"
         f"📊 آمار شما:\n"
         f"• 📝 کل یادآوری‌ها: {total_count}\n"
         f"• 🔔 فعال: {active_count}\n"
-        f"• 🔕 غیرفعال: {total_count - active_count}\n\n"
+        f"• 🔕 غیرفعال: {total_count - active_count}\n"
+        f"• 🎯 کنکوری: {stats['exam_count']}\n"
+        f"• 📝 شخصی: {stats['personal_count']}\n"
+        f"• 📈 فعال: {stats['active_percentage']:.1f}%\n\n"
         f"لطفاً عمل مورد نظر را انتخاب کنید:",
         reply_markup=create_management_menu(),
         parse_mode="HTML"
@@ -450,18 +650,46 @@ async def view_all_reminders(message: types.Message):
         message_text += "🎯 <b>یادآوری‌های کنکور:</b>\n"
         for reminder in user_reminders:
             status = "🔔" if reminder['is_active'] else "🔕"
-            message_text += f"{status} کد {reminder['id']}: {', '.join(reminder['exam_keys'])}\n"
-        message_text += "\n"
+            exam_names = [EXAMS_1405[key]['name'] for key in reminder['exam_keys'] if key in EXAMS_1405]
+            message_text += f"{status} کد {reminder['id']}: {', '.join(exam_names)}\n"
+            message_text += f"   ⏰ ساعت: {', '.join(reminder['specific_times'])}\n"
+            message_text += f"   📅 تا: {reminder['end_date']}\n\n"
     
     if personal_reminders:
         message_text += "📝 <b>یادآوری‌های شخصی:</b>\n"
         for reminder in personal_reminders:
             status = "🔔" if reminder['is_active'] else "🔕"
             message_text += f"{status} کد {reminder['id']}: {reminder['title']}\n"
+            message_text += f"   ⏰ ساعت: {reminder['specific_time']}\n"
+            message_text += f"   🔁 تکرار: {reminder['repetition_type']}\n\n"
     
+    # اضافه کردن دکمه‌های مدیریت
     await message.answer(
         message_text,
         reply_markup=create_management_menu(),
+        parse_mode="HTML"
+    )
+
+async def toggle_reminder_status(message: types.Message):
+    """تغییر وضعیت فعال/غیرفعال کردن یادآوری"""
+    await message.answer(
+        "🔄 <b>تغییر وضعیت یادآوری</b>\n\n"
+        "لطفاً کد یادآوری را به همراه عمل مورد نظر وارد کنید:\n\n"
+        "💡 <i>مثال: <code>فعال ۱۲۳</code> یا <code>غیرفعال ۴۵۶</code></i>\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
+        reply_markup=create_back_only_menu(),
+        parse_mode="HTML"
+    )
+
+async def delete_reminder_handler(message: types.Message):
+    """حذف یادآوری"""
+    await message.answer(
+        "🗑️ <b>حذف یادآوری</b>\n\n"
+        "لطفاً کد یادآوری را برای حذف وارد کنید:\n\n"
+        "💡 <i>مثال: <code>حذف ۱۲۳</code></i>\n\n"
+        "⚠️ <b>توجه: این عمل غیرقابل بازگشت است!</b>\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
+        reply_markup=create_back_only_menu(),
         parse_mode="HTML"
     )
 
@@ -474,9 +702,10 @@ def create_reminder_summary(state_data: dict) -> str:
     }
     
     selected_days = [days_map[day] for day in state_data.get('selected_days', [])]
+    exam_names = [EXAMS_1405[key]['name'] for key in state_data.get('selected_exams', []) if key in EXAMS_1405]
     
     summary = (
-        f"🎯 <b>کنکورها:</b> {', '.join(state_data.get('selected_exams', []))}\n"
+        f"🎯 <b>کنکورها:</b> {', '.join(exam_names) if exam_names else 'تعیین نشده'}\n"
         f"🗓️ <b>روزها:</b> {', '.join(selected_days) if selected_days else 'همه روزها'}\n"
         f"🕐 <b>ساعت:</b> {state_data.get('specific_time', 'تعیین نشده')}\n"
         f"📅 <b>شروع:</b> {state_data.get('start_date', 'تعیین نشده')}\n"
@@ -484,3 +713,60 @@ def create_reminder_summary(state_data: dict) -> str:
     )
     
     return summary
+
+async def process_reminder_management(message: types.Message):
+    """پردازش دستورات مدیریت یادآوری"""
+    text = message.text.lower()
+    
+    if text == "🔙 بازگشت":
+        await manage_reminders_handler(message)
+        return
+    
+    # پردازش دستورات
+    if text.startswith('فعال') or text.startswith('غیرفعال'):
+        parts = text.split()
+        if len(parts) == 2 and parts[1].isdigit():
+            reminder_id = int(parts[1])
+            is_active = text.startswith('فعال')
+            
+            # تشخیص نوع ریمایندر و به‌روزرسانی
+            success = reminder_db.update_reminder_status('exam', reminder_id, is_active)
+            if not success:
+                success = reminder_db.update_reminder_status('personal', reminder_id, is_active)
+            
+            if success:
+                status_text = "فعال" if is_active else "غیرفعال"
+                await message.answer(f"✅ یادآوری {reminder_id} {status_text} شد")
+            else:
+                await message.answer("❌ یادآوری پیدا نشد")
+        else:
+            await message.answer("❌ فرمت دستور نامعتبر! مثال: <code>فعال ۱۲۳</code>", parse_mode="HTML")
+    
+    elif text.startswith('حذف'):
+        parts = text.split()
+        if len(parts) == 2 and parts[1].isdigit():
+            reminder_id = int(parts[1])
+            
+            # حذف ریمایندر
+            success = reminder_db.delete_reminder('exam', reminder_id)
+            if not success:
+                success = reminder_db.delete_reminder('personal', reminder_id)
+            
+            if success:
+                await message.answer(f"✅ یادآوری {reminder_id} حذف شد")
+            else:
+                await message.answer("❌ یادآوری پیدا نشد")
+        else:
+            await message.answer("❌ فرمت دستور نامعتبر! مثال: <code>حذف ۱۲۳</code>", parse_mode="HTML")
+    
+    else:
+        await message.answer(
+            "❌ دستور نامعتبر!\n\n"
+            "لطفاً از فرمت‌های زیر استفاده کنید:\n"
+            "• <code>فعال ۱۲۳</code>\n"
+            "• <code>غیرفعال ۴۵۶</code>\n" 
+            "• <code>حذف ۷۸۹</code>\n\n"
+            "یا برای بازگشت: 🔙 بازگشت",
+            parse_mode="HTML",
+            reply_markup=create_back_only_menu()
+        )
