@@ -430,6 +430,7 @@ async def process_confirmation(message: types.Message, state: FSMContext):
 async def start_personal_reminder(message: types.Message, state: FSMContext):
     """شروع ایجاد ریمایندر شخصی"""
     await state.set_state(PersonalReminderStates.entering_title)
+    await state.update_data(reminder_data={})
     
     await message.answer(
         "📝 <b>یادآوری شخصی</b>\n\n"
@@ -466,7 +467,7 @@ async def process_personal_title(message: types.Message, state: FSMContext):
         reply_markup=create_back_only_menu(),
         parse_mode="HTML"
     )
-
+    
 async def process_personal_message(message: types.Message, state: FSMContext):
     """پردازش متن ریمایندر شخصی"""
     if message.text == "🔙 بازگشت":
@@ -500,7 +501,7 @@ async def process_personal_message(message: types.Message, state: FSMContext):
         reply_markup=create_repetition_type_menu(),
         parse_mode="HTML"
     )
-
+    
 async def process_repetition_selection(message: types.Message, state: FSMContext):
     """پردازش انتخاب نوع تکرار"""
     if message.text == "🔙 بازگشت":
@@ -558,6 +559,7 @@ async def process_repetition_selection(message: types.Message, state: FSMContext
         await message.answer(
             "🕐 <b>ورود ساعت یادآوری</b>\n\n"
             f"⏰ زمان فعلی: {current_time['full_time']}\n\n"
+            "⚠️ <b>توجه: فقط از اعداد انگلیسی استفاده کنید</b>\n\n"
             "لطفاً ساعت دلخواه را به فرمت HH:MM وارد کنید:",
             reply_markup=create_time_input_menu(),
             parse_mode="HTML"
