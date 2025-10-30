@@ -8,6 +8,7 @@ from keyboards import (
     exams_menu, study_plan_menu, stats_menu, admin_menu,
     create_study_plan_keyboard, create_stats_keyboard
 )
+# جدید:
 from utils import (
     get_study_tips, calculate_study_progress, format_study_time,
     calculate_streak, get_motivational_quote
