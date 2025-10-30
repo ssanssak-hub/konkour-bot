@@ -1,11 +1,12 @@
 """
-سیستم زمان‌بندی و ارسال ریمایندرها
+سیستم زمان‌بندی و ارسال ریمایندرها - نسخه پیشرفته
 """
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pytz
+import time
 
 from reminder.reminder_database import reminder_db
 from exam_data import EXAMS_1405
@@ -21,22 +22,38 @@ class ReminderScheduler:
         self.bot = bot
         self.is_running = False
         self.check_interval = 60  # چک هر ۱ دقیقه
+        self.last_check = None
+        self.stats = {
+            'total_checks': 0,
+            'total_reminders_sent': 0,
+            'last_successful_check': None,
+            'errors': 0
+        }
         
     async def start_scheduler(self):
         """شروع سیستم زمان‌بندی"""
         if self.is_running:
+            logger.warning("⚠️ سیستم ریمایندر در حال اجراست")
             return
             
         self.is_running = True
         logger.info("🚀 سیستم ریمایندر شروع به کار کرد")
         
+        # بارگذاری اولیه ریمایندرهای فعال
+        active_reminders = reminder_db.get_active_exam_reminders()
+        logger.info(f"📥 {len(active_reminders)} ریمایندر فعال بارگذاری شد")
+        
         while self.is_running:
             try:
                 await self.check_and_send_reminders()
+                self.stats['total_checks'] += 1
+                self.stats['last_successful_check'] = datetime.now(TEHRAN_TIMEZONE)
                 await asyncio.sleep(self.check_interval)
+                
             except Exception as e:
+                self.stats['errors'] += 1
                 logger.error(f"خطا در سیستم ریمایندر: {e}")
-                await asyncio.sleep(10)
+                await asyncio.sleep(10)  # وقفه کوتاه در صورت خطا
                 
     async def stop_scheduler(self):
         """توقف سیستم زمان‌بندی"""
@@ -49,9 +66,11 @@ class ReminderScheduler:
             now = datetime.now(TEHRAN_TIMEZONE)
             current_time_str = now.strftime("%H:%M")
             current_date_str = now.strftime("%Y-%m-%d")
-            current_weekday = now.weekday()
+            current_weekday = now.weekday()  # 0=Monday, 6=Sunday
             
-            logger.info(f"🔍 چک ریمایندرها - زمان: {current_time_str} - روز: {current_weekday}")
+            self.last_check = now
+            
+            logger.debug(f"🔍 چک ریمایندرها - زمان: {current_time_str} - تاریخ: {current_date_str} - روز هفته: {current_weekday}")
             
             # دریافت ریمایندرهای due از دیتابیس
             due_reminders = reminder_db.get_due_reminders(
@@ -62,36 +81,84 @@ class ReminderScheduler:
             
             if due_reminders:
                 logger.info(f"📤 پیدا شد {len(due_reminders)} ریمایندر برای ارسال")
+                
+                # ارسال موازی ریمایندرها
+                tasks = []
                 for reminder in due_reminders:
-                    await self.send_reminder(reminder)
+                    task = asyncio.create_task(self.send_reminder(reminder))
+                    tasks.append(task)
+                
+                # منتظر تمام شدن همه ارسال‌ها بمان
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # بررسی نتایج
+                successful_sends = 0
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        logger.error(f"❌ خطا در ارسال ریمایندر {due_reminders[i]['id']}: {result}")
+                    else:
+                        successful_sends += 1
+                
+                self.stats['total_reminders_sent'] += successful_sends
+                logger.info(f"✅ {successful_sends} ریمایندر با موفقیت ارسال شد")
+                
             else:
                 logger.debug("✅ هیچ ریمایندری برای ارسال پیدا نشد")
                 
         except Exception as e:
+            self.stats['errors'] += 1
             logger.error(f"خطا در چک ریمایندرها: {e}")
 
     async def send_reminder(self, reminder: Dict[str, Any]):
         """ارسال ریمایندر"""
+        start_time = time.time()
+        
         try:
             user_id = reminder['user_id']
             
             if reminder['reminder_type'] == 'exam':
-                await self.send_exam_reminder(reminder)
+                success = await self.send_exam_reminder(reminder)
             elif reminder['reminder_type'] == 'personal':
-                await self.send_personal_reminder(reminder)
-                
-            # ثبت لاگ ارسال
-            reminder_db.log_reminder_sent(user_id, reminder['id'], reminder['reminder_type'])
+                success = await self.send_personal_reminder(reminder)
+            else:
+                logger.warning(f"⚠️ نوع ریمایندر نامعتبر: {reminder['reminder_type']}")
+                success = False
             
-            logger.info(f"✅ ریمایندر برای کاربر {user_id} ارسال شد")
+            delivery_time = int((time.time() - start_time) * 1000)  # میلی‌ثانیه
+            
+            if success:
+                # ثبت لاگ ارسال موفق
+                reminder_db.log_reminder_sent(
+                    user_id, reminder['id'], reminder['reminder_type'],
+                    status='sent', delivery_time_ms=delivery_time
+                )
+                logger.info(f"✅ ریمایندر {reminder['id']} برای کاربر {user_id} ارسال شد ({delivery_time}ms)")
+            else:
+                # ثبت لاگ ارسال ناموفق
+                reminder_db.log_reminder_sent(
+                    user_id, reminder['id'], reminder['reminder_type'],
+                    status='failed', error_message='ارسال ناموفق',
+                    delivery_time_ms=delivery_time
+                )
+                logger.warning(f"❌ ارسال ریمایندر {reminder['id']} برای کاربر {user_id} ناموفق بود")
+            
+            return success
             
         except Exception as e:
-            logger.error(f"❌ خطا در ارسال ریمایندر: {e}")
+            delivery_time = int((time.time() - start_time) * 1000)
+            reminder_db.log_reminder_sent(
+                reminder['user_id'], reminder['id'], reminder['reminder_type'],
+                status='failed', error_message=str(e),
+                delivery_time_ms=delivery_time
+            )
+            logger.error(f"❌ خطا در ارسال ریمایندر {reminder['id']}: {e}")
+            return False
 
-    async def send_exam_reminder(self, reminder: Dict[str, Any]):
+    async def send_exam_reminder(self, reminder: Dict[str, Any]) -> bool:
         """ارسال ریمایندر کنکور"""
         try:
             user_id = reminder['user_id']
+            sent_count = 0
             
             for exam_key in reminder['exam_keys']:
                 if exam_key in EXAMS_1405:
@@ -103,13 +170,17 @@ class ReminderScheduler:
                         text=message,
                         parse_mode="HTML"
                     )
+                    sent_count += 1
                     
-                    logger.info(f"🎯 ریمایندر کنکور {exam['name']} برای کاربر {user_id} ارسال شد")
-                    
+                    logger.debug(f"🎯 ریمایندر کنکور {exam['name']} برای کاربر {user_id} ارسال شد")
+            
+            return sent_count > 0
+            
         except Exception as e:
             logger.error(f"خطا در ارسال ریمایندر کنکور: {e}")
+            return False
 
-    async def send_personal_reminder(self, reminder: Dict[str, Any]):
+    async def send_personal_reminder(self, reminder: Dict[str, Any]) -> bool:
         """ارسال ریمایندر شخصی"""
         try:
             user_id = reminder['user_id']
@@ -128,10 +199,12 @@ class ReminderScheduler:
                 parse_mode="HTML"
             )
             
-            logger.info(f"📝 ریمایندر شخصی برای کاربر {user_id} ارسال شد")
+            logger.debug(f"📝 ریمایندر شخصی برای کاربر {user_id} ارسال شد")
+            return True
             
         except Exception as e:
             logger.error(f"خطا در ارسال ریمایندر شخصی: {e}")
+            return False
 
     async def create_exam_reminder_message(self, exam: Dict[str, Any]) -> str:
         """ایجاد پیام ریمایندر کنکور"""
@@ -181,9 +254,80 @@ class ReminderScheduler:
             )
             
             logger.info(f"🧪 ریمایندر تستی برای کاربر {user_id} ارسال شد")
+            return True
             
         except Exception as e:
             logger.error(f"خطا در ارسال ریمایندر تستی: {e}")
+            return False
+
+    async def send_bulk_reminders(self, user_ids: List[int], message: str):
+        """ارسال ریمایندر به چند کاربر"""
+        successful_sends = 0
+        failed_sends = 0
+        
+        for user_id in user_ids:
+            try:
+                await self.bot.send_message(
+                    chat_id=user_id,
+                    text=message,
+                    parse_mode="HTML"
+                )
+                successful_sends += 1
+                logger.debug(f"✅ ریمایندر گروهی برای کاربر {user_id} ارسال شد")
+                
+                # وقفه کوتاه برای جلوگیری از محدودیت تلگرام
+                await asyncio.sleep(0.1)
+                
+            except Exception as e:
+                failed_sends += 1
+                logger.error(f"❌ خطا در ارسال ریمایندر گروهی به کاربر {user_id}: {e}")
+        
+        logger.info(f"📤 ارسال گروهی کامل: {successful_sends} موفق, {failed_sends} ناموفق")
+        return successful_sends, failed_sends
+
+    def get_scheduler_stats(self) -> Dict[str, Any]:
+        """دریافت آمار سیستم زمان‌بندی"""
+        db_stats = reminder_db.get_reminder_stats()
+        
+        stats = {
+            'scheduler_running': self.is_running,
+            'total_checks': self.stats['total_checks'],
+            'total_reminders_sent': self.stats['total_reminders_sent'],
+            'errors': self.stats['errors'],
+            'last_check': self.last_check,
+            'last_successful_check': self.stats['last_successful_check'],
+            'check_interval': self.check_interval
+        }
+        
+        # ترکیب با آمار دیتابیس
+        stats.update(db_stats)
+        return stats
+
+    async def health_check(self) -> Dict[str, Any]:
+        """بررسی سلامت سیستم"""
+        try:
+            # تست اتصال به دیتابیس
+            test_reminders = reminder_db.get_active_exam_reminders()
+            db_healthy = True
+            
+            # تست ارسال (اگر ربات متصل است)
+            bot_healthy = await self.bot.get_me()
+            
+            return {
+                'status': 'healthy',
+                'database': 'connected' if db_healthy else 'disconnected',
+                'bot': 'connected' if bot_healthy else 'disconnected',
+                'active_reminders': len(test_reminders),
+                'scheduler_running': self.is_running,
+                'last_check': self.last_check
+            }
+            
+        except Exception as e:
+            return {
+                'status': 'unhealthy',
+                'error': str(e),
+                'scheduler_running': self.is_running
+            }
 
 # ایجاد instance اصلی
 reminder_scheduler = None
