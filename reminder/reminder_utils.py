@@ -240,9 +240,7 @@ def setup_reminder_system(bot):
     # مقداردهی اولیه سیستم زمان‌بندی
     scheduler = init_reminder_scheduler(bot)
     
-    # شروع سیستم در background
-    asyncio.create_task(scheduler.start_scheduler())
-    
+    # سیستم زمان‌بندی رو برمی‌گردونیم تا بعداً در event loop اصلی شروع بشه
     logger.info("✅ سیستم ریمایندر راه‌اندازی شد")
     return scheduler
 
