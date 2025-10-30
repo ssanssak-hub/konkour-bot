@@ -14,11 +14,8 @@ from utils.error_handlers import register_error_handlers
 from utils.health_monitor import health_monitor
 
 # ایمپورت سیستم ریمایندر
-from reminder import (
-    setup_reminder_system, 
-    ExamReminderStates, 
-    PersonalReminderStates
-)
+from reminder import setup_reminder_system
+from reminder.reminder_handlers import ExamReminderStates, PersonalReminderStates
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -77,38 +74,6 @@ async def stats_menu_wrapper(message: types.Message):
     from handlers.menu_handlers import stats_handler
     await stats_handler(message)
 
-# --- هندلرهای state برای ریمایندر ---
-@dp.message(ExamReminderStates.selecting_exams)
-async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
-    from reminder.reminder_handlers import process_exam_selection
-    await process_exam_selection(message, state)
-
-@dp.message(ExamReminderStates.selecting_days)
-async def exam_reminder_days_wrapper(message: types.Message, state: FSMContext):
-    from reminder.reminder_handlers import process_days_selection
-    await process_days_selection(message, state)
-
-@dp.message(ExamReminderStates.selecting_times)
-async def exam_reminder_times_wrapper(message: types.Message, state: FSMContext):
-    from reminder.reminder_handlers import process_times_selection
-    await process_times_selection(message, state)
-
-@dp.message(ExamReminderStates.selecting_start_date)
-async def exam_reminder_start_date_wrapper(message: types.Message, state: FSMContext):
-    from reminder.reminder_handlers import process_start_date
-    await process_start_date(message, state)
-
-@dp.message(ExamReminderStates.selecting_end_date)
-async def exam_reminder_end_date_wrapper(message: types.Message, state: FSMContext):
-    from reminder.reminder_handlers import process_end_date
-    await process_end_date(message, state)
-
-@dp.message(ExamReminderStates.confirmation)
-async def exam_reminder_confirmation_wrapper(message: types.Message, state: FSMContext):
-    from reminder.reminder_handlers import process_confirmation
-    await process_confirmation(message, state)
-
-# 🔽 فقط این یک هندلر برای مدیریت یادآوری‌ها
 @dp.message(F.text == "🔔 مدیریت یادآوری‌ها")
 async def reminders_wrapper(message: types.Message):
     from reminder.reminder_handlers import reminder_main_handler
@@ -118,26 +83,6 @@ async def reminders_wrapper(message: types.Message):
 async def admin_wrapper(message: types.Message):
     from handlers.menu_handlers import admin_handler
     await admin_handler(message)
-
-# --- هندلرهای مدیریت ریمایندر ---
-@dp.message(F.text == "📊 مدیریت یادآوری‌ها")
-async def manage_reminders_wrapper(message: types.Message):
-    from reminder.reminder_handlers import manage_reminders_handler
-    await manage_reminders_handler(message)
-
-# --- هندلرهای عمومی برای دکمه بازگشت ---
-@dp.message(F.text == "🔙 بازگشت")
-async def back_handler(message: types.Message, state: FSMContext):
-    current_state = await state.get_state()
-    if current_state:
-        await state.clear()
-    await reminder_main_handler(message)
-
-@dp.message(F.text == "🏠 منوی اصلی")
-async def main_menu_handler(message: types.Message, state: FSMContext):
-    await state.clear()
-    from handlers.main_handlers import start_handler
-    await start_handler(message, bot)
 
 # --- هندلرهای کنکور ---
 @dp.callback_query(F.data.startswith("exam:"))
@@ -194,59 +139,77 @@ async def admin_wrapper(callback: types.CallbackQuery, state: FSMContext):
     from handlers.admin_handlers import admin_callback_handler
     await admin_callback_handler(callback, state)
 
-# --- هندلرهای ریمایندر ---
-@dp.callback_query(F.data == "reminder:main")
-async def reminder_main_wrapper(callback: types.CallbackQuery):
-    from reminder.reminder_handlers import reminder_main_handler
-    await reminder_main_handler(callback)
-
-@dp.callback_query(F.data == "reminder_type:exam")
-async def reminder_exam_start_wrapper(callback: types.CallbackQuery, state: FSMContext):
+# --- هندلرهای منوی ریمایندر ---
+@dp.message(F.text == "⏰ یادآوری کنکورها")
+async def reminder_exam_start_wrapper(message: types.Message, state: FSMContext):
     from reminder.reminder_handlers import start_exam_reminder
-    await start_exam_reminder(callback, state)
+    await start_exam_reminder(message, state)
 
-@dp.callback_query(F.data.startswith("reminder_exam:"))
-async def reminder_exam_selection_wrapper(callback: types.CallbackQuery, state: FSMContext):
-    from reminder.reminder_handlers import process_exam_selection
-    await process_exam_selection(callback, state)
+@dp.message(F.text == "📝 یادآوری شخصی")
+async def reminder_personal_wrapper(message: types.Message):
+    await message.answer("📝 <b>یادآوری شخصی</b>\n\nاین بخش به زودی اضافه خواهد شد.", parse_mode="HTML")
 
-@dp.callback_query(F.data.startswith("reminder_day:"))
-async def reminder_days_selection_wrapper(callback: types.CallbackQuery, state: FSMContext):
-    from reminder.reminder_handlers import process_days_selection
-    await process_days_selection(callback, state)
+@dp.message(F.text == "🤖 یادآوری خودکار")
+async def reminder_auto_wrapper(message: types.Message):
+    await message.answer("🤖 <b>یادآوری خودکار</b>\n\nاین بخش به زودی اضافه خواهد شد.", parse_mode="HTML")
 
-@dp.callback_query(F.data.startswith("reminder_time:"))
-async def reminder_times_selection_wrapper(callback: types.CallbackQuery, state: FSMContext):
-    from reminder.reminder_handlers import process_times_selection
-    await process_times_selection(callback, state)
-
-@dp.callback_query(F.data.startswith("reminder_confirm:"))
-async def reminder_confirmation_wrapper(callback: types.CallbackQuery, state: FSMContext):
-    from reminder.reminder_handlers import confirm_reminder_creation
-    await confirm_reminder_creation(callback, state)
-
-@dp.callback_query(F.data == "reminder_type:manage")
-async def reminder_manage_wrapper(callback: types.CallbackQuery):
+@dp.message(F.text == "📊 مدیریت یادآوری‌ها")
+async def reminder_manage_wrapper(message: types.Message):
     from reminder.reminder_handlers import manage_reminders_handler
-    await manage_reminders_handler(callback)
+    await manage_reminders_handler(message)
 
-# --- هندلرهای پیام‌های متنی برای ریمایندر ---
+@dp.message(F.text == "🏠 منوی اصلی")
+async def reminder_main_menu_wrapper(message: types.Message, state: FSMContext):
+    await state.clear()
+    from handlers.main_handlers import start_handler
+    await start_handler(message, bot)
+
+# --- هندلرهای state برای ریمایندر کنکور ---
+@dp.message(ExamReminderStates.selecting_exams)
+async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_exam_selection
+    await process_exam_selection(message, state)
+
+@dp.message(ExamReminderStates.selecting_days)
+async def exam_reminder_days_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_days_selection
+    await process_days_selection(message, state)
+
+@dp.message(ExamReminderStates.selecting_times)
+async def exam_reminder_times_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_times_selection
+    await process_times_selection(message, state)
+
 @dp.message(ExamReminderStates.selecting_start_date)
-async def reminder_start_date_wrapper(message: types.Message, state: FSMContext):
+async def exam_reminder_start_date_wrapper(message: types.Message, state: FSMContext):
     from reminder.reminder_handlers import process_start_date
     await process_start_date(message, state)
 
 @dp.message(ExamReminderStates.selecting_end_date)
-async def reminder_end_date_wrapper(message: types.Message, state: FSMContext):
+async def exam_reminder_end_date_wrapper(message: types.Message, state: FSMContext):
     from reminder.reminder_handlers import process_end_date
     await process_end_date(message, state)
+
+@dp.message(ExamReminderStates.confirmation)
+async def exam_reminder_confirmation_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_confirmation
+    await process_confirmation(message, state)
+
+# --- هندلر عمومی بازگشت ---
+@dp.message(F.text == "🔙 بازگشت")
+async def back_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state:
+        await state.clear()
+    from reminder.reminder_handlers import reminder_main_handler
+    await reminder_main_handler(message)
 
 # --- هندلر دیباگ ---
 @dp.message()
 async def debug_all_messages(message: types.Message):
     """هندلر دیباگ برای لاگ تمام پیام‌ها"""
     logger.info(f"📩 پیام دریافت شد: user_id={message.from_user.id}, text='{message.text}'")
-    await message.answer("✅ ربات فعال است! پیام شما: " + (message.text or "بدون متن"))
+    # await message.answer("✅ ربات فعال است! پیام شما: " + (message.text or "بدون متن"))
 
 async def main():
     """تابع اصلی با Polling"""
