@@ -229,7 +229,23 @@ async def test_reminder_wrapper(message: types.Message):
         await message.answer("✅ ریمایندر تستی ارسال شد!")
     except Exception as e:
         await message.answer(f"❌ خطا در ارسال ریمایندر: {e}")
-        
+
+# --- هندلرهای ریمایندر خودکار برای ادمین ---
+@dp.message(F.text == "🤖 مدیریت ریمایندرهای خودکار")
+async def auto_reminders_admin_wrapper(message: types.Message):
+    from reminder.auto_reminder_admin import auto_reminders_admin_handler
+    await auto_reminders_admin_handler(message)
+
+@dp.message(F.text == "📋 لیست ریمایندرها")
+async def list_auto_reminders_admin_wrapper(message: types.Message):
+    from reminder.auto_reminder_admin import list_auto_reminders_admin
+    await list_auto_reminders_admin(message)
+
+@dp.message(F.text == "➕ افزودن جدید")
+async def add_auto_reminder_wrapper(message: types.Message, state: FSMContext):
+    from reminder.auto_reminder_admin import start_add_auto_reminder
+    await start_add_auto_reminder(message, state)
+
 # --- هندلرهای state برای ریمایندر کنکور ---
 @dp.message(ExamReminderStates.selecting_exams)
 async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
