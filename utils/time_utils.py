@@ -3,6 +3,14 @@
 """
 from datetime import datetime, timedelta
 from typing import Tuple, Dict, Any, List
+import pytz
+
+# تنظیم تایم‌زون تهران
+TEHRAN_TIMEZONE = pytz.timezone('Asia/Tehran')
+
+def get_tehran_time():
+    """دریافت زمان فعلی تهران"""
+    return datetime.now(TEHRAN_TIMEZONE)
 
 def gregorian_to_jalali(gy, gm, gd):
     """
@@ -32,9 +40,9 @@ def gregorian_to_jalali(gy, gm, gd):
 
 def get_current_persian_datetime():
     """
-    دریافت تاریخ و زمان فعلی به صورت شمسی
+    دریافت تاریخ و زمان فعلی تهران به صورت شمسی
     """
-    now = datetime.now()
+    now = get_tehran_time()
     year, month, day = gregorian_to_jalali(now.year, now.month, now.day)
     
     # نام ماه‌های شمسی
@@ -58,14 +66,21 @@ def get_current_persian_datetime():
         'minute': now.minute,
         'second': now.second,
         'full_date': f"{weekday} {day} {month_name} {year}",
-        'full_time': f"{now.hour:02d}:{now.minute:02d}:{now.second:02d}"
+        'full_time': f"{now.hour:02d}:{now.minute:02d}:{now.second:02d}",
+        'timezone': 'تهران'
     }
 
 def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     """
     فرمت‌بندی زمان باقی‌مانده به صورت دقیق و بازگشت تعداد کل روزها
     """
-    now = datetime.now()
+    now = get_tehran_time()
+    
+    # اطمینان از اینکه target_date هم در تایم‌زون تهران باشد
+    if target_date.tzinfo is None:
+        target_date = TEHRAN_TIMEZONE.localize(target_date)
+    else:
+        target_date = target_date.astimezone(TEHRAN_TIMEZONE)
     
     if target_date <= now:
         return "✅ برگزار شده", 0
@@ -104,7 +119,13 @@ def format_time_remaining_detailed(target_date: datetime) -> Dict[str, Any]:
     """
     محاسبه دقیق زمان باقی‌مانده و بازگشت تمام جزئیات
     """
-    now = datetime.now()
+    now = get_tehran_time()
+    
+    # اطمینان از اینکه target_date هم در تایم‌زون تهران باشد
+    if target_date.tzinfo is None:
+        target_date = TEHRAN_TIMEZONE.localize(target_date)
+    else:
+        target_date = target_date.astimezone(TEHRAN_TIMEZONE)
     
     if target_date <= now:
         return {
@@ -165,13 +186,19 @@ def get_persian_weekday(date: datetime) -> str:
 
 def format_exam_dates(dates: List[datetime]) -> str:
     """
-    فرمت‌بندی تاریخ‌های آزمون به صورت کامل
+    فرمت‌بندی تاریخ‌های آزمون به صورت کامل با تایم‌زون تهران
     """
     if not dates:
         return "تاریخ تعیین نشده"
     
     result = []
     for date in dates:
+        # تبدیل به تایم‌زون تهران
+        if date.tzinfo is None:
+            date = TEHRAN_TIMEZONE.localize(date)
+        else:
+            date = date.astimezone(TEHRAN_TIMEZONE)
+            
         weekday = get_persian_weekday(date)
         # تبدیل تاریخ میلادی به شمسی
         jy, jm, jd = gregorian_to_jalali(date.year, date.month, date.day)
@@ -182,18 +209,24 @@ def format_exam_dates(dates: List[datetime]) -> str:
         }
         month_name = persian_months.get(jm, "نامشخص")
         
-        result.append(f"📅 {weekday} {jd} {month_name} {jy} - ساعت {date.strftime('%H:%M')}")
+        result.append(f"📅 {weekday} {jd} {month_name} {jy} - ساعت {date.strftime('%H:%M')} به وقت تهران")
     
     return "\n".join(result)
 
 def calculate_multiple_dates_countdown(dates: List[datetime]) -> List[Dict[str, Any]]:
     """
-    محاسبه زمان باقی‌مانده برای چندین تاریخ
+    محاسبه زمان باقی‌مانده برای چندین تاریخ با تایم‌زون تهران
     """
-    now = datetime.now()
+    now = get_tehran_time()
     result = []
     
     for date in dates:
+        # تبدیل به تایم‌زون تهران
+        if date.tzinfo is None:
+            date = TEHRAN_TIMEZONE.localize(date)
+        else:
+            date = date.astimezone(TEHRAN_TIMEZONE)
+            
         if date <= now:
             result.append({
                 'date': date,
@@ -212,3 +245,10 @@ def calculate_multiple_dates_countdown(dates: List[datetime]) -> List[Dict[str, 
             })
     
     return result
+
+def create_datetime_with_tehran_timezone(year, month, day, hour=0, minute=0, second=0):
+    """
+    ایجاد تاریخ با تایم‌زون تهران
+    """
+    naive_dt = datetime(year, month, day, hour, minute, second)
+    return TEHRAN_TIMEZONE.localize(naive_dt)
