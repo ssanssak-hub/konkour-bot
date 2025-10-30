@@ -246,6 +246,12 @@ async def add_auto_reminder_wrapper(message: types.Message, state: FSMContext):
     from reminder.auto_reminder_admin import start_add_auto_reminder
     await start_add_auto_reminder(message, state)
 
+# --- هندلر callback برای ریمایندرهای خودکار ---
+@dp.callback_query(F.data.startswith("auto_"))
+async def auto_reminder_callback_wrapper(callback: types.CallbackQuery):
+    from reminder.auto_reminder_admin import handle_auto_reminder_callback
+    await handle_auto_reminder_callback(callback)
+
 # --- هندلرهای state برای ریمایندر کنکور ---
 @dp.message(ExamReminderStates.selecting_exams)
 async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
