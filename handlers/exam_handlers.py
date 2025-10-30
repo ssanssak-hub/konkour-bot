@@ -27,24 +27,30 @@ async def exam_callback_handler(callback: types.CallbackQuery):
     
     exam = EXAMS_1405[exam_key]
     
-    # دریافت تاریخ و زمان فعلی شمسی
-    from utils.time_utils import get_current_persian_datetime, calculate_multiple_dates_countdown, format_exam_dates
+    # دریافت تاریخ و زمان فعلی تهران به صورت شمسی
+    from utils.time_utils import get_current_persian_datetime, calculate_multiple_dates_countdown, format_exam_dates, create_datetime_with_tehran_timezone
     current_time = get_current_persian_datetime()
     
-    # تبدیل تاریخ‌های آزمون به datetime
+    # تبدیل تاریخ‌های آزمون به datetime با تایم‌زون تهران
     dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
-    exam_dates = [datetime(*d) for d in dates]
+    exam_dates = []
+    
+    for date_tuple in dates:
+        if len(date_tuple) == 3:  # (year, month, day)
+            exam_dates.append(create_datetime_with_tehran_timezone(*date_tuple, 8, 0, 0))  # ساعت 8 صبح
+        else:  # (year, month, day, hour, minute)
+            exam_dates.append(create_datetime_with_tehran_timezone(*date_tuple))
     
     # محاسبه زمان باقی‌مانده برای همه تاریخ‌ها
     countdowns = calculate_multiple_dates_countdown(exam_dates)
     
     # ساخت پیام
-    message = f"🕒 <b>زمان فعلی:</b> {current_time['full_date']}\n"
+    message = f"🕒 <b>زمان فعلی تهران:</b> {current_time['full_date']}\n"
     message += f"⏰ <b>ساعت:</b> {current_time['full_time']}\n\n"
     
     message += f"📘 <b>{exam['name']}</b>\n\n"
     
-    # نمایش تاریخ‌های برگزاری به شمسی
+    # نمایش تاریخ‌های برگزاری به شمسی با تایم‌زون تهران
     message += f"🗓️ <b>تاریخ‌های برگزاری:</b>\n"
     message += format_exam_dates(exam_dates)
     message += "\n\n"
@@ -64,7 +70,7 @@ async def exam_callback_handler(callback: types.CallbackQuery):
         reply_markup=exam_actions_menu(exam_key), 
         parse_mode="HTML"
     )
-
+    
 async def all_exams_handler(callback: types.CallbackQuery):
     """هندلر نمایش همه کنکورها"""
     logger.info(f"📋 کاربر {callback.from_user.id} همه کنکورها را انتخاب کرد")
