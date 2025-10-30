@@ -1,7 +1,7 @@
 """
 ابزارها و توابع کمکی سیستم ریمایندر
 """
-import asyncio  # 🔽 این خط رو اضافه کنید
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -161,32 +161,6 @@ class TimeConverter:
         
         persian_time = ''.join(english_to_persian.get(char, char) for char in english_time)
         return persian_time
-    
-    @staticmethod
-    def get_next_occurrence(days_of_week: List[int], target_time: str) -> Optional[datetime]:
-        """پیدا کردن تاریخ بعدی ریمایندر"""
-        now = datetime.now(TEHRAN_TIMEZONE)
-        current_weekday = now.weekday()
-        
-        # پیدا کردن نزدیک‌ترین روز در هفته جاری یا هفته بعد
-        for day in sorted(days_of_week):
-            if day >= current_weekday:
-                days_ahead = day - current_weekday
-                next_date = now + timedelta(days=days_ahead)
-                break
-        else:
-            # اگر همه روزها قبل از امروز بودند، برو به هفته بعد
-            days_ahead = 7 - current_weekday + days_of_week[0]
-            next_date = now + timedelta(days=days_ahead)
-        
-        # ترکیب تاریخ با زمان
-        time_parts = target_time.split(':')
-        if len(time_parts) == 2:
-            hour = int(time_parts[0])
-            minute = int(time_parts[1])
-            next_date = next_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        
-        return next_date if next_date > now else None
 
 class ReminderAnalyzer:
     """کلاس تحلیل و آمار ریمایندرها"""
@@ -210,28 +184,6 @@ class ReminderAnalyzer:
             'personal_count': personal_count,
             'active_percentage': (active / total * 100) if total > 0 else 0
         }
-    
-    @staticmethod
-    def find_time_conflicts(reminders: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """پیدا کردن تداخل زمانی بین ریمایندرها"""
-        conflicts = []
-        
-        for i, rem1 in enumerate(reminders):
-            for j, rem2 in enumerate(reminders[i+1:], i+1):
-                if ReminderAnalyzer._has_time_conflict(rem1, rem2):
-                    conflicts.append({
-                        'reminder1': rem1,
-                        'reminder2': rem2,
-                        'conflict_type': 'time_overlap'
-                    })
-        
-        return conflicts
-    
-    @staticmethod
-    def _has_time_conflict(rem1: Dict[str, Any], rem2: Dict[str, Any]) -> bool:
-        """چک کردن تداخل زمانی بین دو ریمایندر"""
-        # TODO: پیاده‌سازی منطق چک تداخل
-        return False
 
 def setup_reminder_system(bot):
     """راه‌اندازی کامل سیستم ریمایندر"""
@@ -240,7 +192,6 @@ def setup_reminder_system(bot):
     # مقداردهی اولیه سیستم زمان‌بندی
     scheduler = init_reminder_scheduler(bot)
     
-    # سیستم زمان‌بندی رو برمی‌گردونیم تا بعداً در event loop اصلی شروع بشه
     logger.info("✅ سیستم ریمایندر راه‌اندازی شد")
     return scheduler
 
