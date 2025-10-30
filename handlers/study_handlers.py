@@ -13,6 +13,19 @@ from database import Database
 logger = logging.getLogger(__name__)
 db = Database()
 
+async def study_callback_handler(callback: types.CallbackQuery, state: FSMContext):
+    """هندلر اصلی برای callback_dataهای study"""
+    data = callback.data
+    
+    if data == "study:log":
+        await log_study_handler(callback, state)
+    elif data.startswith("study:subject:"):
+        await log_subject_handler(callback, state)
+    elif data in ["study:daily", "study:weekly", "study:monthly"]:
+        await callback.answer("⚠️ این قابلیت به زودی اضافه می‌شود")
+    else:
+        await callback.answer("⚠️ دستور نامعتبر")
+
 async def today_stats_handler(callback: types.CallbackQuery):
     """نمایش آمار امروز"""
     today_stats = db.get_today_study_stats(callback.from_user.id)
