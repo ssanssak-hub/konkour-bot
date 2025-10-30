@@ -26,20 +26,25 @@ async def exam_callback_handler(callback: types.CallbackQuery):
         return
     
     exam = EXAMS_1405[exam_key]
-    now = datetime.now()
     
-    # تبدیل تاریخ‌ها به datetime
+    # دریافت تاریخ و زمان فعلی شمسی
+    from utils.time_utils import get_current_persian_datetime, calculate_multiple_dates_countdown, format_exam_dates
+    current_time = get_current_persian_datetime()
+    
+    # تبدیل تاریخ‌های آزمون به datetime
     dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
     exam_dates = [datetime(*d) for d in dates]
     
     # محاسبه زمان باقی‌مانده برای همه تاریخ‌ها
-    from utils.time_utils import calculate_multiple_dates_countdown, format_exam_dates
     countdowns = calculate_multiple_dates_countdown(exam_dates)
     
     # ساخت پیام
-    message = f"📘 <b>{exam['name']}</b>\n\n"
+    message = f"🕒 <b>زمان فعلی:</b> {current_time['full_date']}\n"
+    message += f"⏰ <b>ساعت:</b> {current_time['full_time']}\n\n"
     
-    # نمایش تاریخ‌ها با روز هفته
+    message += f"📘 <b>{exam['name']}</b>\n\n"
+    
+    # نمایش تاریخ‌های برگزاری به شمسی
     message += f"🗓️ <b>تاریخ‌های برگزاری:</b>\n"
     message += format_exam_dates(exam_dates)
     message += "\n\n"
