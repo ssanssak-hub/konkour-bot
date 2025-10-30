@@ -411,6 +411,12 @@ async def main():
     # شروع سیستم ریمایندر در event loop اصلی
     asyncio.create_task(reminder_scheduler.start_scheduler())
     logger.info("🚀 سیستم ریمایندر شروع به کار کرد")
+
+    # --- راه‌اندازی سیستم‌های زمان‌بندی ---
+    # در تابع main() بعد از reminder_scheduler
+    auto_reminder_scheduler = init_auto_reminder_scheduler(bot)
+    asyncio.create_task(auto_reminder_scheduler.start_scheduler())
+    logger.info("🚀 سیستم ریمایندرهای خودکار شروع به کار کرد")
     
     logger.info("🔄 شروع Polling روی Railway...")
     
