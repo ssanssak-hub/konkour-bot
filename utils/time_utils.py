@@ -12,31 +12,56 @@ def get_tehran_time():
     """دریافت زمان فعلی تهران"""
     return datetime.now(TEHRAN_TIMEZONE)
 
-def gregorian_to_jalali(gy, gm, gd):
+def jalali_to_gregorian(jy, jm, jd):
     """
-    تبدیل تاریخ میلادی به شمسی
+    تبدیل تاریخ شمسی به میلادی
     منبع: https://jdf.scr.ir/
     """
-    g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
-    if gm > 2:
-        gy2 = gy + 1
+    jy += 1595
+    days = -355668 + (365 * jy) + ((jy // 33) * 8) + (((jy % 33) + 3) // 4) + jd
+    if jm < 7:
+        days += (jm - 1) * 31
     else:
-        gy2 = gy
-    days = 355666 + (365 * gy) + ((gy2 + 3) // 4) - ((gy2 + 99) // 100) + ((gy2 + 399) // 400) + gd + g_d_m[gm - 1]
-    jy = -1595 + (33 * (days // 12053))
-    days %= 12053
-    jy += 4 * (days // 1461)
+        days += ((jm - 7) * 30) + 186
+    gy = 400 * (days // 146097)
+    days %= 146097
+    if days > 36524:
+        gy += 100 * ((days - 1) // 36524)
+        days = (days - 1) % 36524
+        if days >= 365:
+            days += 1
+    gy += 4 * (days // 1461)
     days %= 1461
     if days > 365:
-        jy += (days - 1) // 365
+        gy += ((days - 1) // 365)
         days = (days - 1) % 365
-    if days < 186:
-        jm = 1 + (days // 31)
-        jd = 1 + (days % 31)
+    gd = days + 1
+    if (gy % 4 == 0 and gy % 100 != 0) or (gy % 400 == 0):
+        kab = 29
     else:
-        jm = 7 + ((days - 186) // 30)
-        jd = 1 + ((days - 186) % 30)
-    return jy, jm, jd
+        kab = 28
+    sal_a = [0, 31, kab, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    gm = 0
+    while gm < 13:
+        v = sal_a[gm]
+        if gd <= v:
+            break
+        gd -= v
+        gm += 1
+    return gy, gm, gd
+
+def parse_persian_date(date_str: str) -> tuple:
+    """تبدیل رشته تاریخ شمسی به اعداد"""
+    parts = date_str.split('/')
+    if len(parts) != 3:
+        raise ValueError("فرمت تاریخ نامعتبر")
+    return int(parts[0]), int(parts[1]), int(parts[2])
+
+def persian_to_gregorian_string(persian_date: str) -> str:
+    """تبدیل تاریخ شمسی به رشته میلادی YYYY-MM-DD"""
+    jy, jm, jd = parse_persian_date(persian_date)
+    gy, gm, gd = jalali_to_gregorian(jy, jm, jd)
+    return f"{gy}-{gm:02d}-{gd:02d}"
 
 def get_current_persian_datetime():
     """
