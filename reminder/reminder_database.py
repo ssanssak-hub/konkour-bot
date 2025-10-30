@@ -1,5 +1,5 @@
 """
-سیستم دیتابیس تخصصی برای ریمایندرها - نسخه پیشرفته
+سیستم دیتابیس تخصصی برای ریمایندرها - نسخه کامل با تاریخ میلادی
 """
 import sqlite3
 import logging
@@ -38,8 +38,8 @@ class ReminderDatabase:
                     days_of_week TEXT NOT NULL,
                     specific_times TEXT NOT NULL,
                     specific_dates TEXT,
-                    start_date TEXT NOT NULL,
-                    end_date TEXT NOT NULL,
+                    start_date TEXT NOT NULL,  -- ذخیره به صورت میلادی YYYY-MM-DD
+                    end_date TEXT NOT NULL,    -- ذخیره به صورت میلادی YYYY-MM-DD
                     timezone TEXT DEFAULT 'Asia/Tehran',
                     is_active BOOLEAN DEFAULT TRUE,
                     last_sent TIMESTAMP,
@@ -60,8 +60,8 @@ class ReminderDatabase:
                     days_of_week TEXT,
                     specific_time TEXT NOT NULL,
                     custom_days_interval INTEGER,
-                    start_date TEXT NOT NULL,
-                    end_date TEXT,
+                    start_date TEXT NOT NULL,  -- ذخیره به صورت میلادی YYYY-MM-DD
+                    end_date TEXT,             -- ذخیره به صورت میلادی YYYY-MM-DD
                     max_occurrences INTEGER,
                     timezone TEXT DEFAULT 'Asia/Tehran',
                     is_active BOOLEAN DEFAULT TRUE,
@@ -136,9 +136,21 @@ class ReminderDatabase:
     
     def add_exam_reminder(self, user_id: int, exam_keys: List[str], 
                          days_of_week: List[int], specific_times: List[str],
-                         start_date: str, end_date: str, 
+                         start_date: str, end_date: str,  # تاریخ شمسی از کاربر
                          specific_dates: List[str] = None) -> int:
-        """افزودن ریمایندر کنکور"""
+        """افزودن ریمایندر کنکور - ذخیره تاریخ‌ها به صورت میلادی"""
+        
+        from utils.time_utils import persian_to_gregorian_string
+        
+        # تبدیل تاریخ‌های شمسی به میلادی
+        start_date_gregorian = persian_to_gregorian_string(start_date)
+        end_date_gregorian = persian_to_gregorian_string(end_date)
+        
+        specific_dates_gregorian = []
+        if specific_dates:
+            for date in specific_dates:
+                specific_dates_gregorian.append(persian_to_gregorian_string(date))
+        
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
@@ -151,9 +163,9 @@ class ReminderDatabase:
                 json.dumps(exam_keys),
                 json.dumps(days_of_week),
                 json.dumps(specific_times),
-                json.dumps(specific_dates or []),
-                start_date,
-                end_date
+                json.dumps(specific_dates_gregorian),
+                start_date_gregorian,  # ذخیره میلادی
+                end_date_gregorian     # ذخیره میلادی
             ))
             
             reminder_id = cursor.lastrowid
@@ -182,8 +194,8 @@ class ReminderDatabase:
                     'days_of_week': json.loads(row['days_of_week']),
                     'specific_times': json.loads(row['specific_times']),
                     'specific_dates': json.loads(row['specific_dates']),
-                    'start_date': row['start_date'],
-                    'end_date': row['end_date'],
+                    'start_date': row['start_date'],  # میلادی
+                    'end_date': row['end_date'],      # میلادی
                     'is_active': bool(row['is_active']),
                     'last_sent': row['last_sent'],
                     'total_sent': row['total_sent'],
@@ -196,10 +208,17 @@ class ReminderDatabase:
     
     def add_personal_reminder(self, user_id: int, title: str, message: str,
                             repetition_type: str, specific_time: str,
-                            start_date: str, days_of_week: List[int] = None,
+                            start_date: str, days_of_week: List[int] = None,  # تاریخ شمسی از کاربر
                             custom_days_interval: int = None, 
                             end_date: str = None, max_occurrences: int = None) -> int:
-        """افزودن ریمایندر شخصی"""
+        """افزودن ریمایندر شخصی - ذخیره تاریخ‌ها به صورت میلادی"""
+        
+        from utils.time_utils import persian_to_gregorian_string
+        
+        # تبدیل تاریخ‌های شمسی به میلادی
+        start_date_gregorian = persian_to_gregorian_string(start_date)
+        end_date_gregorian = persian_to_gregorian_string(end_date) if end_date else None
+        
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
@@ -216,8 +235,8 @@ class ReminderDatabase:
                 json.dumps(days_of_week or []),
                 specific_time,
                 custom_days_interval,
-                start_date,
-                end_date,
+                start_date_gregorian,  # ذخیره میلادی
+                end_date_gregorian,    # ذخیره میلادی
                 max_occurrences
             ))
             
@@ -249,8 +268,8 @@ class ReminderDatabase:
                     'days_of_week': json.loads(row['days_of_week']),
                     'specific_time': row['specific_time'],
                     'custom_days_interval': row['custom_days_interval'],
-                    'start_date': row['start_date'],
-                    'end_date': row['end_date'],
+                    'start_date': row['start_date'],  # میلادی
+                    'end_date': row['end_date'],      # میلادی
                     'max_occurrences': row['max_occurrences'],
                     'is_active': bool(row['is_active']),
                     'last_sent': row['last_sent'],
@@ -263,7 +282,7 @@ class ReminderDatabase:
     # --- توابع اصلی برای سیستم زمان‌بندی ---
     
     def get_due_reminders(self, target_date: str, target_time: str, target_weekday: int) -> List[Dict[str, Any]]:
-        """دریافت ریمایندرهای due برای تاریخ و زمان مشخص"""
+        """دریافت ریمایندرهای due برای تاریخ و زمان مشخص - با تاریخ میلادی"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
@@ -278,7 +297,12 @@ class ReminderDatabase:
                 
                 target_time_english = time_map.get(target_time, target_time)
                 
-                # دریافت ریمایندرهای کنکور
+                # 🔥 حالا target_date خودش میلادی هست (از سیستم)
+                # پس نیاز به تبدیل نداریم!
+                
+                logger.info(f"🔍 جستجوی ریمایندر برای تاریخ میلادی: {target_date}, زمان: {target_time_english}")
+                
+                # دریافت ریمایندرهای کنکور - با تاریخ میلادی
                 cursor.execute('''
                     SELECT * FROM exam_reminders 
                     WHERE is_active = TRUE 
@@ -289,8 +313,8 @@ class ReminderDatabase:
                 ''', (
                     f'%{target_weekday}%',
                     f'%"{target_time_english}"%',
-                    target_date,
-                    target_date
+                    target_date,  # تاریخ میلادی
+                    target_date   # تاریخ میلادی
                 ))
                 
                 reminders = []
@@ -308,7 +332,7 @@ class ReminderDatabase:
                         'reminder_type': 'exam'
                     })
                 
-                # دریافت ریمایندرهای شخصی
+                # دریافت ریمایندرهای شخصی - با تاریخ میلادی
                 cursor.execute('''
                     SELECT * FROM personal_reminders 
                     WHERE is_active = TRUE 
@@ -334,6 +358,7 @@ class ReminderDatabase:
                         'reminder_type': 'personal'
                     })
                 
+                logger.info(f"✅ پیدا شد {len(reminders)} ریمایندر برای ارسال")
                 return reminders
                 
         except Exception as e:
