@@ -13,6 +13,9 @@ load_dotenv()
 from utils.error_handlers import register_error_handlers
 from utils.health_monitor import health_monitor
 
+# ایمپورت سیستم ریمایندر
+from reminder import setup_reminder_system
+
 # تنظیمات لاگ
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -34,6 +37,9 @@ dp = Dispatcher()
 
 # ثبت هندلرهای خطا
 register_error_handlers(dp)
+
+# --- راه‌اندازی سیستم ریمایندر ---
+reminder_scheduler = setup_reminder_system(bot)
 
 # --- ایمپورت هندلرهای اصلی ---
 @dp.message(CommandStart())
@@ -126,6 +132,54 @@ async def stats_wrapper(callback: types.CallbackQuery):
 async def admin_wrapper(callback: types.CallbackQuery, state: FSMContext):
     from handlers.admin_handlers import admin_callback_handler
     await admin_callback_handler(callback, state)
+
+# --- هندلرهای ریمایندر ---
+@dp.callback_query(F.data == "reminder:main")
+async def reminder_main_wrapper(callback: types.CallbackQuery):
+    from reminder.reminder_handlers import reminder_main_handler
+    await reminder_main_handler(callback)
+
+@dp.callback_query(F.data == "reminder_type:exam")
+async def reminder_exam_start_wrapper(callback: types.CallbackQuery, state: FSMContext):
+    from reminder.reminder_handlers import start_exam_reminder
+    await start_exam_reminder(callback, state)
+
+@dp.callback_query(F.data.startswith("reminder_exam:"))
+async def reminder_exam_selection_wrapper(callback: types.CallbackQuery, state: FSMContext):
+    from reminder.reminder_handlers import process_exam_selection
+    await process_exam_selection(callback, state)
+
+@dp.callback_query(F.data.startswith("reminder_day:"))
+async def reminder_days_selection_wrapper(callback: types.CallbackQuery, state: FSMContext):
+    from reminder.reminder_handlers import process_days_selection
+    await process_days_selection(callback, state)
+
+@dp.callback_query(F.data.startswith("reminder_time:"))
+async def reminder_times_selection_wrapper(callback: types.CallbackQuery, state: FSMContext):
+    from reminder.reminder_handlers import process_times_selection
+    await process_times_selection(callback, state)
+
+@dp.callback_query(F.data.startswith("reminder_confirm:"))
+async def reminder_confirmation_wrapper(callback: types.CallbackQuery, state: FSMContext):
+    from reminder.reminder_handlers import confirm_reminder_creation
+    await confirm_reminder_creation(callback, state)
+
+@dp.callback_query(F.data == "reminder_type:manage")
+async def reminder_manage_wrapper(callback: types.CallbackQuery):
+    from reminder.reminder_handlers import manage_reminders_handler
+    await manage_reminders_handler(callback)
+
+# --- هندلرهای پیام‌های متنی برای ریمایندر ---
+@dp.message(ExamReminderStates.selecting_start_date)
+async def reminder_start_date_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_start_date
+    await process_start_date(message, state)
+
+@dp.message(ExamReminderStates.selecting_end_date)
+async def reminder_end_date_wrapper(message: types.Message, state: FSMContext):
+    from reminder.reminder_handlers import process_end_date
+    await process_end_date(message, state)
+
 # --- هندلر دیباگ ---
 @dp.message()
 async def debug_all_messages(message: types.Message):
