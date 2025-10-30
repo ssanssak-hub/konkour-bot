@@ -4,6 +4,63 @@
 from datetime import datetime, timedelta
 from typing import Tuple, Dict, Any, List
 
+def gregorian_to_jalali(gy, gm, gd):
+    """
+    تبدیل تاریخ میلادی به شمسی
+    منبع: https://jdf.scr.ir/
+    """
+    g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+    if gm > 2:
+        gy2 = gy + 1
+    else:
+        gy2 = gy
+    days = 355666 + (365 * gy) + ((gy2 + 3) // 4) - ((gy2 + 99) // 100) + ((gy2 + 399) // 400) + gd + g_d_m[gm - 1]
+    jy = -1595 + (33 * (days // 12053))
+    days %= 12053
+    jy += 4 * (days // 1461)
+    days %= 1461
+    if days > 365:
+        jy += (days - 1) // 365
+        days = (days - 1) % 365
+    if days < 186:
+        jm = 1 + (days // 31)
+        jd = 1 + (days % 31)
+    else:
+        jm = 7 + ((days - 186) // 30)
+        jd = 1 + ((days - 186) % 30)
+    return jy, jm, jd
+
+def get_current_persian_datetime():
+    """
+    دریافت تاریخ و زمان فعلی به صورت شمسی
+    """
+    now = datetime.now()
+    year, month, day = gregorian_to_jalali(now.year, now.month, now.day)
+    
+    # نام ماه‌های شمسی
+    persian_months = {
+        1: "فروردین", 2: "اردیبهشت", 3: "خرداد", 
+        4: "تیر", 5: "مرداد", 6: "شهریور",
+        7: "مهر", 8: "آبان", 9: "آذر", 
+        10: "دی", 11: "بهمن", 12: "اسفند"
+    }
+    
+    weekday = get_persian_weekday(now)
+    month_name = persian_months.get(month, "نامشخص")
+    
+    return {
+        'year': year,
+        'month': month,
+        'month_name': month_name,
+        'day': day,
+        'weekday': weekday,
+        'hour': now.hour,
+        'minute': now.minute,
+        'second': now.second,
+        'full_date': f"{weekday} {day} {month_name} {year}",
+        'full_time': f"{now.hour:02d}:{now.minute:02d}:{now.second:02d}"
+    }
+
 def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     """
     فرمت‌بندی زمان باقی‌مانده به صورت دقیق و بازگشت تعداد کل روزها
@@ -116,9 +173,16 @@ def format_exam_dates(dates: List[datetime]) -> str:
     result = []
     for date in dates:
         weekday = get_persian_weekday(date)
-        date_str = date.strftime("%Y/%m/%d")
-        time_str = date.strftime("%H:%M")
-        result.append(f"📅 {weekday} - {date_str} ساعت {time_str}")
+        # تبدیل تاریخ میلادی به شمسی
+        jy, jm, jd = gregorian_to_jalali(date.year, date.month, date.day)
+        persian_months = {
+            1: "فروردین", 2: "اردیبهشت", 3: "خرداد", 4: "تیر",
+            5: "مرداد", 6: "شهریور", 7: "مهر", 8: "آبان", 
+            9: "آذر", 10: "دی", 11: "بهمن", 12: "اسفند"
+        }
+        month_name = persian_months.get(jm, "نامشخص")
+        
+        result.append(f"📅 {weekday} {jd} {month_name} {jy} - ساعت {date.strftime('%H:%M')}")
     
     return "\n".join(result)
 
