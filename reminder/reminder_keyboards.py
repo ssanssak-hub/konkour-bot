@@ -1,16 +1,16 @@
 """
-کیبوردهای ساده (غیر شیشه‌ای) سیستم ریمایندر
+کیبوردهای ساده سیستم ریمایندر
 """
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 def create_reminder_main_menu():
-    """منوی اصلی ریمایندر با کیبورد ساده"""
+    """منوی اصلی ریمایندر"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⏰ یادآوری کنکورها")],
             [KeyboardButton(text="📝 یادآوری شخصی")],
             [KeyboardButton(text="🤖 یادآوری خودکار")],
-            [KeyboardButton(text="📊 مدیریت یادآوری‌ها")],
+            [KeyboardButton(text="📋 مدیریت یادآوری")],
             [KeyboardButton(text="🏠 منوی اصلی")]
         ],
         resize_keyboard=True,
@@ -44,16 +44,20 @@ def create_days_selection_menu():
         resize_keyboard=True
     )
 
-def create_time_selection_menu():
-    """منوی انتخاب ساعات"""
+def create_time_input_menu():
+    """منوی ورود ساعت دلخواه"""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="۸:۰۰"), KeyboardButton(text="۱۰:۰۰")],
-            [KeyboardButton(text="۱۲:۰۰"), KeyboardButton(text="۱۴:۰۰")],
-            [KeyboardButton(text="۱۶:۰۰"), KeyboardButton(text="۱۸:۰۰")],
-            [KeyboardButton(text="۲۰:۰۰"), KeyboardButton(text="۲۲:۰۰")],
-            [KeyboardButton(text="✏️ ساعت دلخواه"), KeyboardButton(text="✅ انتخاب همه")],
-            [KeyboardButton(text="🗑️ پاک کردن"), KeyboardButton(text="➡️ ادامه")],
+            [KeyboardButton(text="🔙 بازگشت")]
+        ],
+        resize_keyboard=True
+    )
+
+def create_date_input_menu():
+    """منوی ورود تاریخ"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📅 امروز")],
             [KeyboardButton(text="🔙 بازگشت")]
         ],
         resize_keyboard=True
@@ -86,13 +90,24 @@ def create_confirmation_menu():
     )
 
 def create_management_menu():
-    """منوی مدیریت ریمایندرها"""
+    """منوی مدیریت یادآوری"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📋 مشاهده همه")],
             [KeyboardButton(text="✏️ ویرایش"), KeyboardButton(text="🗑️ حذف")],
             [KeyboardButton(text="🔔 فعال"), KeyboardButton(text="🔕 غیرفعال")],
             [KeyboardButton(text="📊 آمار")],
+            [KeyboardButton(text="🔙 بازگشت")]
+        ],
+        resize_keyboard=True
+    )
+
+def create_auto_reminders_menu():
+    """منوی یادآوری خودکار"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📋 لیست یادآوری‌ها")],
+            [KeyboardButton(text="✅ فعال کردن"), KeyboardButton(text="❌ غیرفعال کردن")],
             [KeyboardButton(text="🔙 بازگشت")]
         ],
         resize_keyboard=True
