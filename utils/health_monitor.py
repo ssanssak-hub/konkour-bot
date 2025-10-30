@@ -161,16 +161,17 @@ class HealthMonitor:
                 if health_status["status"] != "healthy":
                     logger.warning(f"🔍 گزارش سلامت: {health_status['status']}")
                     
-                # لاگ هر 5 دقیقه
+                # لاگ هر 5 دقیقه - **تغییر مهم: استفاده از logger.info به جای چاپ مستقیم**
                 if datetime.now().minute % 5 == 0:
-                    logger.info(f"📊 گزارش سلامت دوره‌ای: {health_status}")
+                    # استفاده از logger.info برای پیام‌های اطلاعاتی
+                    logger.info("📊 گزارش سلامت دوره‌ای: %s", health_status)
                     
             except Exception as e:
                 logger.error(f"❌ خطا در بررسی سلامت: {e}")
             
             await asyncio.sleep(60)  # هر 1 دقیقه
 
-# ایجاد نمونه全局 - این خط مهمه!
+# ایجاد نمونه全局
 health_monitor = HealthMonitor()
 
 # هندلر HTTP برای سلامت
