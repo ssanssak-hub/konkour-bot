@@ -915,28 +915,153 @@ async def view_all_reminders(message: types.Message):
         parse_mode="HTML"
     )
 
+# --- هندلرهای مدیریت با عملکرد واقعی ---
 async def toggle_reminder_status(message: types.Message):
     """تغییر وضعیت فعال/غیرفعال کردن یادآوری"""
+    user_reminders = reminder_db.get_user_exam_reminders(message.from_user.id)
+    personal_reminders = reminder_db.get_user_personal_reminders(message.from_user.id)
+    all_reminders = user_reminders + personal_reminders
+    
+    if not all_reminders:
+        await message.answer(
+            "📭 <b>هیچ یادآوری‌ای برای مدیریت ندارید</b>",
+            reply_markup=create_management_menu(),
+            parse_mode="HTML"
+        )
+        return
+    
+    # ایجاد کیبورد اینلاین برای انتخاب ریمایندر
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    
+    keyboard = []
+    for reminder in all_reminders:
+        reminder_type = 'exam' if 'exam_keys' in reminder else 'personal'
+        status_icon = "🔔" if reminder['is_active'] else "🔕"
+        status_text = "غیرفعال کن" if reminder['is_active'] else "فعال کن"
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"{status_icon} {reminder['id']} - {status_text}",
+                callback_data=f"manage_toggle:{reminder_type}:{reminder['id']}"
+            )
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton(text="🔙 بازگشت", callback_data="manage:back")
+    ])
+    
     await message.answer(
-        "🔄 <b>تغییر وضعیت یادآوری</b>\n\n"
-        "لطفاً کد یادآوری را به همراه عمل مورد نظر وارد کنید:\n\n"
-        "💡 <i>مثال: <code>فعال ۱۲۳</code> یا <code>غیرفعال ۴۵۶</code></i>\n\n"
-        "یا برای بازگشت: 🔙 بازگشت",
-        reply_markup=create_back_only_menu(),
+        "🔔 <b>تغییر وضعیت یادآوری‌ها</b>\n\n"
+        "لطفاً یادآوری مورد نظر را برای تغییر وضعیت انتخاب کنید:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
         parse_mode="HTML"
     )
 
 async def delete_reminder_handler(message: types.Message):
     """حذف یادآوری"""
+    user_reminders = reminder_db.get_user_exam_reminders(message.from_user.id)
+    personal_reminders = reminder_db.get_user_personal_reminders(message.from_user.id)
+    all_reminders = user_reminders + personal_reminders
+    
+    if not all_reminders:
+        await message.answer(
+            "📭 <b>هیچ یادآوری‌ای برای حذف ندارید</b>",
+            reply_markup=create_management_menu(),
+            parse_mode="HTML"
+        )
+        return
+    
+    # ایجاد کیبورد اینلاین برای انتخاب ریمایندر
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    
+    keyboard = []
+    for reminder in all_reminders:
+        reminder_type = 'exam' if 'exam_keys' in reminder else 'personal'
+        title = ', '.join([EXAMS_1405[key]['name'] for key in reminder['exam_keys']]) if 'exam_keys' in reminder else reminder['title']
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"🗑️ {reminder['id']} - {title}",
+                callback_data=f"manage_delete:{reminder_type}:{reminder['id']}"
+            )
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton(text="🔙 بازگشت", callback_data="manage:back")
+    ])
+    
     await message.answer(
         "🗑️ <b>حذف یادآوری</b>\n\n"
-        "لطفاً کد یادآوری را برای حذف وارد کنید:\n\n"
-        "💡 <i>مثال: <code>حذف ۱۲۳</code></i>\n\n"
         "⚠️ <b>توجه: این عمل غیرقابل بازگشت است!</b>\n\n"
-        "یا برای بازگشت: 🔙 بازگشت",
-        reply_markup=create_back_only_menu(),
+        "لطفاً یادآوری مورد نظر را برای حذف انتخاب کنید:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
         parse_mode="HTML"
     )
+
+# --- هندلرهای callback برای مدیریت ---
+async def handle_reminder_management_callback(callback: types.CallbackQuery):
+    """پردازش کلیک‌های مدیریت ریمایندر"""
+    data = callback.data
+    
+    if data == "manage:back":
+        await callback.message.delete()
+        await manage_reminders_handler(callback.message)
+        return
+    
+    if data.startswith("manage_toggle:"):
+        _, reminder_type, reminder_id = data.split(":")
+        reminder_id = int(reminder_id)
+        
+        # دریافت وضعیت فعلی
+        reminders = []
+        if reminder_type == 'exam':
+            reminders = reminder_db.get_user_exam_reminders(callback.from_user.id)
+        else:
+            reminders = reminder_db.get_user_personal_reminders(callback.from_user.id)
+        
+        current_reminder = next((r for r in reminders if r['id'] == reminder_id), None)
+        if not current_reminder:
+            await callback.answer("❌ یادآوری پیدا نشد")
+            return
+        
+        new_status = not current_reminder['is_active']
+        success = reminder_db.update_reminder_status(reminder_type, reminder_id, new_status)
+        
+        if success:
+            status_text = "فعال" if new_status else "غیرفعال"
+            await callback.answer(f"✅ یادآوری {status_text} شد")
+            await callback.message.edit_text(
+                f"✅ <b>وضعیت یادآوری تغییر کرد</b>\n\n"
+                f"کد یادآوری: {reminder_id}\n"
+                f"وضعیت جدید: {status_text}\n\n"
+                f"برای بازگشت به منوی مدیریت از دکمه زیر استفاده کنید:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="🔙 بازگشت به مدیریت", callback_data="manage:back")
+                ]]),
+                parse_mode="HTML"
+            )
+        else:
+            await callback.answer("❌ خطا در تغییر وضعیت")
+    
+    elif data.startswith("manage_delete:"):
+        _, reminder_type, reminder_id = data.split(":")
+        reminder_id = int(reminder_id)
+        
+        success = reminder_db.delete_reminder(reminder_type, reminder_id)
+        
+        if success:
+            await callback.answer("✅ یادآوری حذف شد")
+            await callback.message.edit_text(
+                f"✅ <b>یادآوری حذف شد</b>\n\n"
+                f"کد یادآوری: {reminder_id}\n\n"
+                f"برای بازگشت به منوی مدیریت از دکمه زیر استفاده کنید:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="🔙 بازگشت به مدیریت", callback_data="manage:back")
+                ]]),
+                parse_mode="HTML"
+            )
+        else:
+            await callback.answer("❌ خطا در حذف یادآوری")
 
 # --- توابع کمکی ---
 def create_reminder_summary(state_data: dict) -> str:
