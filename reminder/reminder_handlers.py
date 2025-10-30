@@ -9,13 +9,16 @@ from aiogram.fsm.state import State, StatesGroup
 
 from reminder.reminder_keyboards import (
     create_reminder_main_menu,
-    create_exam_selection_keyboard,
-    create_days_of_week_keyboard,
-    create_time_selection_keyboard,
-    create_repetition_type_keyboard,
-    create_confirmation_keyboard,
-    create_management_keyboard
+    create_exam_selection_menu,      # به جای create_exam_selection_keyboard
+    create_days_selection_menu,      # به جای create_days_of_week_keyboard  
+    create_time_selection_menu,      # به جای create_time_selection_keyboard
+    create_repetition_type_menu,     # به جای create_repetition_type_keyboard
+    create_confirmation_menu,        # به جای create_confirmation_keyboard
+    create_management_menu,          # به جای create_management_keyboard
+    create_back_only_menu,
+    remove_menu
 )
+
 from reminder.reminder_database import reminder_db
 
 logger = logging.getLogger(__name__)
