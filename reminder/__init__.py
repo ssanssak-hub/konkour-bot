@@ -11,7 +11,6 @@ from .reminder_handlers import (
     process_times_selection,
     process_start_date,
     process_end_date,
-    process_confirmation,
     manage_reminders_handler,
     ExamReminderStates,
     PersonalReminderStates
@@ -48,7 +47,6 @@ __all__ = [
     'process_times_selection',
     'process_start_date',
     'process_end_date',
-    'process_confirmation',
     'manage_reminders_handler',
     'ExamReminderStates',
     'PersonalReminderStates',
