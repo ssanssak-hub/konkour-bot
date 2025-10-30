@@ -272,6 +272,32 @@ async def disable_auto_admin_wrapper(message: types.Message):
     from reminder.auto_reminder_admin import toggle_auto_reminder_status
     await toggle_auto_reminder_status(message)
 
+# --- هندلرهای state برای ادمین ---
+@dp.message(AutoReminderAdminStates.adding_title)
+async def auto_admin_title_wrapper(message: types.Message, state: FSMContext):
+    from reminder.auto_reminder_admin import process_add_title
+    await process_add_title(message, state)
+
+@dp.message(AutoReminderAdminStates.adding_message)
+async def auto_admin_message_wrapper(message: types.Message, state: FSMContext):
+    from reminder.auto_reminder_admin import process_add_message
+    await process_add_message(message, state)
+
+@dp.message(AutoReminderAdminStates.adding_days)
+async def auto_admin_days_wrapper(message: types.Message, state: FSMContext):
+    from reminder.auto_reminder_admin import process_add_days
+    await process_add_days(message, state)
+
+@dp.message(AutoReminderAdminStates.selecting_exams)
+async def auto_admin_exams_wrapper(message: types.Message, state: FSMContext):
+    from reminder.auto_reminder_admin import process_admin_exam_selection
+    await process_admin_exam_selection(message, state)
+
+@dp.message(AutoReminderAdminStates.confirmation)
+async def auto_admin_confirmation_wrapper(message: types.Message, state: FSMContext):
+    from reminder.auto_reminder_admin import process_admin_confirmation
+    await process_admin_confirmation(message, state)
+
 # --- هندلر callback برای ریمایندرهای خودکار ---
 @dp.callback_query(F.data.startswith("auto_"))
 async def auto_reminder_callback_wrapper(callback: types.CallbackQuery):
