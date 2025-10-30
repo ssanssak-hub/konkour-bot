@@ -915,6 +915,56 @@ async def view_all_reminders(message: types.Message):
         parse_mode="HTML"
     )
 
+async def process_personal_custom_interval(message: types.Message, state: FSMContext):
+    """پردازش فاصله تکرار سفارشی"""
+    if message.text == "🔙 بازگشت":
+        await state.set_state(PersonalReminderStates.selecting_repetition)
+        await message.answer(
+            "لطفاً نوع تکرار را انتخاب کنید:",
+            reply_markup=create_repetition_type_menu()
+        )
+        return
+    
+    try:
+        interval = int(message.text)
+        if interval < 1 or interval > 365:
+            await message.answer(
+                "❌ فاصله نامعتبر!\n\n"
+                "لطفاً عددی بین ۱ تا ۳۶۵ وارد کنید:",
+                reply_markup=create_back_only_menu()
+            )
+            return
+        
+        await state.update_data(custom_days_interval=interval)
+        await state.set_state(PersonalReminderStates.entering_time)
+        current_time = get_current_persian_datetime()
+        
+        await message.answer(
+            "🕐 <b>ورود ساعت یادآوری</b>\n\n"
+            f"⏰ زمان فعلی: {current_time['full_time']}\n\n"
+            "لطفاً ساعت دلخواه را به فرمت HH:MM وارد کنید:",
+            reply_markup=create_time_input_menu(),
+            parse_mode="HTML"
+        )
+        
+    except ValueError:
+        await message.answer(
+            "❌ لطفاً یک عدد معتبر وارد کنید!\n\n"
+            "مثال: برای یادآوری هر ۳ روز یکبار، عدد ۳ را وارد کنید:",
+            reply_markup=create_back_only_menu()
+        )
+
+async def edit_reminder_handler(message: types.Message):
+    """ویرایش یادآوری - پیام راهنما"""
+    await message.answer(
+        "✏️ <b>ویرایش یادآوری</b>\n\n"
+        "در حال حاضر ویرایش یادآوری از طریق حذف و ایجاد مجدد انجام می‌شود.\n\n"
+        "💡 <i>می‌توانید یادآوری مورد نظر را حذف کرده و مجدداً ایجاد کنید.</i>\n\n"
+        "برای حذف از منوی مدیریت استفاده کنید.",
+        reply_markup=create_management_menu(),
+        parse_mode="HTML"
+    )
+
 # --- هندلرهای مدیریت با عملکرد واقعی ---
 async def toggle_reminder_status(message: types.Message):
     """تغییر وضعیت فعال/غیرفعال کردن یادآوری"""
