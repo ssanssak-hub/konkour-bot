@@ -109,6 +109,23 @@ async def back_main_wrapper(callback: types.CallbackQuery):
     from handlers.back_handlers import back_to_main_handler
     await back_to_main_handler(callback)
 
+# --- هندلرهای برنامه مطالعاتی ---
+@dp.callback_query(F.data.startswith("study:"))
+async def study_wrapper(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.study_handlers import study_callback_handler
+    await study_callback_handler(callback, state)
+
+# --- هندلرهای آمار ---
+@dp.callback_query(F.data.startswith("stats:"))
+async def stats_wrapper(callback: types.CallbackQuery):
+    from handlers.stats_handlers import stats_callback_handler
+    await stats_callback_handler(callback)
+
+# --- هندلرهای مدیریت ---
+@dp.callback_query(F.data.startswith("admin:"))
+async def admin_wrapper(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.admin_handlers import admin_callback_handler
+    await admin_callback_handler(callback, state)
 # --- هندلر دیباگ ---
 @dp.message()
 async def debug_all_messages(message: types.Message):
