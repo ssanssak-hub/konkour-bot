@@ -428,6 +428,20 @@ async def process_confirmation(message: types.Message, state: FSMContext):
             "📅 لطفاً تاریخ پایان را وارد کنید:",
             reply_markup=create_back_only_menu()
         )
+# --- هندلرهای ریمایندر شخصی ---
+async def start_personal_reminder(message: types.Message, state: FSMContext):
+    """شروع ایجاد ریمایندر شخصی"""
+    await state.set_state(PersonalReminderStates.entering_title)
+    await state.update_data(reminder_data={})
+    
+    await message.answer(
+        "📝 <b>یادآوری شخصی</b>\n\n"
+        "لطفاً عنوان یادآوری را وارد کنید:\n\n"
+        "💡 <i>مثال: مرور فصل ۳ ریاضی</i>\n\n"
+        "یا برای بازگشت: 🔙 بازگشت",
+        reply_markup=create_back_only_menu(),
+        parse_mode="HTML"
+    )
 
 async def process_personal_title(message: types.Message, state: FSMContext):
     """پردازش عنوان ریمایندر شخصی"""
