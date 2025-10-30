@@ -73,6 +73,11 @@ async def stats_menu_wrapper(message: types.Message):
     from handlers.menu_handlers import stats_handler
     await stats_handler(message)
 
+@dp.message(F.text == "🔔 مدیریت یادآوری‌ها")
+async def reminders_wrapper(message: types.Message):
+    from reminder.reminder_handlers import reminder_main_handler
+    await reminder_main_handler(message)
+
 @dp.message(F.text == "👑 پنل مدیریت")
 async def admin_wrapper(message: types.Message):
     from handlers.menu_handlers import admin_handler
