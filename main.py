@@ -305,12 +305,18 @@ async def auto_admin_back_wrapper(callback: types.CallbackQuery):
     from reminder.auto_reminder_admin import handle_auto_reminder_admin_callback
     await handle_auto_reminder_admin_callback(callback)
 
-# --- هندلر callback برای ریمایندرهای خودکار ---
+# --- هندلر callback برای ریمایندرهای خودکار با چک دسترسی ---
 @dp.callback_query(F.data.startswith("auto_"))
 async def auto_reminder_callback_wrapper(callback: types.CallbackQuery):
-    from reminder.auto_reminder_admin import handle_auto_reminder_admin_callback
-    await handle_auto_reminder_admin_callback(callback)
-
+    from config import ADMIN_ID
+    
+    if callback.from_user.id == ADMIN_ID:
+        from reminder.auto_reminder_admin import handle_auto_reminder_admin_callback
+        await handle_auto_reminder_admin_callback(callback)
+    else:
+        from reminder.auto_reminder_handlers import handle_auto_reminder_user_callback
+        await handle_auto_reminder_user_callback(callback)
+        
 # --- هندلرهای state برای ریمایندر کنکور ---
 @dp.message(ExamReminderStates.selecting_exams)
 async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
