@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 # تنظیم تایم‌زون تهران
 TEHRAN_TIMEZONE = pytz.timezone('Asia/Tehran')
+
+def get_current_tehran_datetime():
+    """دریافت datetime فعلی با تایم‌زون تهران"""
+    return datetime.now(TEHRAN_TIMEZONE)
     
 def gregorian_to_jalali(gy, gm, gd):
     """
@@ -175,58 +179,60 @@ def get_tehran_date_formatted():
     current = get_current_persian_datetime()
     return f"{current['year']}-{current['month']:02d}-{current['day']:02d}"
 
-def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
+def format_time_remaining(target_date) -> Tuple[str, int]:
     """
     فرمت‌بندی زمان باقی‌مانده به صورت دقیق و بازگشت تعداد کل روزها
     """
-    now = get_tehran_time()  # این تابع باید datetime با تایم‌زون برگرداند
-    
-    # اطمینان از اینکه target_date هم در تایم‌زون تهران باشد
-    if target_date.tzinfo is None:
-        target_date = TEHRAN_TIMEZONE.localize(target_date)
-    else:
-        target_date = target_date.astimezone(TEHRAN_TIMEZONE)
-    
-    # اطمینان از اینکه now هم در تایم‌زون تهران باشد
-    if now.tzinfo is None:
-        now = TEHRAN_TIMEZONE.localize(now)
-    else:
-        now = now.astimezone(TEHRAN_TIMEZONE)
-    
-    if target_date <= now:
-        return "✅ برگزار شده", 0
-    
-    delta = target_date - now
-    total_seconds = int(delta.total_seconds())
-    total_days = delta.days
-    
-    # بقیه کد بدون تغییر...
-    
-    # محاسبه اجزای زمان
-    weeks = total_seconds // (7 * 24 * 3600)
-    days = (total_seconds % (7 * 24 * 3600)) // (24 * 3600)
-    hours = (total_seconds % (24 * 3600)) // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-    
-    parts = []
-    
-    if weeks > 0:
-        parts.append(f"{weeks} هفته")
-    if days > 0:
-        parts.append(f"{days} روز")
-    if hours > 0:
-        parts.append(f"{hours} ساعت")
-    if minutes > 0:
-        parts.append(f"{minutes} دقیقه")
-    if seconds > 0:
-        parts.append(f"{seconds} ثانیه")
-    
-    if not parts:
-        return "⏳ کمتر از ۱ ثانیه باقی مانده", total_days
-    
-    time_text = "⏳ " + " و ".join(parts) + " باقی مانده"
-    return time_text, total_days
+    try:
+        now = get_current_tehran_datetime()
+        
+        # اگر target_date رشته هست، تبدیل به datetime کن
+        if isinstance(target_date, str):
+            target_date = datetime.strptime(target_date, "%Y-%m-%d %H:%M:%S")
+            target_date = TEHRAN_TIMEZONE.localize(target_date)
+        
+        # اطمینان از اینکه target_date هم در تایم‌زون تهران باشد
+        if target_date.tzinfo is None:
+            target_date = TEHRAN_TIMEZONE.localize(target_date)
+        else:
+            target_date = target_date.astimezone(TEHRAN_TIMEZONE)
+        
+        if target_date <= now:
+            return "✅ برگزار شده", 0
+        
+        delta = target_date - now
+        total_seconds = int(delta.total_seconds())
+        total_days = delta.days
+        
+        # محاسبه اجزای زمان
+        weeks = total_seconds // (7 * 24 * 3600)
+        days = (total_seconds % (7 * 24 * 3600)) // (24 * 3600)
+        hours = (total_seconds % (24 * 3600)) // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        
+        parts = []
+        
+        if weeks > 0:
+            parts.append(f"{weeks} هفته")
+        if days > 0:
+            parts.append(f"{days} روز")
+        if hours > 0:
+            parts.append(f"{hours} ساعت")
+        if minutes > 0:
+            parts.append(f"{minutes} دقیقه")
+        if seconds > 0:
+            parts.append(f"{seconds} ثانیه")
+        
+        if not parts:
+            return "⏳ کمتر از ۱ ثانیه باقی مانده", total_days
+        
+        time_text = "⏳ " + " و ".join(parts) + " باقی مانده"
+        return time_text, total_days
+        
+    except Exception as e:
+        logger.error(f"خطا در format_time_remaining: {e}")
+        return f"خطا: {str(e)}", 0
 
 def format_time_remaining_detailed(target_date: datetime) -> Dict[str, Any]:
     """
