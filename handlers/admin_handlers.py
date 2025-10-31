@@ -81,6 +81,36 @@ async def admin_add_channel_handler(callback: types.CallbackQuery, state: FSMCon
     
     await state.set_state("waiting_for_channel_info")
 
+async def admin_panel_handler(message: types.Message):
+    """هندلر پنل مدیریت - فقط برای ادمین"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+    
+    await message.answer(
+        "🛠️ <b>پنل مدیریت ادمین</b>\n\n"
+        "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+        reply_markup=admin_menu(),
+        parse_mode="HTML"
+    )
+
+async def reminder_management_handler(message: types.Message):
+    """هندلر مدیریت یادآوری‌ها - فقط برای ادمین"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+    
+    await message.answer(
+        "⏰ <b>مدیریت سیستم یادآوری‌ها</b>\n\n"
+        "لطفاً نوع یادآوری مورد نظر را انتخاب کنید:",
+        reply_markup=reminder_management_menu(),
+        parse_mode="HTML"
+    )
+
 async def process_channel_info(message: types.Message, state: FSMContext, bot):
     """پردازش اطلاعات کانال وارد شده"""
     try:
