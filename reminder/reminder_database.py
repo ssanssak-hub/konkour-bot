@@ -272,6 +272,16 @@ class ReminderDatabase:
             
             return success
 
+    def update_advanced_reminder_sent_count(self, reminder_id: int):
+        """به‌روزرسانی تعداد ارسال‌های ریمایندر پیشرفته"""
+        query = """
+        UPDATE advanced_reminders 
+        SET total_sent = total_sent + 1, 
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """
+        self.execute_query(query, (reminder_id,))
+    
     def toggle_admin_advanced_reminder(self, reminder_id: int) -> bool:
         """تغییر وضعیت فعال/غیرفعال ریمایندر پیشرفته"""
         with sqlite3.connect(self.db_path) as conn:
