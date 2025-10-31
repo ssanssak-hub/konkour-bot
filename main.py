@@ -21,6 +21,10 @@ from reminder.reminder_handlers import (
 from reminder.auto_reminder_scheduler import init_auto_reminder_scheduler
 from reminder.auto_reminder_admin import AutoReminderAdminStates
 
+# 🔥 ایمپورت سیستم ریمایندر پیشرفته
+from reminder.advanced_reminder_states import AdvancedReminderStates
+from reminder.advanced_reminder_scheduler import init_advanced_reminder_scheduler
+
 # تنظیمات لاگ
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -84,7 +88,7 @@ async def reminders_wrapper(message: types.Message):
     await handle_reminder_management(message)
 
 @dp.message(F.text == "👑 پنل مدیریت")
-async def admin_wrapper(message: types.Message):
+async def admin_panel_wrapper(message: types.Message):  # ✅ تغییر نام
     from handlers.main_handlers import handle_admin_panel
     await handle_admin_panel(message)
 
@@ -92,6 +96,99 @@ async def admin_wrapper(message: types.Message):
 async def main_menu_wrapper(message: types.Message):
     from handlers.main_handlers import handle_back_to_main
     await handle_back_to_main(message)
+
+# --- هندلرهای جدید برای ریمایندرهای پیشرفته ادمین ---
+@dp.message(F.text == "🤖 ریمایندرهای پیشرفته")
+async def advanced_reminders_wrapper(message: types.Message):
+    from reminder.advanced_reminder_handlers import advanced_reminders_admin_handler
+    await advanced_reminders_admin_handler(message)
+
+@dp.message(F.text == "📋 لیست ریمایندرهای پیشرفته")
+async def list_advanced_reminders_wrapper(message: types.Message):
+    from reminder.advanced_reminder_handlers import list_advanced_reminders_admin
+    await list_advanced_reminders_admin(message)
+
+@dp.message(F.text == "➕ افزودن ریمایندر جدید")
+async def add_advanced_reminder_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import start_add_advanced_reminder
+    await start_add_advanced_reminder(message, state)
+
+@dp.message(F.text == "✏️ ویرایش ریمایندر")
+async def edit_advanced_reminder_wrapper(message: types.Message):
+    from reminder.advanced_reminder_handlers import edit_advanced_reminder_handler
+    await edit_advanced_reminder_handler(message)
+
+@dp.message(F.text == "🗑️ حذف ریمایندر")
+async def delete_advanced_reminder_wrapper(message: types.Message):
+    from reminder.advanced_reminder_handlers import delete_advanced_reminder_handler
+    await delete_advanced_reminder_handler(message)
+
+@dp.message(F.text == "🔔 فعال/غیرفعال")
+async def toggle_advanced_reminder_wrapper(message: types.Message):
+    from reminder.advanced_reminder_handlers import toggle_advanced_reminder_handler
+    await toggle_advanced_reminder_handler(message)
+
+# --- هندلرهای state برای ریمایندرهای پیشرفته ---
+@dp.message(AdvancedReminderStates.waiting_for_title)
+async def advanced_title_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_advanced_title
+    await process_advanced_title(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_message)
+async def advanced_message_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_advanced_message
+    await process_advanced_message(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_start_time)
+async def advanced_start_time_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_start_time
+    await process_start_time(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_start_date)
+async def advanced_start_date_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_start_date
+    await process_start_date(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_end_time)
+async def advanced_end_time_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_end_time
+    await process_end_time(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_end_date)
+async def advanced_end_date_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_end_date
+    await process_end_date(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_days_of_week)
+async def advanced_days_of_week_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_days_of_week
+    await process_days_of_week(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_repeat_count)
+async def advanced_repeat_count_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_repeat_count
+    await process_repeat_count(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_repeat_interval)
+async def advanced_repeat_interval_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_repeat_interval
+    await process_repeat_interval(message, state)
+
+@dp.message(AdvancedReminderStates.waiting_for_confirmation)
+async def advanced_confirmation_wrapper(message: types.Message, state: FSMContext):
+    from reminder.advanced_reminder_handlers import process_advanced_confirmation
+    await process_advanced_confirmation(message, state)
+
+# --- هندلرهای callback برای ریمایندرهای پیشرفته ---
+@dp.callback_query(F.data.startswith("adv_"))
+async def advanced_reminder_callback_wrapper(callback: types.CallbackQuery):
+    from reminder.advanced_reminder_handlers import handle_advanced_reminder_callback
+    await handle_advanced_reminder_callback(callback)
+
+@dp.callback_query(F.data == "adv_admin:back")
+async def advanced_admin_back_wrapper(callback: types.CallbackQuery):
+    from reminder.advanced_reminder_handlers import handle_advanced_reminder_callback
+    await handle_advanced_reminder_callback(callback)
 
 # --- هندلرهای کنکور ---
 @dp.callback_query(F.data.startswith("exam:"))
@@ -144,9 +241,10 @@ async def stats_wrapper(callback: types.CallbackQuery):
 
 # --- هندلرهای مدیریت ---
 @dp.callback_query(F.data.startswith("admin:"))
-async def handle_admin_callbacks(callback: types.CallbackQuery, state: FSMContext):
+async def handle_admin_callbacks(callback: types.CallbackQuery, state: FSMContext):  # ✅ تغییر نام
     from handlers.admin_handlers import admin_callback_handler
     await admin_callback_handler(callback, state)
+
 # --- هندلرهای منوی ریمایندر ---
 @dp.message(F.text == "⏰ یادآوری کنکورها")
 async def reminder_exam_start_wrapper(message: types.Message, state: FSMContext):
@@ -230,6 +328,33 @@ async def test_reminder_wrapper(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ خطا در ارسال ریمایندر: {e}")
 
+@dp.message(Command("test_advanced_reminder"))
+async def test_advanced_reminder_wrapper(message: types.Message, state: FSMContext):
+    """تست سیستم ریمایندر پیشرفته"""
+    from config import ADMIN_ID
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+    
+    try:
+        # ایجاد یک ریمایندر تستی
+        test_data = {
+            'title': 'تست ریمایندر پیشرفته',
+            'message': 'این یک پیام تست برای ریمایندر پیشرفته است!',
+            'start_time': '14:00',
+            'start_date': '1404-01-01',
+            'end_time': '23:59', 
+            'end_date': '1404-12-29',
+            'selected_days': [0, 1, 2, 3, 4, 5, 6],
+            'repeat_count': 3,
+            'repeat_interval': 10
+        }
+        
+        await advanced_reminder_scheduler.send_test_advanced_reminder(message.from_user.id, test_data)
+        await message.answer("✅ ریمایندر پیشرفته تستی ارسال شد!")
+    except Exception as e:
+        await message.answer(f"❌ خطا در ارسال ریمایندر پیشرفته: {e}")
+
 # --- هندلرهای callback برای کاربران عادی ---
 @dp.callback_query(F.data.startswith("auto_toggle:"))
 async def auto_user_toggle_wrapper(callback: types.CallbackQuery):
@@ -304,7 +429,7 @@ async def auto_admin_back_wrapper(callback: types.CallbackQuery):
     from reminder.auto_reminder_admin import handle_auto_reminder_admin_callback
     await handle_auto_reminder_admin_callback(callback)
 
-# --- هندلر callback برای ریمایندرهای خودکار با چک دسترسی ---
+# --- هندلر callback برای ریمایندرهای خودکار ---
 @dp.callback_query(F.data.startswith("auto_"))
 async def auto_reminder_callback_wrapper(callback: types.CallbackQuery):
     from config import ADMIN_ID
@@ -315,7 +440,7 @@ async def auto_reminder_callback_wrapper(callback: types.CallbackQuery):
     else:
         from reminder.auto_reminder_handlers import handle_auto_reminder_user_callback
         await handle_auto_reminder_user_callback(callback)
-        
+
 # --- هندلرهای state برای ریمایندر کنکور ---
 @dp.message(ExamReminderStates.selecting_exams)
 async def exam_reminder_exams_wrapper(message: types.Message, state: FSMContext):
@@ -403,11 +528,6 @@ async def debug_all_messages(message: types.Message):
     """هندلر دیباگ برای لاگ تمام پیام‌ها"""
     logger.info(f"📩 پیام دریافت شد: user_id={message.from_user.id}, text='{message.text}'")
 
-@dp.message(F.state == "waiting_for_channel_info")
-async def process_channel_info_wrapper(message: types.Message, state: FSMContext):
-    from handlers.admin_handlers import process_channel_info
-    await process_channel_info(message, state, bot)  # پاس دادن bot اینجا
-
 async def main():
     """تابع اصلی با Polling"""
     # حذف وب‌هوک قبلی
@@ -422,6 +542,11 @@ async def main():
     auto_reminder_scheduler = init_auto_reminder_scheduler(bot)
     asyncio.create_task(auto_reminder_scheduler.start_scheduler())
     logger.info("🚀 سیستم ریمایندرهای خودکار شروع به کار کرد")
+    
+    # 🔥 راه‌اندازی سیستم ریمایندرهای پیشرفته
+    advanced_reminder_scheduler = init_advanced_reminder_scheduler(bot)
+    asyncio.create_task(advanced_reminder_scheduler.start_scheduler())
+    logger.info("🚀 سیستم ریمایندرهای پیشرفته شروع به کار کرد")
     
     logger.info("🔄 شروع Polling روی Railway...")
     
