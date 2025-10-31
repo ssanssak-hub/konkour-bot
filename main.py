@@ -19,7 +19,8 @@ from reminder.reminder_handlers import (
     ExamReminderStates, PersonalReminderStates, ManagementStates
 )
 from reminder.auto_reminder_scheduler import init_auto_reminder_scheduler
-from reminder.auto_reminder_admin import AutoReminderAdminStates  # ✅ این خط رو اضافه کن
+from reminder.auto_reminder_admin import AutoReminderAdminStates
+
 # تنظیمات لاگ
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -79,13 +80,18 @@ async def stats_menu_wrapper(message: types.Message):
 
 @dp.message(F.text == "🔔 مدیریت یادآوری‌ها")
 async def reminders_wrapper(message: types.Message):
-    from reminder.reminder_handlers import reminder_main_handler
-    await reminder_main_handler(message)
+    from handlers.main_handlers import handle_reminder_management
+    await handle_reminder_management(message)
 
 @dp.message(F.text == "👑 پنل مدیریت")
 async def admin_wrapper(message: types.Message):
-    from handlers.menu_handlers import admin_handler
-    await admin_handler(message)
+    from handlers.main_handlers import handle_admin_panel
+    await handle_admin_panel(message)
+
+@dp.message(F.text == "🏠 منوی اصلی")
+async def main_menu_wrapper(message: types.Message):
+    from handlers.main_handlers import handle_back_to_main
+    await handle_back_to_main(message)
 
 # --- هندلرهای کنکور ---
 @dp.callback_query(F.data.startswith("exam:"))
@@ -155,19 +161,13 @@ async def reminder_personal_wrapper(message: types.Message, state: FSMContext):
 
 @dp.message(F.text == "🤖 یادآوری خودکار")
 async def reminder_auto_wrapper(message: types.Message):
-    from reminder.reminder_handlers import start_auto_reminders
-    await start_auto_reminders(message)
+    from handlers.main_handlers import handle_auto_reminders
+    await handle_auto_reminders(message)
 
 @dp.message(F.text == "📋 مدیریت یادآوری")
 async def reminder_manage_wrapper(message: types.Message):
     from reminder.reminder_handlers import manage_reminders_handler
     await manage_reminders_handler(message)
-
-@dp.message(F.text == "🏠 منوی اصلی")
-async def reminder_main_menu_wrapper(message: types.Message, state: FSMContext):
-    await state.clear()
-    from handlers.main_handlers import start_handler
-    await start_handler(message, bot)
 
 # --- هندلرهای مدیریت یادآوری ---
 @dp.message(F.text == "📋 مشاهده همه")
@@ -243,11 +243,6 @@ async def auto_user_back_wrapper(callback: types.CallbackQuery):
     await handle_auto_reminder_user_callback(callback)
 
 # --- هندلرهای مدیریت ریمایندر خودکار برای ادمین ---
-@dp.message(F.text == "🤖 مدیریت ریمایندرهای خودکار")
-async def auto_reminders_admin_wrapper(message: types.Message):
-    from reminder.auto_reminder_admin import auto_reminders_admin_handler
-    await auto_reminders_admin_handler(message)
-
 @dp.message(F.text == "📋 لیست ریمایندرها")
 async def list_auto_reminders_admin_wrapper(message: types.Message):
     from reminder.auto_reminder_admin import list_auto_reminders_admin
@@ -313,8 +308,8 @@ async def auto_admin_back_wrapper(callback: types.CallbackQuery):
 # --- هندلر callback برای ریمایندرهای خودکار ---
 @dp.callback_query(F.data.startswith("auto_"))
 async def auto_reminder_callback_wrapper(callback: types.CallbackQuery):
-    from reminder.auto_reminder_admin import handle_auto_reminder_callback
-    await handle_auto_reminder_callback(callback)
+    from reminder.auto_reminder_admin import handle_auto_reminder_admin_callback
+    await handle_auto_reminder_admin_callback(callback)
 
 # --- هندلرهای state برای ریمایندر کنکور ---
 @dp.message(ExamReminderStates.selecting_exams)
@@ -394,8 +389,8 @@ async def back_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state:
         await state.clear()
-    from reminder.reminder_handlers import reminder_main_handler
-    await reminder_main_handler(message)
+    from handlers.main_handlers import handle_back_to_main
+    await handle_back_to_main(message)
 
 # --- هندلر دیباگ ---
 @dp.message()
@@ -414,7 +409,6 @@ async def main():
     logger.info("🚀 سیستم ریمایندر شروع به کار کرد")
 
     # --- راه‌اندازی سیستم‌های زمان‌بندی ---
-    # در تابع main() بعد از reminder_scheduler
     auto_reminder_scheduler = init_auto_reminder_scheduler(bot)
     asyncio.create_task(auto_reminder_scheduler.start_scheduler())
     logger.info("🚀 سیستم ریمایندرهای خودکار شروع به کار کرد")
