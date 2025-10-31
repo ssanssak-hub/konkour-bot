@@ -135,6 +135,14 @@ def get_current_persian_datetime():
         'timezone': 'تهران'
     }
 
+def get_tehran_time():
+    """دریافت زمان فعلی تهران به فرمت HH:MM"""
+    return get_current_persian_datetime()['time']
+
+def get_tehran_date():
+    """دریافت تاریخ امروز تهران به فرمت YYYY-MM-DD"""
+    return get_current_persian_datetime()['date']
+    
 def get_tehran_time_formatted():
     """دریافت زمان فعلی تهران به فرمت HH:MM"""
     current = get_current_persian_datetime()
