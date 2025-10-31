@@ -96,7 +96,79 @@ async def admin_panel_wrapper(message: types.Message):  # ✅ تغییر نام
 async def main_menu_wrapper(message: types.Message):
     from handlers.main_handlers import handle_back_to_main
     await handle_back_to_main(message)
+
+# =============================================================================
+# هندلرهای منوی اصلی - اضافه کردن این بخش
+# =============================================================================
+
+@dp.message(F.text == "🔔 یادآوری‌ها")
+async def handle_reminders_submenu(message: types.Message):
+    """هندلر منوی زیرمجموعه یادآوری‌ها"""
+    from keyboards import reminders_submenu
     
+    menu = reminders_submenu(user_id=message.from_user.id)
+    
+    await message.answer(
+        "🔔 <b>منوی یادآوری‌ها</b>\n\n"
+        "لطفاً نوع یادآوری مورد نظر را انتخاب کنید:",
+        reply_markup=menu,
+        parse_mode="HTML"
+    )
+
+@dp.message(F.text == "⏳ زمان‌سنجی کنکورها")
+async def handle_exam_timing(message: types.Message):
+    """هندلر منوی زمان‌سنجی کنکورها"""
+    from handlers.main_handlers import handle_exam_timing
+    await handle_exam_timing(message)
+
+@dp.message(F.text == "📅 برنامه مطالعاتی پیشرفته")
+async def handle_study_plan(message: types.Message):
+    """هندلر منوی برنامه مطالعاتی"""
+    from handlers.main_handlers import handle_study_plan
+    await handle_study_plan(message)
+
+@dp.message(F.text == "📊 آمار مطالعه حرفه‌ای")
+async def handle_study_stats(message: types.Message):
+    """هندلر منوی آمار مطالعه"""
+    from handlers.main_handlers import handle_study_stats
+    await handle_study_stats(message)
+
+@dp.message(F.text == "🤖 ریمایندرهای پیشرفته")
+async def handle_advanced_reminders_submenu(message: types.Message):
+    """هندلر منوی ریمایندرهای پیشرفته - فقط برای ادمین"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+    
+    from reminder.advanced_reminder_handlers import advanced_reminders_admin_handler
+    await advanced_reminders_admin_handler(message)
+
+# =============================================================================
+# هندلرهای بازگشت
+# =============================================================================
+
+@dp.message(F.text == "🔙 بازگشت به یادآوری‌ها")
+async def handle_back_to_reminders(message: types.Message):
+    """هندلر بازگشت به منوی یادآوری‌ها"""
+    from keyboards import reminders_submenu
+    
+    menu = reminders_submenu(user_id=message.from_user.id)
+    
+    await message.answer(
+        "🔔 <b>منوی یادآوری‌ها</b>\n\n"
+        "لطفاً نوع یادآوری مورد نظر را انتخاب کنید:",
+        reply_markup=menu,
+        parse_mode="HTML"
+    )
+
+@dp.message(F.text == "🔙 بازگشت به مدیریت")
+async def back_to_management_wrapper(message: types.Message):
+    """هندلر بازگشت به منوی اصلی مدیریت"""
+    from handlers.main_handlers import handle_admin_panel
+    await handle_admin_panel(message)
+
 # --- هندلر بازگشت به مدیریت ---
 @dp.message(F.text == "🔙 بازگشت به مدیریت")
 async def back_to_management_wrapper(message: types.Message):
