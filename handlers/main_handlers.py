@@ -47,10 +47,10 @@ async def start_handler(message: types.Message, bot: Bot):
     
     # انتخاب منوی مناسب بر اساس دسترسی کاربر
     if user.id == ADMIN_ID:
-        welcome_menu = admin_main_menu()
+        welcome_menu = admin_main_menu()  # ✅ حالا این کار می‌کنه
         admin_features = "\n• 🤖 ریمایندرهای پیشرفته (مخصوص ادمین)"
     else:
-        welcome_menu = main_menu()
+        welcome_menu = main_menu(user.id)  # ✅ پاس دادن user_id
         admin_features = ""
     
     welcome = f"""
@@ -69,11 +69,7 @@ async def start_handler(message: types.Message, bot: Bot):
 """
     await message.answer(welcome, reply_markup=welcome_menu, parse_mode="HTML")
 
-async def test_handler(message: types.Message):
-    """هندلر دستور /test"""
-    logger.info(f"🧪 دریافت /test از {message.from_user.id}")
-    await message.answer("✅ ربات با aiogram + webhook کار می‌کند! تست موفق.")
-
+# بقیه فانکشن‌ها بدون تغییر...
 async def stats_command_handler(message: types.Message):
     """دستور سریع برای مشاهده آمار"""
     from utils import calculate_study_progress
