@@ -11,6 +11,21 @@ from database import Database
 logger = logging.getLogger(__name__)
 db = Database()
 
+async def admin_menu_handler(message: types.Message):
+    """هندلر منوی مدیریت"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+        
+    await message.answer(
+        "👑 <b>پنل مدیریت</b>\n\n"
+        "لطفاً گزینه مورد نظر را انتخاب کنید:",
+        reply_markup=admin_menu(),
+        parse_mode="HTML"
+    )
+    
 async def admin_callback_handler(callback: types.CallbackQuery, state: FSMContext):
     """هندلر اصلی برای callback_dataهای admin"""
     data = callback.data
