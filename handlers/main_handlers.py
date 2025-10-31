@@ -84,8 +84,13 @@ async def stats_command_handler(message: types.Message):
 async def handle_reminder_management(message: types.Message):
     """هندلر منوی مدیریت یادآوری‌ها"""
     if message.from_user.id == ADMIN_ID:
-        # نمایش منوی ادمین برای ریمایندرهای خودکار
-        await auto_reminders_admin_handler(message)
+        # نمایش منوی اصلی ریمایندر برای ادمین
+        await message.answer(
+            "🔔 <b>مدیریت یادآوری‌ها - پنل ادمین</b>\n\n"
+            "لطفاً گزینه مورد نظر را انتخاب کنید:",
+            reply_markup=create_reminder_main_menu(),  # منوی اصلی ریمایندر
+            parse_mode="HTML"
+        )
     else:
         # نمایش منوی کاربر عادی
         await message.answer(
