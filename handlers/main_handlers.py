@@ -1,171 +1,175 @@
-# handlers/main_handlers.py
+"""
+هندلرهای منوی اصلی - نسخه بهبود یافته برای ادمین
+"""
 import logging
-from aiogram import Bot, types
-from aiogram.fsm.context import FSMContext
+from aiogram import Bot, types, F
+from aiogram.filters import Command, CommandStart
+
+from config import MOTIVATIONAL_MESSAGES, ADMIN_ID
+from keyboards import main_menu, admin_main_menu, create_reminder_management_menu, admin_panel_menu
+from utils import check_user_membership, create_membership_keyboard
+from database import Database
+
+# ایمپورت ماژول‌های ریمایندر
+from reminder.reminder_keyboards import create_reminder_main_menu
+from reminder.auto_reminder_admin import auto_reminders_admin_handler
+from reminder.auto_reminder_handlers import user_auto_reminders_list
+from reminder.advanced_reminder_handlers import advanced_reminders_admin_handler
 
 logger = logging.getLogger(__name__)
+db = Database()
 
-async def start_handler(message: types.Message, bot: Bot = None):
-    """هندلر دستور /start"""
-    try:
-        welcome_text = """
-        🤖 **به ربات مدیریت کنکور خوش آمدید!**
+async def start_handler(message: types.Message, bot: Bot):
+    """هندلر دستور /start - نسخه بهبود یافته"""
+    user = message.from_user
+    logger.info(f"🎯 دریافت /start از {user.first_name} ({user.id})")
+    
+    # ثبت کاربر در دیتابیس
+    db.add_user(user.id, user.username or "", user.first_name, user.last_name or "")
+    
+    # بررسی عضویت
+    is_member = await check_user_membership(bot, user.id)
+    
+    if not is_member:
+        channels = db.get_mandatory_channels()
+        if channels:
+            channel_list = "\n".join([f"• {ch['channel_title']}" for ch in channels])
+            
+            await message.answer(
+                f"👋 سلام {user.first_name} عزیز!\n\n"
+                f"🚫 <b>برای استفاده از ربات باید در کانال‌های زیر عضو باشید:</b>\n\n"
+                f"{channel_list}\n\n"
+                f"پس از عضویت، دکمه '✅ بررسی عضویت' را بزنید.",
+                reply_markup=create_membership_keyboard(),
+                parse_mode="HTML"
+            )
+            return
+    
+    # انتخاب منوی مناسب بر اساس دسترسی کاربر
+    if user.id == ADMIN_ID:
+        welcome_menu = admin_main_menu()
+        admin_features = "\n• 🤖 ریمایندرهای پیشرفته (مخصوص ادمین)"
+    else:
+        welcome_menu = main_menu()
+        admin_features = ""
+    
+    welcome = f"""
+👋 سلام {user.first_name} عزیز!
+به ربات کنکور ۱۴۰۵ خوش آمدی! 🎯
 
-        📚 **امکانات ربات:**
-        • ⏳ زمان‌سنجی کنکورها
-        • 📅 برنامه مطالعاتی پیشرفته  
-        • 📊 آمار مطالعه حرفه‌ای
-        • ⏰ سیستم یادآوری هوشمند
+📚 <b>امکانات ربات:</b>
+• ⏳ شمارش معکوس کنکورها
+• 📅 برنامه مطالعاتی پیشرفته  
+• 📊 آمار مطالعه حرفه‌ای
+• 💫 پیام‌های انگیزشی
+• 🎯 نکات طلایی مطالعه
+• 🔔 سیستم یادآوری هوشمند{admin_features}
 
-        🔧 از منوی زیر انتخاب کنید:
-        """
-        
-        keyboard = [
-            [types.KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
-            [types.KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
-            [types.KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-            [types.KeyboardButton(text="⏰ یادآوری کنکورها")],
-            [types.KeyboardButton(text="📝 یادآوری شخصی")]
-        ]
-        reply_markup = types.ReplyKeyboardMarkup(
-            keyboard=keyboard,
-            resize_keyboard=True,
-            input_field_placeholder="یک گزینه انتخاب کنید..."
-        )
-        
-        await message.answer(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
-        logger.info(f"کاربر {message.from_user.id} ربات را شروع کرد")
-        
-    except Exception as e:
-        logger.error(f"خطا در start_handler: {e}")
-        await message.answer("❌ خطا در راه‌اندازی ربات. لطفاً مجدداً تلاش کنید.")
+از منوی زیر یکی از گزینه‌ها رو انتخاب کن:
+"""
+    await message.answer(welcome, reply_markup=welcome_menu, parse_mode="HTML")
 
 async def test_handler(message: types.Message):
     """هندلر دستور /test"""
-    await message.answer("✅ ربات فعال است! همه چیز OK است.")
+    logger.info(f"🧪 دریافت /test از {message.from_user.id}")
+    await message.answer("✅ ربات با aiogram + webhook کار می‌کند! تست موفق.")
 
 async def stats_command_handler(message: types.Message):
-    """هندلر دستور /stats"""
-    stats_text = """
-    📊 **آمار ربات:**
+    """دستور سریع برای مشاهده آمار"""
+    from utils import calculate_study_progress
+    user_stats = db.get_user_progress(message.from_user.id)
+    progress = calculate_study_progress(user_stats['total_minutes'])
     
-    • کاربران فعال: در حال بارگذاری...
-    • ریمایندرهای فعال: در حال بارگذاری...
-    • وضعیت سیستم: ✅ فعال
+    await message.answer(
+        f"📊 <b>آمار سریع شما</b>\n\n"
+        f"🕒 کل زمان مطالعه: {user_stats['total_hours']} ساعت\n"
+        f"📖 تعداد جلسات: {user_stats['total_sessions']} جلسه\n"
+        f"📅 روزهای فعال: {user_stats['active_days']} روز\n"
+        f"📈 پیشرفت کلی: {progress['percentage']}%\n"
+        f"{progress['progress_bar']}\n\n"
+        f"💪 {MOTIVATIONAL_MESSAGES[0]}",
+        parse_mode="HTML"
+    )
+
+async def handle_reminder_management(message: types.Message):
+    """هندلر منوی مدیریت یادآوری‌ها - نسخه بهبود یافته"""
+    is_admin = message.from_user.id == ADMIN_ID
     
-    🔧 برای آمار دقیق‌تر از منوی اصلی استفاده کنید.
-    """
-    await message.answer(stats_text, parse_mode="Markdown")
-
-async def handle_back_to_main(message: types.Message):
-    """بازگشت به منوی اصلی"""
-    try:
-        welcome_text = """
-        🏠 **منوی اصلی**
-
-        🔧 گزینه مورد نظر را انتخاب کنید:
-        """
-        
-        keyboard = [
-            [types.KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
-            [types.KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
-            [types.KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-            [types.KeyboardButton(text="⏰ یادآوری کنکورها")],
-            [types.KeyboardButton(text="📝 یادآوری شخصی")]
-        ]
-        reply_markup = types.ReplyKeyboardMarkup(
-            keyboard=keyboard,
-            resize_keyboard=True,
-            input_field_placeholder="یک گزینه انتخاب کنید..."
-        )
-        
-        await message.answer(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
-        
-    except Exception as e:
-        logger.error(f"خطا در handle_back_to_main: {e}")
-        await message.answer("❌ خطا در بازگشت به منوی اصلی.")
+    await message.answer(
+        f"🔔 <b>مدیریت یادآوری‌ها</b>\n\n"
+        f"{"👑 دسترسی: ادمین اصلی" if is_admin else "👤 دسترسی: کاربر عادی"}\n\n"
+        f"لطفاً گزینه مورد نظر را انتخاب کنید:",
+        reply_markup=create_reminder_management_menu(is_admin),
+        parse_mode="HTML"
+    )
 
 async def handle_auto_reminders(message: types.Message):
     """هندلر منوی یادآوری خودکار"""
-    try:
-        auto_text = """
-        🤖 **یادآوری خودکار**
+    if message.from_user.id == ADMIN_ID:
+        # نمایش منوی ادمین
+        await auto_reminders_admin_handler(message)
+    else:
+        # نمایش منوی کاربر عادی
+        await user_auto_reminders_list(message)
 
-        این سیستم به صورت خودکار یادآوری‌های کنکور را برای شما ارسال می‌کند.
+async def handle_advanced_reminders(message: types.Message):
+    """هندلر منوی ریمایندرهای پیشرفته (فقط برای ادمین)"""
+    if message.from_user.id == ADMIN_ID:
+        await advanced_reminders_admin_handler(message)
+    else:
+        await message.answer("❌ این قابلیت فقط برای ادمین قابل دسترسی است!")
 
-        🔧 گزینه مورد نظر را انتخاب کنید:
-        """
-        
-        keyboard = [
-            [types.KeyboardButton(text="📋 لیست یادآوری‌ها")],
-            [types.KeyboardButton(text="✅ فعال کردن")],
-            [types.KeyboardButton(text="❌ غیرفعال کردن")],
-            [types.KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
-        ]
-        reply_markup = types.ReplyKeyboardMarkup(
-            keyboard=keyboard,
-            resize_keyboard=True,
-            input_field_placeholder="یک گزینه انتخاب کنید..."
-        )
-        
-        await message.answer(auto_text, reply_markup=reply_markup, parse_mode="Markdown")
-        
-    except Exception as e:
-        logger.error(f"خطا در handle_auto_reminders: {e}")
-        await message.answer("❌ خطا در نمایش منوی یادآوری خودکار.")
+async def handle_exam_timing(message: types.Message):
+    """هندلر منوی زمان‌سنجی کنکورها"""
+    from handlers.exam_handlers import exam_menu_handler
+    await exam_menu_handler(message)
 
-async def handle_reminder_management(message: types.Message):
-    """هندلر مدیریت یادآوری‌ها"""
-    try:
-        management_text = """
-        ⏰ **مدیریت یادآوری‌ها**
+async def handle_study_plan(message: types.Message):
+    """هندلر منوی برنامه مطالعاتی"""
+    from handlers.study_handlers import study_plan_menu_handler
+    await study_plan_menu_handler(message)
 
-        🔧 گزینه مورد نظر را انتخاب کنید:
-        """
-        
-        keyboard = [
-            [types.KeyboardButton(text="📋 مشاهده همه")],
-            [types.KeyboardButton(text="🔔 فعال")],
-            [types.KeyboardButton(text="🔕 غیرفعال")],
-            [types.KeyboardButton(text="✏️ ویرایش")],
-            [types.KeyboardButton(text="🗑️ حذف")],
-            [types.KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
-        ]
-        reply_markup = types.ReplyKeyboardMarkup(
-            keyboard=keyboard,
-            resize_keyboard=True,
-            input_field_placeholder="یک گزینه انتخاب کنید..."
-        )
-        
-        await message.answer(management_text, reply_markup=reply_markup, parse_mode="Markdown")
-        
-    except Exception as e:
-        logger.error(f"خطا در handle_reminder_management: {e}")
-        await message.answer("❌ خطا در نمایش مدیریت یادآوری‌ها.")
+async def handle_study_stats(message: types.Message):
+    """هندلر منوی آمار مطالعه"""
+    from handlers.stats_handlers import stats_menu_handler
+    await stats_menu_handler(message)
 
 async def handle_admin_panel(message: types.Message):
-    """هندلر پنل مدیریت"""
-    try:
-        admin_text = """
-        👑 **پنل مدیریت**
-
-        🔧 گزینه مورد نظر را انتخاب کنید:
-        """
-        
-        keyboard = [
-            [types.KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],
-            [types.KeyboardButton(text="📋 لیست ریمایندرها")],
-            [types.KeyboardButton(text="➕ افزودن جدید")],
-            [types.KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
-        ]
-        reply_markup = types.ReplyKeyboardMarkup(
-            keyboard=keyboard,
-            resize_keyboard=True,
-            input_field_placeholder="یک گزینه انتخاب کنید..."
+    """هندلر منوی پنل مدیریت"""
+    if message.from_user.id == ADMIN_ID:
+        await message.answer(
+            "👑 <b>پنل مدیریت</b>\n\n"
+            "لطفاً گزینه مورد نظر را انتخاب کنید:",
+            reply_markup=admin_panel_menu(),
+            parse_mode="HTML"
         )
+    else:
+        await message.answer("❌ دسترسی denied!")
+
+async def unknown_handler(message: types.Message):
+    """هندلر پیام‌های ناشناخته"""
+    logger.info(f"📝 پیام ناشناخته از {message.from_user.id}: {message.text}")
+    
+    if message.from_user.id == ADMIN_ID:
+        menu = admin_main_menu()
+    else:
+        menu = main_menu()
         
-        await message.answer(admin_text, reply_markup=reply_markup, parse_mode="Markdown")
+    await message.answer(
+        "🤔 متوجه نشدم!\n\nلطفاً از دکمه‌های منو استفاده کنید:",
+        reply_markup=menu
+    )
+
+async def handle_back_to_main(message: types.Message):
+    """هندلر بازگشت به منوی اصلی"""
+    if message.from_user.id == ADMIN_ID:
+        menu = admin_main_menu()
+    else:
+        menu = main_menu()
         
-    except Exception as e:
-        logger.error(f"خطا در handle_admin_panel: {e}")
-        await message.answer("❌ خطا در نمایش پنل مدیریت.")
+    await message.answer(
+        "🏠 <b>منوی اصلی</b>\n\n"
+        "لطفاً گزینه مورد نظر را انتخاب کنید:",
+        reply_markup=menu,
+        parse_mode="HTML"
+    )
