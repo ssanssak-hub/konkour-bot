@@ -719,7 +719,7 @@ async def create_advanced_reminder_summary(state_data: dict) -> str:
     return summary
 
 async def process_advanced_confirmation(message: types.Message, state: FSMContext):
-    """پردازش تأیید نهایی ریمایندر پیشرفته"""
+    """پردازش تأیید نهایی ریمایندر پیشرفته - نسخه پیشرفته"""
     if message.text == "🔙 بازگشت":
         await state.set_state(AdvancedReminderStates.waiting_for_repeat_interval)
         await message.answer(
@@ -732,98 +732,110 @@ async def process_advanced_confirmation(message: types.Message, state: FSMContex
         state_data = await state.get_data()
         
         try:
-            # دیباگ: چک کنیم چه داده‌هایی داریم
-            logger.info(f"داده‌های state برای دیباگ: {state_data}")
+            # 🎯 لاگ پیشرفته برای دیباگ
+            logger.info("🎯 شروع ایجاد ریمایندر پیشرفته")
+            logger.info(f"📊 داده‌های state: { {k: v for k, v in state_data.items() if k != 'message'} }")  # بدون متن برای حفظ حریم خصوصی
             
-            # بررسی وجود کلیدهای ضروری
-            required_keys = ['start_date', 'end_date', 'title', 'message', 'start_time', 'end_time', 'selected_days', 'repeat_count', 'repeat_interval']
-            for key in required_keys:
-                if key not in state_data:
-                    raise ValueError(f"کلید {key} در داده‌ها وجود ندارد")
-            
-            # تبدیل تاریخ‌های شمسی به میلادی برای ذخیره
+            # 🔍 اعتبارسنجی پیشرفته داده‌ها
+            validation_errors = await validate_reminder_data(state_data)
+            if validation_errors:
+                error_message = "❌ <b>خطا در اعتبارسنجی داده‌ها:</b>\n\n" + "\n".join(validation_errors)
+                await message.answer(
+                    error_message + "\n\nلطفاً از گزینه '✏️ ویرایش اطلاعات' استفاده کنید.",
+                    reply_markup=create_advanced_reminder_admin_menu(),
+                    parse_mode="HTML"
+                )
+                return
+
+            # 🔄 تبدیل تاریخ‌های شمسی به میلادی با مدیریت خطای پیشرفته
+            conversion_result = await convert_persian_dates(state_data)
+            if not conversion_result['success']:
+                await message.answer(
+                    f"❌ <b>خطا در تبدیل تاریخ‌ها:</b>\n\n{conversion_result['error']}\n\n"
+                    f"💡 <i>لطفاً تاریخ‌ها را بررسی و مجدداً تلاش کنید.</i>",
+                    reply_markup=create_advanced_reminder_admin_menu(),
+                    parse_mode="HTML"
+                )
+                return
+
+            start_date_gregorian = conversion_result['start_date']
+            end_date_gregorian = conversion_result['end_date']
+
+            # 📊 اعتبارسنجی منطق تاریخی
+            date_validation = await validate_date_logic(start_date_gregorian, end_date_gregorian, state_data['start_time'], state_data['end_time'])
+            if not date_validation['valid']:
+                await message.answer(
+                    f"⚠️ <b>هشدار در منطق زمانی:</b>\n\n{date_validation['message']}\n\n"
+                    f"آیا می‌خواهید ادامه دهید؟",
+                    reply_markup=create_date_validation_keyboard()  # کیبورد با گزینه‌های "ادامه می‌دهم" و "ویرایش"
+                )
+                return
+
+            # 💾 ذخیره در دیتابیس با مدیریت تراکنش
             try:
-                start_date_gregorian = persian_to_gregorian_string(state_data['start_date'])
-                end_date_gregorian = persian_to_gregorian_string(state_data['end_date'])
-                logger.info(f"تاریخ تبدیل شده: {state_data['start_date']} -> {start_date_gregorian}, {state_data['end_date']} -> {end_date_gregorian}")
-            except Exception as conv_error:
-                logger.error(f"خطا در تبدیل تاریخ: {conv_error}")
-                # اگر تبدیل شکست خورد، از تاریخ‌های اصلی استفاده کن
-                start_date_gregorian = state_data['start_date']
-                end_date_gregorian = state_data['end_date']
-                logger.info(f"استفاده از تاریخ‌های اصلی: {start_date_gregorian}, {end_date_gregorian}")
-            
-            # ذخیره در دیتابیس
-            reminder_id = reminder_db.add_admin_advanced_reminder(
-                admin_id=message.from_user.id,
-                title=state_data['title'],
-                message=state_data['message'],
-                start_time=state_data['start_time'],
-                start_date=start_date_gregorian,
-                end_time=state_data['end_time'],
-                end_date=end_date_gregorian,
-                days_of_week=state_data['selected_days'],
-                repeat_count=state_data['repeat_count'],
-                repeat_interval=state_data['repeat_interval']
-            )
-            
-            # ایجاد پیام موفقیت
-            repeat_info = ""
-            if state_data['repeat_count'] == 0:
-                repeat_info = "📝 این ریمایندر فقط ثبت شده و پیامی ارسال نمی‌کند."
-            elif state_data['repeat_count'] == 1:
-                repeat_info = f"🔔 پیام یکبار در ساعت {state_data['start_time']} ارسال می‌شود."
-            else:
-                repeat_info = f"🔄 پیام {state_data['repeat_count']} بار با فاصله {state_data['repeat_interval']} ثانیه ارسال می‌شود."
+                reminder_id = reminder_db.add_admin_advanced_reminder(
+                    admin_id=message.from_user.id,
+                    title=state_data['title'],
+                    message=state_data['message'],
+                    start_time=state_data['start_time'],
+                    start_date=start_date_gregorian,
+                    end_time=state_data['end_time'],
+                    end_date=end_date_gregorian,
+                    days_of_week=state_data['selected_days'],
+                    repeat_count=state_data['repeat_count'],
+                    repeat_interval=state_data['repeat_interval']
+                )
+                
+                logger.info(f"✅ ریمایندر پیشرفته {reminder_id} با موفقیت در دیتابیس ذخیره شد")
+
+            except Exception as db_error:
+                logger.error(f"❌ خطای دیتابیس: {db_error}")
+                await message.answer(
+                    "❌ <b>خطا در ذخیره‌سازی دیتابیس!</b>\n\n"
+                    "سیستم ذخیره‌سازی با مشکل مواجه شده است. لطفاً稍后 مجدداً تلاش کنید.",
+                    reply_markup=create_advanced_reminder_admin_menu(),
+                    parse_mode="HTML"
+                )
+                return
+
+            # 🎉 ایجاد پیام موفقیت پیشرفته
+            success_message = await create_success_message(reminder_id, state_data, start_date_gregorian, end_date_gregorian)
             
             await message.answer(
-                "🎉 <b>ریمایندر پیشرفته با موفقیت ایجاد شد!</b>\n\n"
-                f"🆔 <b>کد ریمایندر:</b> <code>{reminder_id}</code>\n"
-                f"📝 <b>عنوان:</b> {state_data['title']}\n"
-                f"⏰ <b>زمان‌بندی:</b> از {state_data['start_date']} {state_data['start_time']} "
-                f"تا {state_data['end_date']} {state_data['end_time']}\n"
-                f"📆 <b>روزهای فعال:</b> {len(state_data['selected_days'])} روز\n"
-                f"{repeat_info}\n\n"
-                f"✅ این ریمایندر برای همه کاربران فعال ارسال خواهد شد.",
-                reply_markup=create_advanced_reminder_admin_menu(),
+                success_message['text'],
+                reply_markup=success_message['keyboard'],
                 parse_mode="HTML"
             )
-            
-            logger.info(f"✅ ریمایندر پیشرفته {reminder_id} توسط ادمین {message.from_user.id} ایجاد شد")
-            
+
+            # 📈 ثبت لاگ کامل
+            logger.info(f"🎉 ریمایندر پیشرفته {reminder_id} توسط ادمین {message.from_user.id} ایجاد شد")
+            logger.info(f"📝 مشخصات: {state_data['title']} - تکرار: {state_data['repeat_count']} - روزهای فعال: {len(state_data['selected_days'])}")
+
+            # 🔔 اطلاع‌رسانی به ادمین‌های دیگر (اختیاری)
+            await notify_other_admins(message.from_user.id, reminder_id, state_data['title'])
+
+            # 🧹 پاک‌سازی state
+            await state.clear()
+
+            # 📅 راه‌اندازی scheduler برای ریمایندر جدید (اگر نیاز باشد)
+            await setup_reminder_scheduler(reminder_id)
+
         except Exception as e:
+            # 🚨 مدیریت خطای جامع
+            error_handling = await handle_reminder_creation_error(e, state_data)
             await message.answer(
-                "❌ <b>خطا در ایجاد ریمایندر!</b>\n\n"
-                f"خطا: {str(e)}\n\n"
-                f"💡 <i>لطفاً بررسی کنید:</i>\n"
-                f"• تاریخ‌ها به فرمت YYYY-MM-DD باشند\n"
-                f"• زمان‌ها به فرمت HH:MM باشند\n"
-                f"• همه فیلدها پر شده باشند\n\n"
-                "می‌توانید از گزینه '✏️ ویرایش اطلاعات' استفاده کنید.",
-                reply_markup=create_advanced_reminder_admin_menu(),
+                error_handling['message'],
+                reply_markup=error_handling['keyboard'],
                 parse_mode="HTML"
             )
-            logger.error(f"خطا در ایجاد ریمایندر پیشرفته: {e}")
-            logger.error(f"داده‌های کامل state: {state_data}")
-        
-        await state.clear()
-    
+            logger.error(f"🚨 خطای کلی در ایجاد ریمایندر: {e}", exc_info=True)
+
     elif message.text == "✏️ ویرایش اطلاعات":
-        await state.set_state(AdvancedReminderStates.waiting_for_title)
-        await message.answer(
-            "✏️ <b>شروع ویرایش اطلاعات</b>\n\n"
-            "لطفاً عنوان جدید ریمایندر را وارد کنید:",
-            reply_markup=create_back_only_menu()
-        )
+        await handle_edit_reminder(message, state)
     
     elif message.text == "❌ لغو":
-        await message.answer(
-            "❌ <b>ایجاد ریمایندر لغو شد</b>\n\n"
-            "هر زمان که خواستید می‌توانید ریمایندر جدیدی ایجاد کنید.",
-            reply_markup=create_advanced_reminder_admin_menu(),
-            parse_mode="HTML"
-        )
-        await state.clear()
+        await handle_cancel_reminder(message, state)
+
 # =============================================================================
 # بخش ۳: مدیریت و نمایش ریمایندرهای پیشرفته
 # =============================================================================
