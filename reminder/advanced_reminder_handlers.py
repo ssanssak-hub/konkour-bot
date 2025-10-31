@@ -837,6 +837,254 @@ async def process_advanced_confirmation(message: types.Message, state: FSMContex
         await handle_cancel_reminder(message, state)
 
 # =============================================================================
+# توابع کمکی پیشرفته
+# =============================================================================
+
+async def validate_reminder_data(state_data: dict) -> list:
+    """اعتبارسنجی جامع داده‌های ریمایندر"""
+    errors = []
+    
+    # بررسی وجود فیلدهای ضروری
+    required_fields = {
+        'title': 'عنوان',
+        'message': 'متن ریمایندر',
+        'start_date': 'تاریخ شروع',
+        'start_time': 'ساعت شروع',
+        'end_date': 'تاریخ پایان',
+        'end_time': 'ساعت پایان',
+        'selected_days': 'روزهای هفته',
+        'repeat_count': 'تعداد تکرار',
+        'repeat_interval': 'فاصله زمانی'
+    }
+    
+    for field, name in required_fields.items():
+        if field not in state_data or not state_data[field]:
+            errors.append(f"• فیلد '{name}' پر نشده است")
+    
+    # اعتبارسنجی طول عنوان و متن
+    if 'title' in state_data:
+        if len(state_data['title']) < 3:
+            errors.append("• عنوان باید حداقل ۳ حرف باشد")
+        if len(state_data['title']) > 100:
+            errors.append("• عنوان نمی‌تواند بیش از ۱۰۰ حرف باشد")
+    
+    if 'message' in state_data:
+        if len(state_data['message']) < 10:
+            errors.append("• متن ریمایندر باید حداقل ۱۰ حرف باشد")
+        if len(state_data['message']) > 4000:
+            errors.append("• متن ریمایندر نمی‌تواند بیش از ۴۰۰۰ حرف باشد")
+    
+    # اعتبارسنجی روزهای هفته
+    if 'selected_days' in state_data:
+        if not state_data['selected_days']:
+            errors.append("• حداقل یک روز از هفته باید انتخاب شود")
+        for day in state_data['selected_days']:
+            if day not in [0, 1, 2, 3, 4, 5, 6]:
+                errors.append("• روزهای هفته انتخاب شده معتبر نیستند")
+    
+    # اعتبارسنجی تنظیمات تکرار
+    if 'repeat_count' in state_data:
+        if state_data['repeat_count'] < 0 or state_data['repeat_count'] > 10:
+            errors.append("• تعداد تکرار باید بین ۰ تا ۱۰ باشد")
+    
+    if 'repeat_interval' in state_data and state_data['repeat_count'] > 1:
+        if state_data['repeat_interval'] < 10 or state_data['repeat_interval'] > 60:
+            errors.append("• فاصله زمانی باید بین ۱۰ تا ۶۰ ثانیه باشد")
+    
+    return errors
+
+async def convert_persian_dates(state_data: dict) -> dict:
+    """تبدیل تاریخ‌های شمسی به میلادی با مدیریت خطا"""
+    try:
+        start_date = state_data['start_date']
+        end_date = state_data['end_date']
+        
+        # لاگ برای دیباگ
+        logger.info(f"🔄 تبدیل تاریخ: {start_date} -> میلادی")
+        
+        # تبدیل تاریخ شروع
+        start_date_gregorian = persian_to_gregorian_string(start_date)
+        
+        # تبدیل تاریخ پایان
+        end_date_gregorian = persian_to_gregorian_string(end_date)
+        
+        logger.info(f"✅ تبدیل موفق: {start_date} -> {start_date_gregorian}, {end_date} -> {end_date_gregorian}")
+        
+        return {
+            'success': True,
+            'start_date': start_date_gregorian,
+            'end_date': end_date_gregorian,
+            'message': 'تبدیل با موفقیت انجام شد'
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در تبدیل تاریخ: {e}")
+        return {
+            'success': False,
+            'error': f'خطا در تبدیل تاریخ: {str(e)}',
+            'start_date': None,
+            'end_date': None
+        }
+
+async def validate_date_logic(start_date: str, end_date: str, start_time: str, end_time: str) -> dict:
+    """اعتبارسنجی منطق تاریخی و زمانی"""
+    try:
+        from datetime import datetime
+        
+        # ترکیب تاریخ و زمان
+        start_datetime = datetime.strptime(f"{start_date} {start_time}", "%Y-%m-%d %H:%M")
+        end_datetime = datetime.strptime(f"{end_date} {end_time}", "%Y-%m-%d %H:%M")
+        
+        # بررسی اینکه پایان قبل از شروع نباشد
+        if end_datetime <= start_datetime:
+            return {
+                'valid': False,
+                'message': '⏰ تاریخ/زمان پایان نمی‌تواند قبل از تاریخ/زمان شروع باشد!'
+            }
+        
+        # بررسی فاصله زمانی معقول (حداکثر ۲ سال)
+        time_difference = end_datetime - start_datetime
+        if time_difference.days > 730:  # ۲ سال
+            return {
+                'valid': True,  # هشدار ولی قابل ادامه
+                'message': '⚠️ بازه زمانی انتخاب شده بیش از ۲ سال است. آیا از صحت آن اطمینان دارید؟'
+            }
+        
+        return {'valid': True, 'message': 'منطق زمانی معتبر است'}
+        
+    except Exception as e:
+        logger.error(f"خطا در اعتبارسنجی منطق تاریخی: {e}")
+        return {'valid': True, 'message': 'اعتبارسنجی زمانی انجام نشد'}
+
+async def create_success_message(reminder_id: int, state_data: dict, start_date_gregorian: str, end_date_gregorian: str) -> dict:
+    """ایجاد پیام موفقیت پیشرفته"""
+    # اطلاعات تکرار
+    repeat_info = ""
+    if state_data['repeat_count'] == 0:
+        repeat_info = "📝 <b>وضعیت:</b> فقط ثبت شده (بدون ارسال پیام)"
+    elif state_data['repeat_count'] == 1:
+        repeat_info = f"🔔 <b>وضعیت:</b> ارسال یکبار در ساعت {state_data['start_time']}"
+    else:
+        total_duration = (state_data['repeat_count'] - 1) * state_data['repeat_interval']
+        repeat_info = f"🔄 <b>وضعیت:</b> ارسال {state_data['repeat_count']} بار با فاصله {state_data['repeat_interval']} ثانیه (کل زمان: {total_duration} ثانیه)"
+    
+    # روزهای هفته
+    day_mapping = {
+        0: "شنبه", 1: "یکشنبه", 2: "دوشنبه",
+        3: "سه‌شنبه", 4: "چهارشنبه", 5: "پنجشنبه", 6: "جمعه"
+    }
+    days_text = "، ".join([day_mapping[day] for day in state_data['selected_days']])
+    
+    # محاسبه تعداد کاربران فعال
+    active_users_count = await get_active_users_count()
+    
+    message_text = (
+        f"🎉 <b>ریمایندر پیشرفته با موفقیت ایجاد شد!</b>\n\n"
+        f"🆔 <b>کد ریمایندر:</b> <code>{reminder_id}</code>\n"
+        f"📝 <b>عنوان:</b> {state_data['title']}\n"
+        f"📄 <b>متن:</b> {state_data['message'][:100]}...\n\n"
+        f"⏰ <b>زمان‌بندی:</b>\n"
+        f"   • شروع: {state_data['start_date']} {state_data['start_time']}\n"
+        f"   • پایان: {state_data['end_date']} {state_data['end_time']}\n"
+        f"📆 <b>روزهای فعال:</b> {days_text}\n"
+        f"{repeat_info}\n\n"
+        f"👥 <b>مخاطبان:</b> {active_users_count} کاربر فعال\n"
+        f"🕒 <b>تاریخ ایجاد:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
+        f"✅ <i>این ریمایندر به طور خودکار برای کاربران فعال ارسال خواهد شد.</i>"
+    )
+    
+    return {
+        'text': message_text,
+        'keyboard': create_advanced_reminder_admin_menu()
+    }
+
+async def handle_reminder_creation_error(error: Exception, state_data: dict) -> dict:
+    """مدیریت خطاهای ایجاد ریمایندر"""
+    error_type = type(error).__name__
+    
+    if "date" in str(error).lower() or "time" in str(error).lower():
+        message = (
+            "❌ <b>خطا در داده‌های زمانی!</b>\n\n"
+            f"خطا: {str(error)}\n\n"
+            "💡 <i>لطفاً بررسی کنید:</i>\n"
+            "• تاریخ‌ها به فرمت صحیح YYYY-MM-DD باشند\n"
+            "• زمان‌ها به فرمت HH:MM باشند\n"
+            "• تاریخ پایان بعد از تاریخ شروع باشد\n\n"
+            "می‌توانید از گزینه '✏️ ویرایش اطلاعات' استفاده کنید."
+        )
+    elif "database" in str(error).lower() or "db" in str(error).lower():
+        message = (
+            "❌ <b>خطای سیستمی!</b>\n\n"
+            "سیستم ذخیره‌سازی با مشکل مواجه شده است.\n"
+            "لطفاً چند دقیقه دیگر مجدداً تلاش کنید."
+        )
+    else:
+        message = (
+            "❌ <b>خطای غیرمنتظره!</b>\n\n"
+            f"خطا: {str(error)}\n\n"
+            "لطفاً با پشتیبانی فنی تماس بگیرید."
+        )
+    
+    return {
+        'message': message,
+        'keyboard': create_advanced_reminder_admin_menu()
+    }
+
+async def handle_edit_reminder(message: types.Message, state: FSMContext):
+    """مدیریت ویرایش ریمایندر"""
+    await state.set_state(AdvancedReminderStates.waiting_for_title)
+    await message.answer(
+        "✏️ <b>شروع ویرایش اطلاعات</b>\n\n"
+        "لطفاً عنوان جدید ریمایندر را وارد کنید:",
+        reply_markup=create_back_only_menu()
+    )
+
+async def handle_cancel_reminder(message: types.Message, state: FSMContext):
+    """مدیریت لغو ایجاد ریمایندر"""
+    await message.answer(
+        "❌ <b>ایجاد ریمایندر لغو شد</b>\n\n"
+        "هر زمان که خواستید می‌توانید ریمایندر جدیدی ایجاد کنید.",
+        reply_markup=create_advanced_reminder_admin_menu(),
+        parse_mode="HTML"
+    )
+    await state.clear()
+
+# توابع اختیاری برای قابلیت‌های پیشرفته
+async def get_active_users_count() -> int:
+    """دریافت تعداد کاربران فعال"""
+    try:
+        # این تابع بستگی به ساختار دیتابیس شما دارد
+        return 100  # مقدار نمونه
+    except:
+        return 0
+
+async def notify_other_admins(creator_id: int, reminder_id: int, title: str):
+    """اطلاع‌رسانی به سایر ادمین‌ها"""
+    # پیاده‌سازی بستگی به ساختار ربات شما دارد
+    pass
+
+async def setup_reminder_scheduler(reminder_id: int):
+    """راه‌اندازی زمان‌بند برای ریمایندر جدید"""
+    # پیاده‌سازی بستگی به سیستم زمان‌بندی شما دارد
+    pass
+
+def create_date_validation_keyboard():
+    """ایجاد کیبورد برای تأیید هشدارهای زمانی"""
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text="✅ ادامه می‌دهم"),
+                KeyboardButton(text="✏️ ویرایش زمان‌بندی")
+            ],
+            [
+                KeyboardButton(text="🔙 بازگشت به منوی اصلی")
+            ]
+        ],
+        resize_keyboard=True
+    )
+
+# =============================================================================
 # بخش ۳: مدیریت و نمایش ریمایندرهای پیشرفته
 # =============================================================================
 
