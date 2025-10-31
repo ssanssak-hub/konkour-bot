@@ -441,7 +441,7 @@ class ReminderDatabase:
                     'last_sent': row['last_sent'],
                     'total_sent': row['total_sent'],
                     'created_at': row['created_at']
-                )
+             })
             
             return reminders
 
