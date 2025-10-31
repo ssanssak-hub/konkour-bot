@@ -98,11 +98,9 @@ def format_gregorian_date_for_display(gregorian_date: str) -> str:
     return f"{jd} {persian_months.get(jm, '')} {jy}"
 
 def get_current_persian_datetime():
-    """
-    دریافت تاریخ و زمان فعلی تهران به صورت شمسی
-    """
-    now = get_tehran_time()
-    year, month, day = gregorian_to_jalali(now.year, now.month, now.day)
+    """دریافت تاریخ و زمان فعلی تهران به صورت شمسی"""
+    tehran_tz = pytz.timezone('Asia/Tehran')
+    now_tehran = jdatetime.now(tehran_tz)
     
     # نام ماه‌های شمسی
     persian_months = {
@@ -112,20 +110,28 @@ def get_current_persian_datetime():
         10: "دی", 11: "بهمن", 12: "اسفند"
     }
     
-    weekday = get_persian_weekday(now)
-    month_name = persian_months.get(month, "نامشخص")
+    # نام روزهای هفته
+    persian_weekdays = {
+        0: "شنبه", 1: "یکشنبه", 2: "دوشنبه",
+        3: "سه‌شنبه", 4: "چهارشنبه", 5: "پنجشنبه", 6: "جمعه"
+    }
+    
+    weekday_name = persian_weekdays.get(now_tehran.weekday(), "نامشخص")
+    month_name = persian_months.get(now_tehran.month, "نامشخص")
     
     return {
-        'year': year,
-        'month': month,
+        'year': now_tehran.year,
+        'month': now_tehran.month,
         'month_name': month_name,
-        'day': day,
-        'weekday': weekday,
-        'hour': now.hour,
-        'minute': now.minute,
-        'second': now.second,
-        'full_date': f"{weekday} {day} {month_name} {year}",
-        'full_time': f"{now.hour:02d}:{now.minute:02d}:{now.second:02d}",
+        'day': now_tehran.day,
+        'weekday': weekday_name,
+        'hour': now_tehran.hour,
+        'minute': now_tehran.minute,
+        'second': now_tehran.second,
+        'date': now_tehran.strftime("%Y-%m-%d"),  # فرمت YYYY-MM-DD
+        'time': now_tehran.strftime("%H:%M"),     # فرمت HH:MM
+        'full_date': f"{weekday_name} {now_tehran.day} {month_name} {now_tehran.year}",
+        'full_time': f"{now_tehran.hour:02d}:{now_tehran.minute:02d}:{now_tehran.second:02d}",
         'timezone': 'تهران'
     }
 
