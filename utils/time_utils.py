@@ -1,10 +1,13 @@
 """
 ابزارهای کار با زمان و تاریخ - نسخه کامل
 """
+import logging
 from datetime import datetime, timedelta
 from typing import Tuple, Dict, Any, List
 from jdatetime import datetime as jdatetime
 import pytz
+
+logger = logging.getLogger(__name__)
 
 # تنظیم تایم‌زون تهران
 TEHRAN_TIMEZONE = pytz.timezone('Asia/Tehran')
@@ -74,15 +77,34 @@ def jalali_to_gregorian(jy, jm, jd):
     return gy, gm, gd
 
 def parse_persian_date(date_str: str) -> tuple:
-    """تبدیل رشته تاریخ شمسی به اعداد"""
-    parts = date_str.split('/')
+    """تبدیل رشته تاریخ شمسی به اعداد - پشتیبانی از / و -"""
+    # پشتیبانی از هر دو جداکننده
+    if '/' in date_str:
+        separator = '/'
+    elif '-' in date_str:
+        separator = '-'
+    else:
+        raise ValueError("فرمت تاریخ نامعتبر")
+    
+    parts = date_str.split(separator)
     if len(parts) != 3:
         raise ValueError("فرمت تاریخ نامعتبر")
+    
     return int(parts[0]), int(parts[1]), int(parts[2])
-
+    
 def persian_to_gregorian_string(persian_date: str) -> str:
     """تبدیل تاریخ شمسی به رشته میلادی YYYY-MM-DD"""
-    jy, jm, jd = parse_persian_date(persian_date)
+    # پشتیبانی از هر دو فرمت / و -
+    if '/' in persian_date:
+        jy, jm, jd = parse_persian_date(persian_date)
+    elif '-' in persian_date:
+        parts = persian_date.split('-')
+        if len(parts) != 3:
+            raise ValueError("فرمت تاریخ نامعتبر")
+        jy, jm, jd = int(parts[0]), int(parts[1]), int(parts[2])
+    else:
+        raise ValueError("فرمت تاریخ نامعتبر")
+    
     gy, gm, gd = jalali_to_gregorian(jy, jm, jd)
     return f"{gy}-{gm:02d}-{gd:02d}"
 
