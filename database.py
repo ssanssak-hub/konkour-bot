@@ -329,6 +329,21 @@ class Database:
         except Exception as e:
             logger.error(f"❌ خطا در دریافت پیشرفت کاربر: {e}")
             return {'total_minutes': 0, 'total_hours': 0, 'total_sessions': 0, 'active_days': 0, 'avg_daily_minutes': 0}
+
+    def get_active_users(self, days_active: int = 30) -> List[Dict[str, Any]]:
+        """دریافت کاربران فعال (اختیاری - برای ریمایندرهای عمومی)"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+SELECT DISTINCT user_id 
+FROM users 
+WHERE last_activity >= datetime('now', ?)
+OR created_at >= datetime('now', ?)
+''', (f'-{days_active} days', f'-{days_active} days'))
+            
+            return [dict(row) for row in cursor.fetchall()]
     
     def log_error(self, user_id: int, error_type: str, error_message: str):
         """لاگ کردن خطاها برای عیب‌یابی"""
