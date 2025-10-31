@@ -24,8 +24,12 @@ from reminder.advanced_reminder_keyboards import (
     create_advanced_reminder_actions_keyboard,
     create_back_only_menu
 )
-from utils.time_utils import get_current_persian_datetime, persian_to_gregorian_string
-
+from utils.time_utils import (
+    get_current_persian_datetime, 
+    get_tehran_time_formatted,    # اضافه کنید
+    get_tehran_date_formatted,    # اضافه کنید
+    persian_to_gregorian_string
+)
 logger = logging.getLogger(__name__)
 
 # =============================================================================
