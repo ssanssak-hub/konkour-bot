@@ -7,44 +7,70 @@ from aiogram.types import (
 )
 from exam_data import EXAMS_1405
 
-# منوی اصلی با کیبورد معمولی - نسخه منطبق با main.py
+# منوی اصلی با کیبورد معمولی - نسخه ساده‌شده
 def main_menu(user_id: int = None, is_admin: bool = False):
-    """منوی اصلی - منطبق با هندلرهای main.py"""
+    """منوی اصلی - فقط موارد اصلی نمایش داده شود"""
     from config import ADMIN_ID
     
     # بررسی آیا کاربر ادمین هست
     is_admin_user = (user_id == ADMIN_ID) or is_admin
     
     keyboard = [
-        [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],  # ✅ منطبق با main.py
-        [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],  # ✅ منطبق با main.py
-        [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],  # ✅ منطبق با main.py
-        [KeyboardButton(text="⏰ یادآوری کنکورها")],
-        [KeyboardButton(text="📝 یادآوری شخصی")],
-        [KeyboardButton(text="🤖 یادآوری خودکار")]
+        [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
+        [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
+        [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
+        [KeyboardButton(text="🔔 یادآوری‌ها")]  # ✅ دکمه جدید برای زیرمنوی یادآوری‌ها
     ]
     
     # فقط اگر کاربر ادمین هست، دکمه مدیریت نمایش داده شود
     if is_admin_user:
-        keyboard.append([KeyboardButton(text="👑 پنل مدیریت")])  # ✅ منطبق با main.py
+        keyboard.append([KeyboardButton(text="👑 پنل مدیریت")])
     
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 def admin_main_menu():
-    """منوی اصلی برای ادمین - منطبق با main.py"""
+    """منوی اصلی برای ادمین"""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],  # ✅ منطبق
-            [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],  # ✅ منطبق
-            [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],  # ✅ منطبق
-            [KeyboardButton(text="⏰ یادآوری کنکورها")],
-            [KeyboardButton(text="📝 یادآوری شخصی")],
-            [KeyboardButton(text="🤖 یادآوری خودکار")],
-            [KeyboardButton(text="👑 پنل مدیریت")]  # ✅ منطبق
+            [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
+            [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
+            [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
+            [KeyboardButton(text="🔔 یادآوری‌ها")],  # ✅ دکمه جدید
+            [KeyboardButton(text="👑 پنل مدیریت")]
         ],
         resize_keyboard=True,
         input_field_placeholder="گزینه مورد نظر را انتخاب کنید..."
     )
+
+def reminders_submenu(is_admin=False):
+    """منوی زیرمجموعه یادآوری‌ها"""
+    if is_admin:
+        # منوی کامل برای ادمین
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⏰ یادآوری کنکورها")],
+                [KeyboardButton(text="📝 یادآوری شخصی")],
+                [KeyboardButton(text="🤖 یادآوری خودکار")],
+                [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],  # ✅ فقط برای ادمین
+                [KeyboardButton(text="📋 مدیریت یادآوری")],
+                [KeyboardButton(text="🏠 منوی اصلی")]
+            ],
+            resize_keyboard=True,
+            input_field_placeholder="گزینه یادآوری را انتخاب کنید..."
+        )
+    else:
+        # منوی ساده برای کاربر عادی
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⏰ یادآوری کنکورها")],
+                [KeyboardButton(text="📝 یادآوری شخصی")],
+                [KeyboardButton(text="🤖 یادآوری خودکار")],
+                [KeyboardButton(text="📋 مدیریت یادآوری")],
+                [KeyboardButton(text="🏠 منوی اصلی")]
+            ],
+            resize_keyboard=True,
+            input_field_placeholder="گزینه یادآوری را انتخاب کنید..."
+        )
 
 def admin_menu():
     """منوی مدیریت ادمین"""
@@ -54,11 +80,12 @@ def admin_menu():
         [KeyboardButton(text="📊 آمار ربات")],
         [KeyboardButton(text="🔍 لاگ‌ها")],
         [KeyboardButton(text="📢 عضویت اجباری")],
-        [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],  # ✅ منطبق با main.py
+        [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],
         [KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
+# بقیه توابع بدون تغییر...
 def reminder_management_menu():
     """منوی مدیریت یادآوری‌ها"""
     keyboard = [
@@ -74,7 +101,7 @@ def remove_menu():
 
 # منوی مدیریت یادآوری‌ها - نسخه بهبود یافته
 def create_reminder_management_menu(is_admin=False):
-    """منوی مدیریت یادآوری‌ها - منطبق با main.py"""
+    """منوی مدیریت یادآوری‌ها"""
     if is_admin:
         # منوی کامل برای ادمین
         return ReplyKeyboardMarkup(
@@ -118,7 +145,7 @@ def admin_panel_menu():
         input_field_placeholder="گزینه مدیریتی را انتخاب کنید..."
     )
 
-# بقیه توابع بدون تغییر...
+# بقیه توابع بدون تغییر می‌مونن...
 def exams_menu():
     keyboard = []
     keys = list(EXAMS_1405.keys())
@@ -146,7 +173,6 @@ def exams_menu():
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# بقیه توابع بدون تغییر می‌مونن...
 def exam_actions_menu(exam_key=None):
     keyboard = []
     
