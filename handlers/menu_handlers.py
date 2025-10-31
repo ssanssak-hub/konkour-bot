@@ -74,6 +74,20 @@ async def stats_handler(message: types.Message):
         parse_mode="HTML"
     )
 
+async def main_menu_handler(message: types.Message):
+    """هندلر منوی اصلی"""
+    from config import ADMIN_ID
+    
+    user_id = message.from_user.id
+    is_admin = (user_id == ADMIN_ID)
+    
+    await message.answer(
+        "🎓 <b>ربات کنکور - منوی اصلی</b>\n\n"
+        "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+        reply_markup=main_menu(user_id, is_admin),
+        parse_mode="HTML"
+    )
+
 async def admin_handler(message: types.Message):
     """هندلر منوی مدیریت"""
     from config import ADMIN_ID
