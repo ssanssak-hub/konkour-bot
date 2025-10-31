@@ -229,24 +229,26 @@ async def process_start_date(message: types.Message, state: FSMContext):
     
     if message.text == "📅 امروز":
         try:
-            current_date = get_current_persian_datetime()
-            # بررسی وجود کلید 'date'
-            if 'date' in current_date:
-                await state.update_data(start_date=current_date['date'])
-                await message.answer(f"✅ تاریخ شروع تنظیم شد: {current_date['date']}")
-            else:
-                # اگر کلید 'date' وجود نداره، از datetime استفاده کن
+            # استفاده مستقیم از تابع get_tehran_date برای تاریخ تهران
+            current_date = get_tehran_date()  # این تاریخ امروز تهران رو برمی‌گردونه
+            await state.update_data(start_date=current_date)
+            await message.answer(f"✅ تاریخ شروع تنظیم شد: {current_date} (امروز - تهران)")
+                
+        except Exception as e:
+            # فال‌بک: استفاده مستقیم از jdatetime
+            try:
+                from jdatetime import datetime as jdatetime
+                import pytz
+                tehran_tz = pytz.timezone('Asia/Tehran')
+                current_date = jdatetime.now(tehran_tz).strftime("%Y-%m-%d")
+                await state.update_data(start_date=current_date)
+                await message.answer(f"✅ تاریخ شروع تنظیم شد: {current_date} (امروز - تهران)")
+            except Exception as e2:
+                # آخرین فال‌بک
                 from datetime import datetime
                 today = datetime.now().strftime("%Y-%m-%d")
                 await state.update_data(start_date=today)
-                await message.answer(f"✅ تاریخ شروع تنظیم شد: {today}")
-                
-        except Exception as e:
-            # فال‌بک: استفاده از تاریخ امروز
-            from datetime import datetime
-            today = datetime.now().strftime("%Y-%m-%d")
-            await state.update_data(start_date=today)
-            await message.answer(f"✅ تاریخ شروع تنظیم شد: {today} (تاریخ پیش‌فرض)")
+                await message.answer(f"✅ تاریخ شروع تنظیم شد: {today} (تاریخ پیش‌فرض)")
             
     else:
         # اعتبارسنجی فرمت تاریخ
@@ -296,7 +298,6 @@ async def process_start_date(message: types.Message, state: FSMContext):
         reply_markup=create_end_time_menu(),
         parse_mode="HTML"
     )
-
 async def process_end_time(message: types.Message, state: FSMContext):
     """پردازش ساعت پایان"""
     if message.text == "🔙 بازگشت":
