@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 async def advanced_reminders_admin_handler(message: types.Message):
     """منوی اصلی ریمایندرهای پیشرفته برای ادمین"""
+    from config import ADMIN_ID
+    
     if message.from_user.id != ADMIN_ID:
         await message.answer("❌ دسترسی denied!")
         return
