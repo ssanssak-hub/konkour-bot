@@ -8,20 +8,25 @@ from aiogram.types import (
 from exam_data import EXAMS_1405
 
 # منوی اصلی با کیبورد معمولی - نسخه بهبود یافته برای ادمین
-def main_menu():
-    """منوی اصلی - ادمین همه گزینه‌ها رو می‌بینه"""
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
-            [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
-            [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-            [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],
-            [KeyboardButton(text="👑 پنل مدیریت")]
-        ],
-        resize_keyboard=True,
-        input_field_placeholder="یک گزینه انتخاب کنید..."
-    )
-
+def main_menu(user_id: int = None, is_admin: bool = False):
+    """منوی اصلی - فقط پنل مدیریت برای ادمین‌ها نمایش داده شود"""
+    from config import ADMIN_ID
+    
+    # بررسی آیا کاربر ادمین هست
+    is_admin_user = (user_id == ADMIN_ID) or is_admin
+    
+    keyboard = [
+        [KeyboardButton(text="⏰ زمان‌سنجی کنکورها")],
+        [KeyboardButton(text="📚 برنامه‌ریزی مطالعه")],
+        [KeyboardButton(text="📊 آمار و گزارشات")],
+        [KeyboardButton(text="ℹ️ راهنما و اطلاعات")]
+    ]
+    
+    # فقط اگر کاربر ادمین هست، دکمه مدیریت نمایش داده شود
+    if is_admin_user:
+        keyboard.append([KeyboardButton(text="⚙️ پنل مدیریت")])
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 def admin_main_menu():
     """منوی اصلی مخصوص ادمین - نمایش همه قابلیت‌ها"""
     return ReplyKeyboardMarkup(
