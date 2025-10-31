@@ -7,19 +7,19 @@ from aiogram.types import (
 )
 from exam_data import EXAMS_1405
 
-# منوی اصلی با کیبورد معمولی - نسخه ساده‌شده
-def main_menu(user_id: int = None, is_admin: bool = False):
-    """منوی اصلی - فقط موارد اصلی نمایش داده شود"""
+# منوی اصلی با کیبورد معمولی
+def main_menu(user_id: int = None):
+    """منوی اصلی"""
     from config import ADMIN_ID
     
     # بررسی آیا کاربر ادمین هست
-    is_admin_user = (user_id == ADMIN_ID) or is_admin
+    is_admin_user = (user_id == ADMIN_ID)
     
     keyboard = [
         [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
         [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
         [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-        [KeyboardButton(text="🔔 یادآوری‌ها")]  # ✅ دکمه جدید برای زیرمنوی یادآوری‌ها
+        [KeyboardButton(text="🔔 یادآوری‌ها")]
     ]
     
     # فقط اگر کاربر ادمین هست، دکمه مدیریت نمایش داده شود
@@ -35,7 +35,7 @@ def admin_main_menu():
             [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
             [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
             [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-            [KeyboardButton(text="🔔 یادآوری‌ها")],  # ✅ دکمه جدید
+            [KeyboardButton(text="🔔 یادآوری‌ها")],
             [KeyboardButton(text="👑 پنل مدیریت")]
         ],
         resize_keyboard=True,
@@ -43,7 +43,7 @@ def admin_main_menu():
     )
 
 def reminders_submenu(user_id: int = None):
-    """منوی زیرمجموعه یادآوری‌ها - ریمایندرهای پیشرفته فقط برای ادمین"""
+    """منوی زیرمجموعه یادآوری‌ها"""
     from config import ADMIN_ID
     
     # بررسی آیا کاربر ادمین هست
@@ -58,7 +58,7 @@ def reminders_submenu(user_id: int = None):
     
     # فقط اگر کاربر ادمین هست، ریمایندرهای پیشرفته نمایش داده شود
     if is_admin_user:
-        keyboard.append([KeyboardButton(text="🤖 ریمایندرهای پیشرفته")])  # ✅ فقط برای ادمین
+        keyboard.append([KeyboardButton(text="🤖 ریمایندرهای پیشرفته")])
     
     keyboard.append([KeyboardButton(text="🏠 منوی اصلی")])
     
@@ -67,6 +67,8 @@ def reminders_submenu(user_id: int = None):
         resize_keyboard=True,
         input_field_placeholder="گزینه یادآوری را انتخاب کنید..."
     )
+
+# بقیه توابع بدون تغییر...
 
 def advanced_reminders_submenu():
     """منوی ریمایندرهای پیشرفته - فقط برای ادمین"""
