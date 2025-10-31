@@ -750,5 +750,28 @@ class ReminderDatabase:
             logger.error(f"خطا در پاک کردن لاگ‌های قدیمی: {e}")
             return 0
 
+    def init_advanced_reminders_table(self):
+        """ایجاد جدول ریمایندرهای پیشرفته"""
+        query = """
+        CREATE TABLE IF NOT EXISTS advanced_reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            days_of_week TEXT NOT NULL,
+            repeat_count INTEGER DEFAULT 1,
+            repeat_interval INTEGER DEFAULT 0,
+            total_sent INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- این خط رو اضافه کنید
+        )
+        """
+        self.execute_query(query)
 # ایجاد instance اصلی
 reminder_db = ReminderDatabase()
