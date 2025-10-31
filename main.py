@@ -18,7 +18,7 @@ from reminder import setup_reminder_system
 from reminder.reminder_handlers import (
     ExamReminderStates, PersonalReminderStates, ManagementStates
 )
-from reminder.auto_reminder_scheduler import init_auto_reminder_scheduler
+#from reminder.auto_reminder_scheduler import init_auto_reminder_scheduler
 # تنظیمات لاگ
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -414,9 +414,9 @@ async def main():
 
     # --- راه‌اندازی سیستم‌های زمان‌بندی ---
     # در تابع main() بعد از reminder_scheduler
-    auto_reminder_scheduler = init_auto_reminder_scheduler(bot)
-    asyncio.create_task(auto_reminder_scheduler.start_scheduler())
-    logger.info("🚀 سیستم ریمایندرهای خودکار شروع به کار کرد")
+    #auto_reminder_scheduler = init_auto_reminder_scheduler(bot)
+    #asyncio.create_task(auto_reminder_scheduler.start_scheduler())
+    #logger.info("🚀 سیستم ریمایندرهای خودکار شروع به کار کرد")
     
     logger.info("🔄 شروع Polling روی Railway...")
     
