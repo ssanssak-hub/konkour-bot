@@ -42,35 +42,46 @@ def admin_main_menu():
         input_field_placeholder="گزینه مورد نظر را انتخاب کنید..."
     )
 
-def reminders_submenu(is_admin=False):
-    """منوی زیرمجموعه یادآوری‌ها"""
-    if is_admin:
-        # منوی کامل برای ادمین
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="⏰ یادآوری کنکورها")],
-                [KeyboardButton(text="📝 یادآوری شخصی")],
-                [KeyboardButton(text="🤖 یادآوری خودکار")],
-                [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],  # ✅ فقط برای ادمین
-                [KeyboardButton(text="📋 مدیریت یادآوری")],
-                [KeyboardButton(text="🏠 منوی اصلی")]
-            ],
-            resize_keyboard=True,
-            input_field_placeholder="گزینه یادآوری را انتخاب کنید..."
-        )
-    else:
-        # منوی ساده برای کاربر عادی
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="⏰ یادآوری کنکورها")],
-                [KeyboardButton(text="📝 یادآوری شخصی")],
-                [KeyboardButton(text="🤖 یادآوری خودکار")],
-                [KeyboardButton(text="📋 مدیریت یادآوری")],
-                [KeyboardButton(text="🏠 منوی اصلی")]
-            ],
-            resize_keyboard=True,
-            input_field_placeholder="گزینه یادآوری را انتخاب کنید..."
-        )
+def reminders_submenu(user_id: int = None):
+    """منوی زیرمجموعه یادآوری‌ها - ریمایندرهای پیشرفته فقط برای ادمین"""
+    from config import ADMIN_ID
+    
+    # بررسی آیا کاربر ادمین هست
+    is_admin_user = (user_id == ADMIN_ID)
+    
+    keyboard = [
+        [KeyboardButton(text="⏰ یادآوری کنکورها")],
+        [KeyboardButton(text="📝 یادآوری شخصی")],
+        [KeyboardButton(text="🤖 یادآوری خودکار")],
+        [KeyboardButton(text="📋 مدیریت یادآوری")]
+    ]
+    
+    # فقط اگر کاربر ادمین هست، ریمایندرهای پیشرفته نمایش داده شود
+    if is_admin_user:
+        keyboard.append([KeyboardButton(text="🤖 ریمایندرهای پیشرفته")])  # ✅ فقط برای ادمین
+    
+    keyboard.append([KeyboardButton(text="🏠 منوی اصلی")])
+    
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        input_field_placeholder="گزینه یادآوری را انتخاب کنید..."
+    )
+
+def advanced_reminders_submenu():
+    """منوی ریمایندرهای پیشرفته - فقط برای ادمین"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📋 لیست ریمایندرهای پیشرفته")],
+            [KeyboardButton(text="➕ افزودن ریمایندر جدید")],
+            [KeyboardButton(text="✏️ ویرایش ریمایندر")],
+            [KeyboardButton(text="🗑️ حذف ریمایندر")],
+            [KeyboardButton(text="🔔 فعال/غیرفعال")],
+            [KeyboardButton(text="🔙 بازگشت به یادآوری‌ها")]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="گزینه مورد نظر را انتخاب کنید..."
+    )
 
 def admin_menu():
     """منوی مدیریت ادمین"""
@@ -80,7 +91,6 @@ def admin_menu():
         [KeyboardButton(text="📊 آمار ربات")],
         [KeyboardButton(text="🔍 لاگ‌ها")],
         [KeyboardButton(text="📢 عضویت اجباری")],
-        [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],
         [KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
@@ -90,7 +100,6 @@ def reminder_management_menu():
     """منوی مدیریت یادآوری‌ها"""
     keyboard = [
         [KeyboardButton(text="🔔 ریمایندرهای ساده")],
-        [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],
         [KeyboardButton(text="🔙 بازگشت به مدیریت")]
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
@@ -109,7 +118,6 @@ def create_reminder_management_menu(is_admin=False):
                 [KeyboardButton(text="⏰ یادآوری کنکورها")],
                 [KeyboardButton(text="📝 یادآوری شخصی")],
                 [KeyboardButton(text="🤖 یادآوری خودکار")],
-                [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],
                 [KeyboardButton(text="📋 مدیریت یادآوری")],
                 [KeyboardButton(text="🏠 منوی اصلی")]
             ],
@@ -138,7 +146,6 @@ def admin_panel_menu():
             [KeyboardButton(text="📢 عضویت اجباری"), KeyboardButton(text="👥 مدیریت کاربران")],
             [KeyboardButton(text="📊 آمار ربات"), KeyboardButton(text="⚙️ تنظیمات")],
             [KeyboardButton(text="📣 ارسال پیام"), KeyboardButton(text="🔍 لاگ‌ها")],
-            [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],
             [KeyboardButton(text="🏠 منوی اصلی")]
         ],
         resize_keyboard=True,
@@ -258,9 +265,6 @@ def admin_menu():
         [
             InlineKeyboardButton(text="📣 ارسال پیام", callback_data="admin:broadcast"),
             InlineKeyboardButton(text="🔍 لاگ‌ها", callback_data="admin:logs")
-        ],
-        [
-            InlineKeyboardButton(text="🤖 ریمایندرهای پیشرفته", callback_data="admin:advanced_reminders")
         ],
         [
             InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
