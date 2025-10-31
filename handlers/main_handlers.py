@@ -5,10 +5,15 @@ import logging
 from aiogram import Bot, types, F
 from aiogram.filters import Command, CommandStart
 
-from config import MOTIVATIONAL_MESSAGES
+from config import MOTIVATIONAL_MESSAGES, ADMIN_ID
 from keyboards import main_menu
 from utils import check_user_membership, create_membership_keyboard
 from database import Database
+
+# ایمپورت ماژول‌های ریمایندر
+from reminder.reminder_keyboards import create_reminder_main_menu
+from reminder.auto_reminder_admin import auto_reminders_admin_handler
+from reminder.auto_reminder_handlers import user_auto_reminders_list
 
 logger = logging.getLogger(__name__)
 db = Database()
@@ -76,10 +81,65 @@ async def stats_command_handler(message: types.Message):
         parse_mode="HTML"
     )
 
+async def handle_reminder_management(message: types.Message):
+    """هندلر منوی مدیریت یادآوری‌ها"""
+    if message.from_user.id == ADMIN_ID:
+        # نمایش منوی ادمین برای ریمایندرهای خودکار
+        await auto_reminders_admin_handler(message)
+    else:
+        # نمایش منوی کاربر عادی
+        await message.answer(
+            "🔔 <b>مدیریت یادآوری‌ها</b>\n\n"
+            "لطفاً گزینه مورد نظر را انتخاب کنید:",
+            reply_markup=create_reminder_main_menu(),
+            parse_mode="HTML"
+        )
+
+async def handle_auto_reminders(message: types.Message):
+    """هندلر منوی یادآوری خودکار"""
+    if message.from_user.id == ADMIN_ID:
+        # نمایش منوی ادمین
+        await auto_reminders_admin_handler(message)
+    else:
+        # نمایش منوی کاربر عادی
+        await user_auto_reminders_list(message)
+
+async def handle_exam_timing(message: types.Message):
+    """هندلر منوی زمان‌سنجی کنکورها"""
+    from handlers.exam_handlers import exam_menu_handler
+    await exam_menu_handler(message)
+
+async def handle_study_plan(message: types.Message):
+    """هندلر منوی برنامه مطالعاتی"""
+    from handlers.study_handlers import study_plan_menu_handler
+    await study_plan_menu_handler(message)
+
+async def handle_study_stats(message: types.Message):
+    """هندلر منوی آمار مطالعه"""
+    from handlers.stats_handlers import stats_menu_handler
+    await stats_menu_handler(message)
+
+async def handle_admin_panel(message: types.Message):
+    """هندلر منوی پنل مدیریت"""
+    if message.from_user.id == ADMIN_ID:
+        from handlers.admin_handlers import admin_menu_handler
+        await admin_menu_handler(message)
+    else:
+        await message.answer("❌ دسترسی denied!")
+
 async def unknown_handler(message: types.Message):
     """هندلر پیام‌های ناشناخته"""
     logger.info(f"📝 پیام ناشناخته از {message.from_user.id}: {message.text}")
     await message.answer(
         "🤔 متوجه نشدم!\n\nلطفاً از دکمه‌های منو استفاده کنید:",
         reply_markup=main_menu()
+    )
+
+async def handle_back_to_main(message: types.Message):
+    """هندلر بازگشت به منوی اصلی"""
+    await message.answer(
+        "🏠 <b>منوی اصلی</b>\n\n"
+        "لطفاً گزینه مورد نظر را انتخاب کنید:",
+        reply_markup=main_menu(),
+        parse_mode="HTML"
     )
