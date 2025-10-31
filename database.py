@@ -144,7 +144,15 @@ class Database:
         except Exception as e:
             logger.error(f"❌ خطا در افزودن کاربر {user_id}: {e}")
             self.log_error(user_id, "add_user", str(e))
-    
+    def get_active_users(self):
+        """دریافت کاربران فعال"""
+        query = """
+        SELECT user_id, username, first_name, last_name, created_at 
+        FROM users 
+        WHERE is_active = 1
+        ORDER BY created_at DESC  -- به جای last_activity از created_at استفاده کنید
+        """
+        return self.execute_query(query, fetch_all=True)
     def update_user_activity(self, user_id: int):
         """بروزرسانی زمان فعالیت کاربر"""
         try:
