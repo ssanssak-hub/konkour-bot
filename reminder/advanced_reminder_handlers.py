@@ -732,9 +732,26 @@ async def process_advanced_confirmation(message: types.Message, state: FSMContex
         state_data = await state.get_data()
         
         try:
+            # دیباگ: چک کنیم چه داده‌هایی داریم
+            logger.info(f"داده‌های state برای دیباگ: {state_data}")
+            
+            # بررسی وجود کلیدهای ضروری
+            required_keys = ['start_date', 'end_date', 'title', 'message', 'start_time', 'end_time', 'selected_days', 'repeat_count', 'repeat_interval']
+            for key in required_keys:
+                if key not in state_data:
+                    raise ValueError(f"کلید {key} در داده‌ها وجود ندارد")
+            
             # تبدیل تاریخ‌های شمسی به میلادی برای ذخیره
-            start_date_gregorian = persian_to_gregorian_string(state_data['start_date'])
-            end_date_gregorian = persian_to_gregorian_string(state_data['end_date'])
+            try:
+                start_date_gregorian = persian_to_gregorian_string(state_data['start_date'])
+                end_date_gregorian = persian_to_gregorian_string(state_data['end_date'])
+                logger.info(f"تاریخ تبدیل شده: {state_data['start_date']} -> {start_date_gregorian}, {state_data['end_date']} -> {end_date_gregorian}")
+            except Exception as conv_error:
+                logger.error(f"خطا در تبدیل تاریخ: {conv_error}")
+                # اگر تبدیل شکست خورد، از تاریخ‌های اصلی استفاده کن
+                start_date_gregorian = state_data['start_date']
+                end_date_gregorian = state_data['end_date']
+                logger.info(f"استفاده از تاریخ‌های اصلی: {start_date_gregorian}, {end_date_gregorian}")
             
             # ذخیره در دیتابیس
             reminder_id = reminder_db.add_admin_advanced_reminder(
@@ -778,11 +795,16 @@ async def process_advanced_confirmation(message: types.Message, state: FSMContex
             await message.answer(
                 "❌ <b>خطا در ایجاد ریمایندر!</b>\n\n"
                 f"خطا: {str(e)}\n\n"
-                "لطفاً مجدداً تلاش کنید.",
+                f"💡 <i>لطفاً بررسی کنید:</i>\n"
+                f"• تاریخ‌ها به فرمت YYYY-MM-DD باشند\n"
+                f"• زمان‌ها به فرمت HH:MM باشند\n"
+                f"• همه فیلدها پر شده باشند\n\n"
+                "می‌توانید از گزینه '✏️ ویرایش اطلاعات' استفاده کنید.",
                 reply_markup=create_advanced_reminder_admin_menu(),
                 parse_mode="HTML"
             )
             logger.error(f"خطا در ایجاد ریمایندر پیشرفته: {e}")
+            logger.error(f"داده‌های کامل state: {state_data}")
         
         await state.clear()
     
@@ -802,7 +824,6 @@ async def process_advanced_confirmation(message: types.Message, state: FSMContex
             parse_mode="HTML"
         )
         await state.clear()
-
 # =============================================================================
 # بخش ۳: مدیریت و نمایش ریمایندرهای پیشرفته
 # =============================================================================
