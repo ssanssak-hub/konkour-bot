@@ -144,10 +144,9 @@ async def stats_wrapper(callback: types.CallbackQuery):
 
 # --- هندلرهای مدیریت ---
 @dp.callback_query(F.data.startswith("admin:"))
-async def admin_wrapper(callback: types.CallbackQuery, state: FSMContext):
+async def handle_admin_callbacks(callback: types.CallbackQuery, state: FSMContext):
     from handlers.admin_handlers import admin_callback_handler
     await admin_callback_handler(callback, state)
-
 # --- هندلرهای منوی ریمایندر ---
 @dp.message(F.text == "⏰ یادآوری کنکورها")
 async def reminder_exam_start_wrapper(message: types.Message, state: FSMContext):
