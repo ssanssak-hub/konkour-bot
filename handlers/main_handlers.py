@@ -91,18 +91,6 @@ async def stats_command_handler(message: types.Message):
         parse_mode="HTML"
     )
 
-async def handle_reminder_management(message: types.Message):
-    """هندلر منوی مدیریت یادآوری‌ها - نسخه بهبود یافته"""
-    is_admin = message.from_user.id == ADMIN_ID
-    
-    await message.answer(
-        f"🔔 <b>مدیریت یادآوری‌ها</b>\n\n"
-        f"{"👑 دسترسی: ادمین اصلی" if is_admin else "👤 دسترسی: کاربر عادی"}\n\n"
-        f"لطفاً گزینه مورد نظر را انتخاب کنید:",
-        reply_markup=create_reminder_management_menu(is_admin),
-        parse_mode="HTML"
-    )
-
 async def handle_auto_reminders(message: types.Message):
     """هندلر منوی یادآوری خودکار"""
     if message.from_user.id == ADMIN_ID:
@@ -135,17 +123,26 @@ async def handle_study_stats(message: types.Message):
     await stats_menu_handler(message)
 
 async def handle_admin_panel(message: types.Message):
-    """هندلر منوی پنل مدیریت"""
-    if message.from_user.id == ADMIN_ID:
-        await message.answer(
-            "👑 <b>پنل مدیریت</b>\n\n"
-            "لطفاً گزینه مورد نظر را انتخاب کنید:",
-            reply_markup=admin_panel_menu(),
-            parse_mode="HTML"
-        )
-    else:
+    """هندلر پنل مدیریت - فقط برای ادمین"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
         await message.answer("❌ دسترسی denied!")
+        return
+    
+    from handlers.admin_handlers import admin_panel_handler
+    await admin_panel_handler(message)
 
+async def handle_reminder_management(message: types.Message):
+    """هندلر مدیریت یادآوری‌ها - فقط برای ادمین"""
+    from config import ADMIN_ID
+    
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ دسترسی denied!")
+        return
+    
+    from handlers.admin_handlers import reminder_management_handler
+    await reminder_management_handler(message)
 async def unknown_handler(message: types.Message):
     """هندلر پیام‌های ناشناخته"""
     logger.info(f"📝 پیام ناشناخته از {message.from_user.id}: {message.text}")
