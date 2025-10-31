@@ -27,19 +27,19 @@ def main_menu(user_id: int = None, is_admin: bool = False):
         keyboard.append([KeyboardButton(text="⚙️ پنل مدیریت")])
     
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-def admin_menu():
-    """منوی مدیریت ادمین"""
-    keyboard = [
-        [KeyboardButton(text="👥 مدیریت کاربران")],
-        [KeyboardButton(text="📣 ارسال پیام")],
-        [KeyboardButton(text="📊 آمار ربات")],
-        [KeyboardButton(text="🔍 لاگ‌ها")],
-        [KeyboardButton(text="📢 عضویت اجباری")],
-        [KeyboardButton(text="⏰ مدیریت یادآوری‌ها")],  # فقط اینجا نمایش داده شود
-        [KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
-    ]
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-
+def admin_main_menu():
+    """منوی اصلی برای ادمین"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="⏰ زمان‌سنجی کنکورها")],
+            [KeyboardButton(text="📚 برنامه‌ریزی مطالعه")],
+            [KeyboardButton(text="📊 آمار و گزارشات")],
+            [KeyboardButton(text="ℹ️ راهنما و اطلاعات")],
+            [KeyboardButton(text="⚙️ پنل مدیریت")]  # فقط برای ادمین
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="گزینه مورد نظر را انتخاب کنید..."
+    )
 def reminder_management_menu():
     """منوی مدیریت یادآوری‌ها"""
     keyboard = [
