@@ -96,7 +96,14 @@ async def admin_panel_wrapper(message: types.Message):  # ✅ تغییر نام
 async def main_menu_wrapper(message: types.Message):
     from handlers.main_handlers import handle_back_to_main
     await handle_back_to_main(message)
-
+    
+# --- هندلر بازگشت به مدیریت ---
+@dp.message(F.text == "🔙 بازگشت به مدیریت")
+async def back_to_management_wrapper(message: types.Message):
+    """هندلر بازگشت به منوی اصلی مدیریت"""
+    from handlers.main_handlers import handle_admin_panel
+    await handle_admin_panel(message)
+    
 # --- هندلرهای جدید برای ریمایندرهای پیشرفته ادمین ---
 @dp.message(F.text == "🤖 ریمایندرهای پیشرفته")
 async def advanced_reminders_wrapper(message: types.Message):
