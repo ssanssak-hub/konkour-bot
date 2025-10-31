@@ -369,24 +369,30 @@ async def process_end_date(message: types.Message, state: FSMContext):
     
     if message.text == "📅 بدون تاریخ پایان":
         try:
-            # تاریخ پایان رو ۱ سال بعد قرار می‌دیم
-            current_date = get_current_persian_datetime()
-            if 'date' in current_date:
-                current_year = int(current_date['date'][:4])
-                next_year = str(current_year + 1) + current_date['date'][4:]
-            else:
-                from datetime import datetime
-                today = datetime.now()
-                next_year_date = today.replace(year=today.year + 1)
-                next_year = next_year_date.strftime("%Y-%m-%d")
+            # استفاده مستقیم از تابع get_tehran_date برای تاریخ تهران
+            current_date = get_tehran_date()  # تاریخ امروز تهران
+            
+            # تبدیل تاریخ شمسی به عدد و اضافه کردن یک سال
+            current_year = int(current_date[:4])
+            next_year = str(current_year + 1) + current_date[4:]
                 
             await state.update_data(end_date=next_year)
-            await message.answer(f"✅ تاریخ پایان تنظیم شد: {next_year} (یک سال بعد)")
+            await message.answer(f"✅ تاریخ پایان تنظیم شد: {next_year} (یک سال بعد - تهران)")
             
         except Exception as e:
-            # فال‌بک: تاریخ پیش‌فرض
-            await state.update_data(end_date="1405-12-29")
-            await message.answer("✅ تاریخ پایان تنظیم شد: 1405-12-29 (پیش‌فرض)")
+            try:
+                # فال‌بک: استفاده مستقیم از jdatetime
+                from jdatetime import datetime as jdatetime
+                import pytz
+                tehran_tz = pytz.timezone('Asia/Tehran')
+                today_tehran = jdatetime.now(tehran_tz)
+                next_year = today_tehran.replace(year=today_tehran.year + 1).strftime("%Y-%m-%d")
+                await state.update_data(end_date=next_year)
+                await message.answer(f"✅ تاریخ پایان تنظیم شد: {next_year} (یک سال بعد - تهران)")
+            except Exception as e2:
+                # آخرین فال‌بک: تاریخ پیش‌فرض
+                await state.update_data(end_date="1405-12-29")
+                await message.answer("✅ تاریخ پایان تنظیم شد: 1405-12-29 (پیش‌فرض)")
             
     else:
         # اعتبارسنجی فرمت تاریخ
