@@ -335,23 +335,37 @@ async def process_end_time(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
-async def process_end_date(message: types.Message, state: FSMContext):
-    """پردازش تاریخ پایان"""
+async def process_start_date(message: types.Message, state: FSMContext):
+    """پردازش تاریخ شروع"""
     if message.text == "🔙 بازگشت":
-        await state.set_state(AdvancedReminderStates.waiting_for_end_time)
+        await state.set_state(AdvancedReminderStates.waiting_for_start_time)
         await message.answer(
-            "لطفاً ساعت پایان را وارد کنید:",
-            reply_markup=create_end_time_menu()
+            "لطفاً ساعت شروع را وارد کنید:",
+            reply_markup=create_start_time_menu()
         )
         return
     
-    if message.text == "📅 بدون تاریخ پایان":
-        # تاریخ پایان رو ۱ سال بعد قرار می‌دیم
-        current_date = get_current_persian_datetime()
-        current_year = int(current_date['date'][:4])
-        next_year = str(current_year + 1) + current_date['date'][4:]
-        await state.update_data(end_date=next_year)
-        await message.answer(f"✅ تاریخ پایان تنظیم شد: {next_year} (یک سال بعد)")
+    if message.text == "📅 امروز":
+        try:
+            current_date = get_current_persian_datetime()
+            # بررسی وجود کلید 'date'
+            if 'date' in current_date:
+                await state.update_data(start_date=current_date['date'])
+                await message.answer(f"✅ تاریخ شروع تنظیم شد: {current_date['date']}")
+            else:
+                # اگر کلید 'date' وجود نداره، از datetime استفاده کن
+                from datetime import datetime
+                today = datetime.now().strftime("%Y-%m-%d")
+                await state.update_data(start_date=today)
+                await message.answer(f"✅ تاریخ شروع تنظیم شد: {today}")
+                
+        except Exception as e:
+            # فال‌بک: استفاده از تاریخ امروز
+            from datetime import datetime
+            today = datetime.now().strftime("%Y-%m-%d")
+            await state.update_data(start_date=today)
+            await message.answer(f"✅ تاریخ شروع تنظیم شد: {today} (تاریخ پیش‌فرض)")
+            
     else:
         # اعتبارسنجی فرمت تاریخ
         try:
@@ -369,37 +383,37 @@ async def process_end_date(message: types.Message, state: FSMContext):
             
             # تبدیل تاریخ شمسی به میلادی برای ذخیره در دیتابیس
             gregorian_date = persian_to_gregorian_string(date_str)
-            await state.update_data(end_date=date_str)  # ذخیره شمسی برای نمایش
-            await message.answer(f"✅ تاریخ پایان ثبت شد: {date_str}")
+            await state.update_data(start_date=date_str)  # ذخیره شمسی برای نمایش
+            await message.answer(f"✅ تاریخ شروع ثبت شد: {date_str}")
             
         except Exception as e:
             await message.answer(
                 "❌ فرمت تاریخ نامعتبر!\n\n"
                 "لطفاً تاریخ را به فرمت YYYY-MM-DD وارد کنید:\n"
                 "💡 <i>مثال‌های صحیح:</i>\n"
-                "• 1404-12-29 - ۲۹ اسفند ۱۴۰۴\n"
-                "• 1405-06-30 - ۳۰ شهریور ۱۴۰۵\n"
-                "• 1405-12-29 - ۲۹ اسفند ۱۴۰۵\n\n"
+                "• 1404-01-15 - ۱۵ فروردین ۱۴۰۴\n"
+                "• 1404-07-01 - ۱ مهر ۱۴۰۴\n"
+                "• 1404-12-29 - ۲۹ اسفند ۱۴۰۴\n\n"
                 "🔙 برای بازگشت: 🔙 بازگشت",
-                reply_markup=create_end_date_menu()
+                reply_markup=create_start_date_menu()
             )
             return
     
-    await state.set_state(AdvancedReminderStates.waiting_for_days_of_week)
-    await state.update_data(selected_days=[])
+    await state.set_state(AdvancedReminderStates.waiting_for_end_time)
     
     await message.answer(
-        "📆 <b>روزهای هفته</b>\n\n"
-        "لطفاً روزهای هفته مورد نظر را انتخاب کنید:\n\n"
-        "💡 <i>توضیحات:</i>\n"
-        "• ریمایندر فقط در روزهای انتخاب شده ارسال می‌شود\n"
-        "• می‌توانید چند روز را انتخاب کنید\n"
-        "• برای انتخاب همه روزها از گزینه 'همه روزها' استفاده کنید\n\n"
-        "📋 <b>روزهای انتخاب شده:</b> ❌ هیچکدام\n\n"
-        "لطفاً روزهای مورد نظر را انتخاب کنید:",
-        reply_markup=create_days_of_week_menu(),
+        "⏰ <b>ساعت پایان</b>\n\n"
+        "لطفاً ساعت پایان را به فرمت HH:MM وارد کنید:\n\n"
+        "💡 <i>مثال‌های صحیح:</i>\n"
+        "• 18:00 - ساعت ۶ عصر\n"
+        "• 22:30 - ساعت ۱۰:۳۰ شب\n"
+        "• 23:59 - پایان روز\n\n"
+        "⏰ <b>گزینه‌های سریع:</b>\n"
+        "• بدون پایان - تا پایان روز (23:59)\n\n"
+        "🔙 برای بازگشت: 🔙 بازگشت",
+        reply_markup=create_end_time_menu(),
         parse_mode="HTML"
-    )
+            )
 
 async def process_days_of_week(message: types.Message, state: FSMContext):
     """پردازش انتخاب روزهای هفته"""
