@@ -8,16 +8,6 @@ from jadatetime import jadatetime
 
 # تنظیم تایم‌زون تهران
 TEHRAN_TIMEZONE = pytz.timezone('Asia/Tehran')
-
-def get_tehran_time_formatted():
-    """دریافت زمان فعلی تهران به فرمت HH:MM"""
-    current = get_current_persian_datetime()
-    return f"{current['hour']:02d}:{current['minute']:02d}"
-
-def get_tehran_date_formatted():
-    """دریافت تاریخ امروز تهران به فرمت YYYY-MM-DD"""
-    current = get_current_persian_datetime()
-    return f"{current['year']}-{current['month']:02d}-{current['day']:02d}"
     
 def gregorian_to_jalali(gy, gm, gd):
     """
@@ -138,6 +128,16 @@ def get_current_persian_datetime():
         'full_time': f"{now.hour:02d}:{now.minute:02d}:{now.second:02d}",
         'timezone': 'تهران'
     }
+
+def get_tehran_time_formatted():
+    """دریافت زمان فعلی تهران به فرمت HH:MM"""
+    current = get_current_persian_datetime()
+    return f"{current['hour']:02d}:{current['minute']:02d}"
+
+def get_tehran_date_formatted():
+    """دریافت تاریخ امروز تهران به فرمت YYYY-MM-DD"""
+    current = get_current_persian_datetime()
+    return f"{current['year']}-{current['month']:02d}-{current['day']:02d}"
 
 def format_time_remaining(target_date: datetime) -> Tuple[str, int]:
     """
