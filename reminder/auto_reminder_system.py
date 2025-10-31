@@ -24,7 +24,11 @@ class AutoReminderSystem:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # جدول ریمایندرهای خودکار
+            # ابتدا جدول رو حذف کن (اگر وجود داره)
+            cursor.execute('DROP TABLE IF EXISTS auto_reminders')
+            cursor.execute('DROP TABLE IF EXISTS user_auto_reminders')
+            
+            # حالا جدول رو با ساختار جدید ایجاد کن
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS auto_reminders (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,8 +57,6 @@ class AutoReminderSystem:
             
             # ایجاد ریمایندرهای پیش‌فرض
             self.create_default_reminders()
-            
-            conn.commit()
 
     def create_default_reminders(self):
         """ایجاد ریمایندرهای خودکار پیش‌فرض"""
