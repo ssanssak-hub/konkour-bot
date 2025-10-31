@@ -404,6 +404,11 @@ async def debug_all_messages(message: types.Message):
     """هندلر دیباگ برای لاگ تمام پیام‌ها"""
     logger.info(f"📩 پیام دریافت شد: user_id={message.from_user.id}, text='{message.text}'")
 
+@dp.message(F.state == "waiting_for_channel_info")
+async def process_channel_info_wrapper(message: types.Message, state: FSMContext):
+    from handlers.admin_handlers import process_channel_info
+    await process_channel_info(message, state, bot)  # پاس دادن bot اینجا
+
 async def main():
     """تابع اصلی با Polling"""
     # حذف وب‌هوک قبلی
