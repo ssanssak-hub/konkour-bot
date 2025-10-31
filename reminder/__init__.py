@@ -93,3 +93,27 @@ __all__ = [
     'analyzer',
     'setup_reminder_system'
 ]
+
+"""
+پکیج سیستم ریمایندر - شامل همه ماژول‌های ریمایندر
+"""
+
+from .reminder_database import reminder_db
+from .reminder_scheduler import reminder_scheduler
+from .auto_reminder_system import auto_reminder_system
+from .auto_reminder_scheduler import auto_reminder_scheduler
+from .advanced_reminder_scheduler import advanced_reminder_scheduler
+
+def setup_reminder_system(bot):
+    """راه‌اندازی کلی سیستم ریمایندر"""
+    from .reminder_scheduler import ReminderScheduler
+    return ReminderScheduler(bot)
+
+__all__ = [
+    'reminder_db',
+    'reminder_scheduler', 
+    'auto_reminder_system',
+    'auto_reminder_scheduler',
+    'advanced_reminder_scheduler',
+    'setup_reminder_system'
+]
