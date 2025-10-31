@@ -335,6 +335,40 @@ async def process_end_time(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
+async def process_end_date(message: types.Message, state: FSMContext):
+    """پردازش تاریخ پایان"""
+    if message.text == "🔙 بازگشت":
+        await state.set_state(AdvancedReminderStates.waiting_for_end_time)
+        await message.answer(
+            "لطفاً ساعت پایان را وارد کنید:",
+            reply_markup=create_end_time_menu()
+        )
+        return
+    
+    if message.text == "📅 بدون تاریخ پایان":
+        try:
+            # تاریخ پایان رو ۱ سال بعد قرار می‌دیم
+            current_date = get_current_persian_datetime()
+            if 'date' in current_date:
+                current_year = int(current_date['date'][:4])
+                next_year = str(current_year + 1) + current_date['date'][4:]
+            else:
+                from datetime import datetime
+                today = datetime.now()
+                next_year_date = today.replace(year=today.year + 1)
+                next_year = next_year_date.strftime("%Y-%m-%d")
+                
+            await state.update_data(end_date=next_year)
+            await message.answer(f"✅ تاریخ پایان تنظیم شد: {next_year} (یک سال بعد)")
+            
+        except Exception as e:
+            # فال‌بک: تاریخ پیش‌فرض
+            await state.update_data(end_date="1405-12-29")
+            await message.answer("✅ تاریخ پایان تنظیم شد: 1405-12-29 (پیش‌فرض)")
+            
+    else:
+        # بقیه کد بدون تغییر...
+
 async def process_start_date(message: types.Message, state: FSMContext):
     """پردازش تاریخ شروع"""
     if message.text == "🔙 بازگشت":
