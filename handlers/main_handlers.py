@@ -113,3 +113,59 @@ async def handle_auto_reminders(message: types.Message):
     except Exception as e:
         logger.error(f"خطا در handle_auto_reminders: {e}")
         await message.answer("❌ خطا در نمایش منوی یادآوری خودکار.")
+
+async def handle_reminder_management(message: types.Message):
+    """هندلر مدیریت یادآوری‌ها"""
+    try:
+        management_text = """
+        ⏰ **مدیریت یادآوری‌ها**
+
+        🔧 گزینه مورد نظر را انتخاب کنید:
+        """
+        
+        keyboard = [
+            [types.KeyboardButton(text="📋 مشاهده همه")],
+            [types.KeyboardButton(text="🔔 فعال")],
+            [types.KeyboardButton(text="🔕 غیرفعال")],
+            [types.KeyboardButton(text="✏️ ویرایش")],
+            [types.KeyboardButton(text="🗑️ حذف")],
+            [types.KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
+        ]
+        reply_markup = types.ReplyKeyboardMarkup(
+            keyboard=keyboard,
+            resize_keyboard=True,
+            input_field_placeholder="یک گزینه انتخاب کنید..."
+        )
+        
+        await message.answer(management_text, reply_markup=reply_markup, parse_mode="Markdown")
+        
+    except Exception as e:
+        logger.error(f"خطا در handle_reminder_management: {e}")
+        await message.answer("❌ خطا در نمایش مدیریت یادآوری‌ها.")
+
+async def handle_admin_panel(message: types.Message):
+    """هندلر پنل مدیریت"""
+    try:
+        admin_text = """
+        👑 **پنل مدیریت**
+
+        🔧 گزینه مورد نظر را انتخاب کنید:
+        """
+        
+        keyboard = [
+            [types.KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],
+            [types.KeyboardButton(text="📋 لیست ریمایندرها")],
+            [types.KeyboardButton(text="➕ افزودن جدید")],
+            [types.KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
+        ]
+        reply_markup = types.ReplyKeyboardMarkup(
+            keyboard=keyboard,
+            resize_keyboard=True,
+            input_field_placeholder="یک گزینه انتخاب کنید..."
+        )
+        
+        await message.answer(admin_text, reply_markup=reply_markup, parse_mode="Markdown")
+        
+    except Exception as e:
+        logger.error(f"خطا در handle_admin_panel: {e}")
+        await message.answer("❌ خطا در نمایش پنل مدیریت.")
