@@ -97,6 +97,27 @@ class ReminderDatabase:
                 )
             ''')
             
+            # 🔥 جدول جدید برای ریمایندرهای پیشرفته ادمین
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS admin_advanced_reminders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    start_time TEXT NOT NULL,      -- ساعت شروع (مثلا 14:30)
+                    start_date TEXT NOT NULL,      -- تاریخ شروع میلادی
+                    end_time TEXT NOT NULL,        -- ساعت پایان
+                    end_date TEXT NOT NULL,        -- تاریخ پایان میلادی
+                    days_of_week TEXT NOT NULL,    -- روزهای هفته به صورت JSON
+                    repeat_count INTEGER DEFAULT 1,-- تعداد تکرار (&)
+                    repeat_interval INTEGER DEFAULT 0, -- فاصله زمانی (@)
+                    is_active BOOLEAN DEFAULT TRUE,
+                    total_sent INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             # جدول لاگ ارسال ریمایندرها
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS reminder_logs (
@@ -128,9 +149,154 @@ class ReminderDatabase:
                 CREATE INDEX IF NOT EXISTS idx_exam_reminders_dates 
                 ON exam_reminders(start_date, end_date)
             ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_admin_advanced_active 
+                ON admin_advanced_reminders(is_active, admin_id)
+            ''')
             
             conn.commit()
             logger.info("✅ دیتابیس ریمایندرها راه‌اندازی شد")
+
+    # --- توابع جدید برای ریمایندرهای پیشرفته ادمین ---
+    
+    def add_admin_advanced_reminder(self, admin_id: int, title: str, message: str,
+                                  start_time: str, start_date: str, 
+                                  end_time: str, end_date: str,
+                                  days_of_week: List[int], 
+                                  repeat_count: int, repeat_interval: int) -> int:
+        """افزودن ریمایندر پیشرفته توسط ادمین"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO admin_advanced_reminders 
+                (admin_id, title, message, start_time, start_date, end_time, end_date, 
+                 days_of_week, repeat_count, repeat_interval)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                admin_id,
+                title,
+                message,
+                start_time,
+                start_date,  # تاریخ میلادی
+                end_time,
+                end_date,    # تاریخ میلادی
+                json.dumps(days_of_week),
+                repeat_count,
+                repeat_interval
+            ))
+            
+            reminder_id = cursor.lastrowid
+            logger.info(f"✅ ریمایندر پیشرفته ادمین {reminder_id} ایجاد شد")
+            return reminder_id
+
+    def get_admin_advanced_reminders(self, admin_id: int = None) -> List[Dict[str, Any]]:
+        """دریافت ریمایندرهای پیشرفته ادمین"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            if admin_id:
+                cursor.execute(
+                    '''SELECT * FROM admin_advanced_reminders 
+                       WHERE admin_id = ? 
+                       ORDER BY created_at DESC''',
+                    (admin_id,)
+                )
+            else:
+                cursor.execute('''SELECT * FROM admin_advanced_reminders ORDER BY created_at DESC''')
+            
+            reminders = []
+            for row in cursor.fetchall():
+                reminders.append({
+                    'id': row['id'],
+                    'admin_id': row['admin_id'],
+                    'title': row['title'],
+                    'message': row['message'],
+                    'start_time': row['start_time'],
+                    'start_date': row['start_date'],
+                    'end_time': row['end_time'],
+                    'end_date': row['end_date'],
+                    'days_of_week': json.loads(row['days_of_week']),
+                    'repeat_count': row['repeat_count'],
+                    'repeat_interval': row['repeat_interval'],
+                    'is_active': bool(row['is_active']),
+                    'total_sent': row['total_sent'],
+                    'created_at': row['created_at']
+                })
+            
+            return reminders
+
+    def update_admin_advanced_reminder(self, reminder_id: int, **kwargs) -> bool:
+        """ویرایش ریمایندر پیشرفته ادمین"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            update_fields = []
+            params = []
+            
+            for key, value in kwargs.items():
+                if key in ['title', 'message', 'start_time', 'start_date', 'end_time', 'end_date', 
+                          'repeat_count', 'repeat_interval', 'is_active']:
+                    update_fields.append(f"{key} = ?")
+                    params.append(value)
+                elif key == 'days_of_week' and isinstance(value, list):
+                    update_fields.append("days_of_week = ?")
+                    params.append(json.dumps(value))
+            
+            if not update_fields:
+                return False
+                
+            params.append(reminder_id)
+            cursor.execute(f'''
+                UPDATE admin_advanced_reminders 
+                SET {', '.join(update_fields)}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', params)
+            
+            success = cursor.rowcount > 0
+            if success:
+                logger.info(f"✅ ریمایندر پیشرفته {reminder_id} آپدیت شد")
+            
+            return success
+
+    def delete_admin_advanced_reminder(self, reminder_id: int) -> bool:
+        """حذف ریمایندر پیشرفته ادمین"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM admin_advanced_reminders WHERE id = ?', (reminder_id,))
+            
+            success = cursor.rowcount > 0
+            if success:
+                logger.info(f"🗑️ ریمایندر پیشرفته {reminder_id} حذف شد")
+            
+            return success
+
+    def toggle_admin_advanced_reminder(self, reminder_id: int) -> bool:
+        """تغییر وضعیت فعال/غیرفعال ریمایندر پیشرفته"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # دریافت وضعیت فعلی
+            cursor.execute('SELECT is_active FROM admin_advanced_reminders WHERE id = ?', (reminder_id,))
+            result = cursor.fetchone()
+            
+            if not result:
+                return False
+                
+            new_status = not bool(result[0])
+            
+            cursor.execute(
+                'UPDATE admin_advanced_reminders SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                (new_status, reminder_id)
+            )
+            
+            success = cursor.rowcount > 0
+            if success:
+                status_text = "فعال" if new_status else "غیرفعال"
+                logger.info(f"✅ ریمایندر پیشرفته {reminder_id} {status_text} شد")
+            
+            return success
 
     # --- توابع ریمایندر کنکور ---
     
@@ -275,7 +441,7 @@ class ReminderDatabase:
                     'last_sent': row['last_sent'],
                     'total_sent': row['total_sent'],
                     'created_at': row['created_at']
-                })
+                )
             
             return reminders
 
@@ -358,6 +524,38 @@ class ReminderDatabase:
                         'reminder_type': 'personal'
                     })
                 
+                # 🔥 دریافت ریمایندرهای پیشرفته ادمین - با تاریخ میلادی
+                cursor.execute('''
+                    SELECT * FROM admin_advanced_reminders 
+                    WHERE is_active = TRUE 
+                    AND json_extract(days_of_week, '$') LIKE ?
+                    AND start_time = ?
+                    AND start_date <= ? 
+                    AND end_date >= ?
+                ''', (
+                    f'%{target_weekday}%',
+                    target_time_english,
+                    target_date,  # تاریخ میلادی
+                    target_date   # تاریخ میلادی
+                ))
+                
+                for row in cursor.fetchall():
+                    reminders.append({
+                        'id': row['id'],
+                        'admin_id': row['admin_id'],
+                        'title': row['title'],
+                        'message': row['message'],
+                        'start_time': row['start_time'],
+                        'start_date': row['start_date'],
+                        'end_time': row['end_time'],
+                        'end_date': row['end_date'],
+                        'days_of_week': json.loads(row['days_of_week']),
+                        'repeat_count': row['repeat_count'],
+                        'repeat_interval': row['repeat_interval'],
+                        'is_active': bool(row['is_active']),
+                        'reminder_type': 'admin_advanced'
+                    })
+                
                 logger.info(f"✅ پیدا شد {len(reminders)} ریمایندر برای ارسال")
                 return reminders
                 
@@ -398,7 +596,8 @@ class ReminderDatabase:
         table_map = {
             'exam': 'exam_reminders',
             'personal': 'personal_reminders',
-            'auto': 'user_auto_reminders'
+            'auto': 'user_auto_reminders',
+            'admin_advanced': 'admin_advanced_reminders'
         }
         
         table = table_map.get(reminder_type)
@@ -422,7 +621,8 @@ class ReminderDatabase:
         """حذف ریمایندر"""
         table_map = {
             'exam': 'exam_reminders',
-            'personal': 'personal_reminders'
+            'personal': 'personal_reminders',
+            'admin_advanced': 'admin_advanced_reminders'
         }
         
         table = table_map.get(reminder_type)
@@ -455,7 +655,8 @@ class ReminderDatabase:
                 # آپدیت آمار ارسال در جدول اصلی
                 table_map = {
                     'exam': 'exam_reminders',
-                    'personal': 'personal_reminders'
+                    'personal': 'personal_reminders',
+                    'admin_advanced': 'admin_advanced_reminders'
                 }
                 table = table_map.get(reminder_type)
                 if table:
@@ -486,6 +687,8 @@ class ReminderDatabase:
                         SELECT id, is_active FROM exam_reminders
                         UNION ALL
                         SELECT id, is_active FROM personal_reminders
+                        UNION ALL
+                        SELECT id, is_active FROM admin_advanced_reminders
                     )
                 ''')
                 row = cursor.fetchone()
