@@ -160,7 +160,7 @@ def get_current_persian_datetime():
         'full_time': f"{now_tehran.hour:02d}:{now_tehran.minute:02d}:{now_tehran.second:02d}",
         'timezone': 'تهران'
     }
-
+    
 def get_tehran_time():
     """دریافت زمان فعلی تهران به فرمت HH:MM"""
     return get_current_persian_datetime()['time']
@@ -332,39 +332,57 @@ def format_exam_dates(dates: List[datetime]) -> str:
     
     return "\n".join(result)
 
-def calculate_multiple_dates_countdown(dates: List[datetime]) -> List[Dict[str, Any]]:
+def calculate_multiple_dates_countdown(exam_dates: Dict[str, Any]) -> List[Tuple[str, str, int]]:
     """
-    محاسبه زمان باقی‌مانده برای چندین تاریخ با تایم‌زون تهران
+    محاسبه countdown برای چندین تاریخ
     """
-    now = get_tehran_time()
-    result = []
-    
-    for date in dates:
-        # تبدیل به تایم‌زون تهران
-        if date.tzinfo is None:
-            date = TEHRAN_TIMEZONE.localize(date)
-        else:
-            date = date.astimezone(TEHRAN_TIMEZONE)
-            
-        if date <= now:
-            result.append({
-                'date': date,
-                'status': 'passed',
-                'countdown': '✅ برگزار شده',
-                'days_remaining': 0
-            })
-        else:
-            delta = date - now
-            countdown_text, days_remaining = format_time_remaining(date)
-            result.append({
-                'date': date,
-                'status': 'upcoming', 
-                'countdown': countdown_text,
-                'days_remaining': days_remaining
-            })
-    
-    return result
-
+    try:
+        now = get_current_tehran_datetime()
+        
+        countdowns = []
+        for exam_name, date_str in exam_dates.items():
+            try:
+                # تبدیل رشته تاریخ به datetime
+                if isinstance(date_str, str):
+                    # اگر تاریخ به صورت رشته هست
+                    target_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                    target_date = TEHRAN_TIMEZONE.localize(target_date)
+                else:
+                    # اگر از قبل datetime هست
+                    target_date = date_str
+                    if target_date.tzinfo is None:
+                        target_date = TEHRAN_TIMEZONE.localize(target_date)
+                    else:
+                        target_date = target_date.astimezone(TEHRAN_TIMEZONE)
+                
+                # مطمئن شویم هر دو datetime هستند
+                if isinstance(target_date, datetime) and isinstance(now, datetime):
+                    if target_date <= now:
+                        countdowns.append((exam_name, "✅ گذشته", 0))
+                    else:
+                        time_left = target_date - now
+                        days = time_left.days
+                        hours = time_left.seconds // 3600
+                        minutes = (time_left.seconds % 3600) // 60
+                        
+                        if days > 0:
+                            countdown_text = f"{days} روز و {hours} ساعت"
+                        else:
+                            countdown_text = f"{hours} ساعت و {minutes} دقیقه"
+                        
+                        countdowns.append((exam_name, countdown_text, days))
+                else:
+                    countdowns.append((exam_name, "خطا در تاریخ", 0))
+                    
+            except Exception as e:
+                countdowns.append((exam_name, f"خطا: {str(e)}", 0))
+        
+        return countdowns
+        
+    except Exception as e:
+        logger.error(f"خطا در calculate_multiple_dates_countdown: {e}")
+        return [("خطا", f"خطای سیستمی: {str(e)}", 0)]
+        
 def create_datetime_with_tehran_timezone(year, month, day, hour=0, minute=0, second=0):
     """
     ایجاد تاریخ با تایم‌زون تهران
