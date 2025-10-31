@@ -168,9 +168,20 @@ async def process_start_time(message: types.Message, state: FSMContext):
         return
     
     if message.text == "⏰ همین الان":
-        current_time = datetime.now().strftime("%H:%M")
-        await state.update_data(start_time=current_time)
-        await message.answer(f"✅ ساعت شروع تنظیم شد: {current_time}")
+        try:
+            # استفاده از زمان تهران با jdatetime
+            from jdatetime import datetime as jdatetime
+            import pytz
+            tehran_tz = pytz.timezone('Asia/Tehran')
+            current_time = jdatetime.now(tehran_tz).strftime("%H:%M")
+            await state.update_data(start_time=current_time)
+            await message.answer(f"✅ ساعت شروع تنظیم شد: {current_time} (تهران)")
+        except Exception as e:
+            # اگر jdatetime کار نکرد، از datetime معمولی استفاده کن
+            from datetime import datetime
+            current_time = datetime.now().strftime("%H:%M")
+            await state.update_data(start_time=current_time)
+            await message.answer(f"✅ ساعت شروع تنظیم شد: {current_time}")
     else:
         # اعتبارسنجی فرمت زمان
         try:
@@ -216,7 +227,7 @@ async def process_start_time(message: types.Message, state: FSMContext):
         reply_markup=create_start_date_menu(),
         parse_mode="HTML"
     )
-
+    
 async def process_start_date(message: types.Message, state: FSMContext):
     """پردازش تاریخ شروع"""
     if message.text == "🔙 بازگشت":
