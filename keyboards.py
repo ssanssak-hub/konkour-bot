@@ -7,24 +7,87 @@ from aiogram.types import (
 )
 from exam_data import EXAMS_1405
 
-# منوی اصلی با کیبورد معمولی
+# منوی اصلی با کیبورد معمولی - نسخه بهبود یافته برای ادمین
 def main_menu():
+    """منوی اصلی - ادمین همه گزینه‌ها رو می‌بینه"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
             [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
             [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-            [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],  # اضافه شده
+            [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],
             [KeyboardButton(text="👑 پنل مدیریت")]
         ],
         resize_keyboard=True,
         input_field_placeholder="یک گزینه انتخاب کنید..."
     )
+
+def admin_main_menu():
+    """منوی اصلی مخصوص ادمین - نمایش همه قابلیت‌ها"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
+            [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
+            [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
+            [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],
+            [KeyboardButton(text="👑 پنل مدیریت")],
+            [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")]  # 🔥 اضافه شده
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="یک گزینه انتخاب کنید..."
+    )
+
 # حذف منو
 def remove_menu():
     return ReplyKeyboardRemove()
 
-# منوی آزمون‌ها به‌صورت داینامیک
+# منوی مدیریت یادآوری‌ها - نسخه بهبود یافته
+def create_reminder_management_menu(is_admin=False):
+    """منوی مدیریت یادآوری‌ها - نسخه متفاوت برای ادمین و کاربر عادی"""
+    if is_admin:
+        # منوی کامل برای ادمین
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⏰ یادآوری کنکورها")],
+                [KeyboardButton(text="📝 یادآوری شخصی")],
+                [KeyboardButton(text="🤖 یادآوری خودکار")],
+                [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],  # 🔥 اضافه شده
+                [KeyboardButton(text="📋 مدیریت یادآوری")],
+                [KeyboardButton(text="🏠 منوی اصلی")]
+            ],
+            resize_keyboard=True,
+            input_field_placeholder="گزینه مورد نظر را انتخاب کنید..."
+        )
+    else:
+        # منوی ساده برای کاربر عادی
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⏰ یادآوری کنکورها")],
+                [KeyboardButton(text="📝 یادآوری شخصی")],
+                [KeyboardButton(text="🤖 یادآوری خودکار")],
+                [KeyboardButton(text="📋 مدیریت یادآوری")],
+                [KeyboardButton(text="🏠 منوی اصلی")]
+            ],
+            resize_keyboard=True,
+            input_field_placeholder="گزینه مورد نظر را انتخاب کنید..."
+        )
+
+# منوی پنل مدیریت - نسخه بهبود یافته
+def admin_panel_menu():
+    """منوی پنل مدیریت با قابلیت‌های کامل"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📢 عضویت اجباری"), KeyboardButton(text="👥 مدیریت کاربران")],
+            [KeyboardButton(text="📊 آمار ربات"), KeyboardButton(text="⚙️ تنظیمات")],
+            [KeyboardButton(text="📣 ارسال پیام"), KeyboardButton(text="🔍 لاگ‌ها")],
+            [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],  # 🔥 اضافه شده
+            [KeyboardButton(text="🏠 منوی اصلی")]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="گزینه مدیریتی را انتخاب کنید..."
+    )
+
+# بقیه توابع بدون تغییر...
 def exams_menu():
     keyboard = []
     keys = list(EXAMS_1405.keys())
@@ -52,7 +115,7 @@ def exams_menu():
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# دکمه‌های عملیات برای هر آزمون
+# بقیه توابع بدون تغییر می‌مونن...
 def exam_actions_menu(exam_key=None):
     keyboard = []
     
@@ -75,7 +138,6 @@ def exam_actions_menu(exam_key=None):
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# منوی برنامه مطالعاتی
 def study_plan_menu():
     keyboard = [
         [
@@ -100,7 +162,6 @@ def study_plan_menu():
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# منوی آمار مطالعه
 def stats_menu():
     keyboard = [
         [
@@ -127,7 +188,6 @@ def stats_menu():
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# منوی مدیریت
 def admin_menu():
     keyboard = [
         [
@@ -141,6 +201,9 @@ def admin_menu():
         [
             InlineKeyboardButton(text="📣 ارسال پیام", callback_data="admin:broadcast"),
             InlineKeyboardButton(text="🔍 لاگ‌ها", callback_data="admin:logs")
+        ],
+        [
+            InlineKeyboardButton(text="🤖 ریمایندرهای پیشرفته", callback_data="admin:advanced_reminders")  # 🔥 اضافه شده
         ],
         [
             InlineKeyboardButton(text="🏠 منوی اصلی", callback_data="main:back")
