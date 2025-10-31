@@ -27,20 +27,27 @@ def main_menu(user_id: int = None, is_admin: bool = False):
         keyboard.append([KeyboardButton(text="⚙️ پنل مدیریت")])
     
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-def admin_main_menu():
-    """منوی اصلی مخصوص ادمین - نمایش همه قابلیت‌ها"""
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="⏳ زمان‌سنجی کنکورها")],
-            [KeyboardButton(text="📅 برنامه مطالعاتی پیشرفته")],
-            [KeyboardButton(text="📊 آمار مطالعه حرفه‌ای")],
-            [KeyboardButton(text="🔔 مدیریت یادآوری‌ها")],
-            [KeyboardButton(text="👑 پنل مدیریت")],
-            [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")]  # 🔥 اضافه شده
-        ],
-        resize_keyboard=True,
-        input_field_placeholder="یک گزینه انتخاب کنید..."
-    )
+def admin_menu():
+    """منوی مدیریت ادمین"""
+    keyboard = [
+        [KeyboardButton(text="👥 مدیریت کاربران")],
+        [KeyboardButton(text="📣 ارسال پیام")],
+        [KeyboardButton(text="📊 آمار ربات")],
+        [KeyboardButton(text="🔍 لاگ‌ها")],
+        [KeyboardButton(text="📢 عضویت اجباری")],
+        [KeyboardButton(text="⏰ مدیریت یادآوری‌ها")],  # فقط اینجا نمایش داده شود
+        [KeyboardButton(text="🔙 بازگشت به منوی اصلی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+def reminder_management_menu():
+    """منوی مدیریت یادآوری‌ها"""
+    keyboard = [
+        [KeyboardButton(text="🔔 ریمایندرهای ساده")],
+        [KeyboardButton(text="🤖 ریمایندرهای پیشرفته")],  # فقط اینجا نمایش داده شود
+        [KeyboardButton(text="🔙 بازگشت به مدیریت")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 # حذف منو
 def remove_menu():
