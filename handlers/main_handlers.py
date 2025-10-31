@@ -1,4 +1,4 @@
-#main_handlers.py
+#handlers/main_handlers.py
 import logging
 import os
 import asyncio
