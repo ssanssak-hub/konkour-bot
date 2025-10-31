@@ -3,8 +3,8 @@
 """
 from datetime import datetime, timedelta
 from typing import Tuple, Dict, Any, List
+from jdatetime import datetime as jdatetime
 import pytz
-import jdatetime
 
 # تنظیم تایم‌زون تهران
 TEHRAN_TIMEZONE = pytz.timezone('Asia/Tehran')
