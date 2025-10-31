@@ -116,10 +116,16 @@ class AdvancedReminderScheduler:
                                           current_repeat: int = 1, total_repeats: int = 1):
         """ارسال یک نمونه از ریمایندر پیشرفته"""
         try:
-            # دریافت همه کاربران فعال ربات
+            # دریافت همه کاربران فعال ربات - با کوئری مستقیم
             from database import Database
             db = Database()
-            active_users = db.get_active_users()  # این تابع رو باید در database.py اضافه کنی
+            
+            # استفاده از کوئری مستقیم به جای تابع get_active_users
+            active_users = db.execute_query("""
+                SELECT user_id, username, first_name, last_name 
+                FROM users 
+                WHERE is_active = 1
+            """, fetch_all=True)
             
             if not active_users:
                 logger.info(f"⚠️ هیچ کاربر فعالی برای ریمایندر پیشرفته {reminder['id']} پیدا نشد")
@@ -138,7 +144,7 @@ class AdvancedReminderScheduler:
                     successful_sends += 1
                     
                     # وقفه کوتاه برای جلوگیری از محدودیت تلگرام
-                    await asyncio.sleep(0.05)
+                    await asyncio.sleep(0.1)  # افزایش زمان برای امنیت بیشتر
                     
                 except Exception as e:
                     logger.error(f"❌ خطا در ارسال ریمایندر پیشرفته به کاربر {user['user_id']}: {e}")
@@ -152,10 +158,26 @@ class AdvancedReminderScheduler:
                 delivery_time_ms=int((datetime.now(TEHRAN_TIMEZONE) - send_time).total_seconds() * 1000)
             )
             
+            # به‌روزرسانی تعداد ارسال‌ها
+            self.update_advanced_reminder_sent_count(reminder['id'])
+            
             logger.info(f"✅ ریمایندر پیشرفته {reminder['id']} (تکرار {current_repeat}/{total_repeats}) به {successful_sends} کاربر ارسال شد")
             
         except Exception as e:
             logger.error(f"خطا در ارسال تکی ریمایندر پیشرفته: {e}")
+
+    def update_advanced_reminder_sent_count(self, reminder_id: int):
+        """به‌روزرسانی تعداد ارسال‌های ریمایندر پیشرفته"""
+        try:
+            query = """
+            UPDATE advanced_reminders 
+            SET total_sent = total_sent + 1, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """
+            reminder_db.execute_query(query, (reminder_id,))
+        except Exception as e:
+            logger.error(f"خطا در به‌روزرسانی تعداد ارسال‌های ریمایندر {reminder_id}: {e}")
 
     async def create_advanced_reminder_message(self, reminder: Dict[str, Any], 
                                              current_repeat: int = 1, total_repeats: int = 1) -> str:
