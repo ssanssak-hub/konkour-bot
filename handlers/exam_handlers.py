@@ -1,5 +1,5 @@
 """
-هندلرهای مربوط به کنکورها و زمان‌سنجی
+هندلرهای مربوط به کنکورها و زمان‌سنجی - نسخه اصلاح شده
 """
 import logging
 import random
@@ -49,7 +49,8 @@ async def exam_callback_handler(callback: types.CallbackQuery):
             exam_dates.append(create_datetime_with_tehran_timezone(*date_tuple))
     
     # محاسبه زمان باقی‌مانده برای همه تاریخ‌ها
-    countdowns = calculate_multiple_dates_countdown(exam_dates)
+    exam_dates_dict = {exam['name']: date for date in exam_dates}
+    countdowns = calculate_multiple_dates_countdown(exam_dates_dict)
     
     # ساخت پیام
     message = f"🕒 <b>زمان فعلی تهران:</b> {current_time['full_date']}\n"
@@ -63,22 +64,33 @@ async def exam_callback_handler(callback: types.CallbackQuery):
     message += format_exam_dates(exam_dates)
     message += "\n\n"
     
-    # نمایش زمان باقی‌مانده برای هر تاریخ
+    # نمایش زمان باقی‌مانده برای هر تاریخ - اصلاح شده
     if len(countdowns) > 1:
         message += f"⏳ <b>زمان باقی‌مانده:</b>\n"
         for i, countdown in enumerate(countdowns, 1):
-            if countdown['status'] == 'passed':
-                message += f"{i}. ✅ برگزار شده\n"
+            # countdown یک تاپل هست: (نام آزمون, متن وضعیت, روزهای باقی‌مانده)
+            if isinstance(countdown, tuple) and len(countdown) >= 3:
+                exam_name, status_text, days_remaining = countdown
+                if 'گذشته' in status_text or '✅' in status_text:
+                    message += f"{i}. ✅ برگزار شده\n"
+                else:
+                    message += f"{i}. {status_text} ({days_remaining} روز)\n"
             else:
-                message += f"{i}. {countdown['countdown']} ({countdown['days_remaining']} روز)\n"
+                message += f"{i}. ❌ خطا در محاسبه\n"
     else:
         # برای آزمون‌های تک‌روزه
-        countdown = countdowns[0]
-        if countdown['status'] == 'passed':
-            message += f"⏳ <b>وضعیت:</b> ✅ برگزار شده\n"
+        if countdowns and isinstance(countdowns[0], tuple) and len(countdowns[0]) >= 3:
+            countdown = countdowns[0]
+            status_text = countdown[1]
+            days_remaining = countdown[2]
+            
+            if 'گذشته' in status_text or '✅' in status_text:
+                message += f"⏳ <b>وضعیت:</b> ✅ برگزار شده\n"
+            else:
+                message += f"⏳ <b>زمان باقی‌مانده:</b> {status_text}\n"
+                message += f"📆 <b>تعداد روزهای باقی‌مانده:</b> {days_remaining} روز\n"
         else:
-            message += f"⏳ <b>زمان باقی‌مانده:</b> {countdown['countdown']}\n"
-            message += f"📆 <b>تعداد روزهای باقی‌مانده:</b> {countdown['days_remaining']} روز\n"
+            message += f"⏳ <b>وضعیت:</b> ❌ خطا در محاسبه زمان\n"
     
     message += f"\n🎯 {random.choice(MOTIVATIONAL_MESSAGES)}"
     
@@ -95,9 +107,26 @@ async def all_exams_handler(callback: types.CallbackQuery):
     message = "⏳ <b>زمان باقی‌مانده تا کنکورهای ۱۴۰۵</b>\n\n"
     
     for exam_key, exam in EXAMS_1405.items():
-        now = datetime.now()
+        # استفاده از time_utils برای محاسبه صحیح
+        from utils.time_utils import get_current_tehran_datetime, create_datetime_with_tehran_timezone
+        
+        now = get_current_tehran_datetime()
         dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
-        future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
+        
+        # تبدیل تاریخ‌ها به datetime با تایم‌زون تهران
+        exam_dates = []
+        for date_tuple in dates:
+            time_parts = exam["time"].split(":")
+            hour = int(time_parts[0])
+            minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+            
+            if len(date_tuple) == 3:
+                exam_dates.append(create_datetime_with_tehran_timezone(
+                    date_tuple[0], date_tuple[1], date_tuple[2], hour, minute, 0
+                ))
+        
+        # پیدا کردن تاریخ‌های آینده
+        future_dates = [d for d in exam_dates if d > now]
         
         message += f"🎯 <b>{exam['name']}</b>\n"
         message += f"📅 {exam['persian_date']} - 🕒 {exam['time']}\n"
@@ -125,12 +154,28 @@ async def refresh_exam_handler(callback: types.CallbackQuery):
     exam_key = callback.data.replace("refresh:", "")
     
     if exam_key in EXAMS_1405:
-        # مستقیماً هندلر رو صدا بزن بدون تغییر callback.data
+        # استفاده از time_utils برای محاسبه صحیح
+        from utils.time_utils import get_current_tehran_datetime, create_datetime_with_tehran_timezone
+        
         exam = EXAMS_1405[exam_key]
-        now = datetime.now()
+        now = get_current_tehran_datetime()
         
         dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
-        future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
+        
+        # تبدیل تاریخ‌ها به datetime با تایم‌زون تهران
+        exam_dates = []
+        for date_tuple in dates:
+            time_parts = exam["time"].split(":")
+            hour = int(time_parts[0])
+            minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+            
+            if len(date_tuple) == 3:
+                exam_dates.append(create_datetime_with_tehran_timezone(
+                    date_tuple[0], date_tuple[1], date_tuple[2], hour, minute, 0
+                ))
+        
+        # پیدا کردن تاریخ‌های آینده
+        future_dates = [d for d in exam_dates if d > now]
         
         if not future_dates:
             countdown = "✅ برگزار شده"
@@ -169,10 +214,24 @@ async def next_exam_handler(callback: types.CallbackQuery):
     next_exam = get_next_exam()
     
     if next_exam:
-        # مستقیماً نمایش بده بدون تغییر callback.data
+        # استفاده از time_utils برای محاسبه صحیح
+        from utils.time_utils import get_current_tehran_datetime, create_datetime_with_tehran_timezone
+        
         exam = next_exam
-        now = datetime.now()
-        target = exam['date']
+        now = get_current_tehran_datetime()
+        
+        # تبدیل تاریخ آزمون به datetime با تایم‌زون تهران
+        dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
+        time_parts = exam["time"].split(":")
+        hour = int(time_parts[0])
+        minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+        
+        if len(dates[0]) == 3:
+            target = create_datetime_with_tehran_timezone(
+                dates[0][0], dates[0][1], dates[0][2], hour, minute, 0
+            )
+        else:
+            target = create_datetime_with_tehran_timezone(*dates[0])
         
         countdown, total_days = format_time_remaining(target)
         
@@ -203,10 +262,27 @@ async def exam_details_handler(callback: types.CallbackQuery):
         await callback.answer("❌ آزمون یافت نشد")
         return
     
+    # استفاده از time_utils برای محاسبه صحیح
+    from utils.time_utils import get_current_tehran_datetime, create_datetime_with_tehran_timezone
+    
     exam = EXAMS_1405[exam_key]
-    now = datetime.now()
+    now = get_current_tehran_datetime()
     dates = exam["date"] if isinstance(exam["date"], list) else [exam["date"]]
-    future_dates = [datetime(*d) for d in dates if datetime(*d) > now]
+    
+    # تبدیل تاریخ‌ها به datetime با تایم‌زون تهران
+    exam_dates = []
+    for date_tuple in dates:
+        time_parts = exam["time"].split(":")
+        hour = int(time_parts[0])
+        minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+        
+        if len(date_tuple) == 3:
+            exam_dates.append(create_datetime_with_tehran_timezone(
+                date_tuple[0], date_tuple[1], date_tuple[2], hour, minute, 0
+            ))
+    
+    # پیدا کردن تاریخ‌های آینده
+    future_dates = [d for d in exam_dates if d > now]
     
     if future_dates:
         target = min(future_dates)
