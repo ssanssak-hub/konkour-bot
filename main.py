@@ -24,6 +24,15 @@ from reminder.auto_reminder_admin import AutoReminderAdminStates
 # 🔥 ایمپورت سیستم ریمایندر پیشرفته
 from reminder.advanced_reminder_states import AdvancedReminderStates
 from reminder.advanced_reminder_scheduler import init_advanced_reminder_scheduler
+from reminder.advanced_reminder_handlers import (
+    advanced_reminders_admin_handler,
+    start_add_advanced_reminder,
+    list_advanced_reminders_admin,
+    edit_advanced_reminder_handler,
+    delete_advanced_reminder_handler,
+    toggle_advanced_reminder_handler,
+    handle_advanced_reminder_callback
+)
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -142,7 +151,6 @@ async def handle_advanced_reminders_submenu(message: types.Message):
         await message.answer("❌ دسترسی denied!")
         return
     
-    from reminder.advanced_reminder_handlers import advanced_reminders_admin_handler
     await advanced_reminders_admin_handler(message)
 
 # =============================================================================
@@ -169,42 +177,29 @@ async def back_to_management_wrapper(message: types.Message):
     from handlers.main_handlers import handle_admin_panel
     await handle_admin_panel(message)
 
-# --- هندلر بازگشت به مدیریت ---
-@dp.message(F.text == "🔙 بازگشت به مدیریت")
-async def back_to_management_wrapper(message: types.Message):
-    """هندلر بازگشت به منوی اصلی مدیریت"""
-    from handlers.main_handlers import handle_admin_panel
-    await handle_admin_panel(message)
-    
 # --- هندلرهای جدید برای ریمایندرهای پیشرفته ادمین ---
 @dp.message(F.text == "🤖 ریمایندرهای پیشرفته")
 async def advanced_reminders_wrapper(message: types.Message):
-    from reminder.advanced_reminder_handlers import advanced_reminders_admin_handler
     await advanced_reminders_admin_handler(message)
 
 @dp.message(F.text == "📋 لیست ریمایندرهای پیشرفته")
 async def list_advanced_reminders_wrapper(message: types.Message):
-    from reminder.advanced_reminder_handlers import list_advanced_reminders_admin
     await list_advanced_reminders_admin(message)
 
 @dp.message(F.text == "➕ افزودن ریمایندر جدید")
 async def add_advanced_reminder_wrapper(message: types.Message, state: FSMContext):
-    from reminder.advanced_reminder_handlers import start_add_advanced_reminder
     await start_add_advanced_reminder(message, state)
 
 @dp.message(F.text == "✏️ ویرایش ریمایندر")
 async def edit_advanced_reminder_wrapper(message: types.Message):
-    from reminder.advanced_reminder_handlers import edit_advanced_reminder_handler
     await edit_advanced_reminder_handler(message)
 
 @dp.message(F.text == "🗑️ حذف ریمایندر")
 async def delete_advanced_reminder_wrapper(message: types.Message):
-    from reminder.advanced_reminder_handlers import delete_advanced_reminder_handler
     await delete_advanced_reminder_handler(message)
 
 @dp.message(F.text == "🔔 فعال/غیرفعال")
 async def toggle_advanced_reminder_wrapper(message: types.Message):
-    from reminder.advanced_reminder_handlers import toggle_advanced_reminder_handler
     await toggle_advanced_reminder_handler(message)
 
 # --- هندلرهای state برای ریمایندرهای پیشرفته ---
@@ -261,12 +256,10 @@ async def advanced_confirmation_wrapper(message: types.Message, state: FSMContex
 # --- هندلرهای callback برای ریمایندرهای پیشرفته ---
 @dp.callback_query(F.data.startswith("adv_"))
 async def advanced_reminder_callback_wrapper(callback: types.CallbackQuery):
-    from reminder.advanced_reminder_handlers import handle_advanced_reminder_callback
     await handle_advanced_reminder_callback(callback)
 
 @dp.callback_query(F.data == "adv_admin:back")
 async def advanced_admin_back_wrapper(callback: types.CallbackQuery):
-    from reminder.advanced_reminder_handlers import handle_advanced_reminder_callback
     await handle_advanced_reminder_callback(callback)
 
 # --- هندلرهای کنکور ---
