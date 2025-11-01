@@ -273,15 +273,20 @@ class ReminderDatabase:
             return success
 
     def update_advanced_reminder_sent_count(self, reminder_id: int):
-        """به‌روزرسانی تعداد ارسال‌های ریمایندر پیشرفته"""
-        query = """
-        UPDATE admin_advanced_reminders 
-        SET total_sent = total_sent + 1, 
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-        """
-        self.execute_query(query, (reminder_id,))
-    
+        """به‌روزرسانی تعداد ارسال‌های ریمایندر پیشرفته"""        query = """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE admin_advanced_reminders 
+                    SET total_sent = total_sent + 1, 
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                ''', (reminder_id,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"خطا در به‌روزرسانی تعداد ارسال‌های ریمایندر {reminder_id}: {e}")
+
     def toggle_admin_advanced_reminder(self, reminder_id: int) -> bool:
         """تغییر وضعیت فعال/غیرفعال ریمایندر پیشرفته"""
         with sqlite3.connect(self.db_path) as conn:
