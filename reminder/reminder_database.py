@@ -273,7 +273,7 @@ class ReminderDatabase:
             return success
 
     def update_advanced_reminder_sent_count(self, reminder_id: int):
-        """به‌روزرسانی تعداد ارسال‌های ریمایندر پیشرفته"""        query = """
+        """به‌روزرسانی تعداد ارسال‌های ریمایندر پیشرفته"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
