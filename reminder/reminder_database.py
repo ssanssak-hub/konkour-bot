@@ -275,7 +275,7 @@ class ReminderDatabase:
     def update_advanced_reminder_sent_count(self, reminder_id: int):
         """به‌روزرسانی تعداد ارسال‌های ریمایندر پیشرفته"""
         query = """
-        UPDATE advanced_reminders 
+        UPDATE admin_advanced_reminders 
         SET total_sent = total_sent + 1, 
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
@@ -307,6 +307,38 @@ class ReminderDatabase:
                 logger.info(f"✅ ریمایندر پیشرفته {reminder_id} {status_text} شد")
             
             return success
+
+    # --- توابع کمکی برای سازگاری ---
+    def execute_query(self, query: str, params: tuple = (), fetch_all: bool = False):
+        """اجرای کوئری و بازگرداندن نتایج - برای سازگاری با کدهای موجود"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                
+                if query.strip().upper().startswith('SELECT'):
+                    if fetch_all:
+                        result = cursor.fetchall()
+                    else:
+                        result = cursor.fetchone()
+                else:
+                    conn.commit()
+                    result = None
+                
+                return result
+        except Exception as e:
+            logger.error(f"❌ خطا در اجرای کوئری: {e}")
+            return None
+
+    def execute_many(self, query: str, params_list: list):
+        """اجرای دستورات bulk"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.executemany(query, params_list)
+                conn.commit()
+        except Exception as e:
+            logger.error(f"❌ خطا در اجرای دستورات bulk: {e}")
 
     # --- توابع ریمایندر کنکور ---
     
@@ -783,5 +815,6 @@ class ReminderDatabase:
         )
         """
         self.execute_query(query)
+
 # ایجاد instance اصلی
 reminder_db = ReminderDatabase()
