@@ -843,21 +843,21 @@ async def process_advanced_confirmation(message: types.Message, state: FSMContex
 # =============================================================================
 
 async def validate_reminder_data(state_data: dict) -> list:
-    """اعتبارسنجی جامع داده‌های ریمایندر"""
     errors = []
     
     # بررسی وجود فیلدهای ضروری
     required_fields = {
         'title': 'عنوان',
-        'message': 'متن ریمایندر',
+        'message': 'متن ریمایندر', 
         'start_date': 'تاریخ شروع',
         'start_time': 'ساعت شروع',
         'end_date': 'تاریخ پایان',
         'end_time': 'ساعت پایان',
         'selected_days': 'روزهای هفته',
         'repeat_count': 'تعداد تکرار',
-        'repeat_interval': 'فاصله زمانی'
+        'repeat_interval': 'فاصله زمانی'  # 🔴 اینجا مشکل هست
     }
+    # ...
     
     for field, name in required_fields.items():
         if field not in state_data or not state_data[field]:
