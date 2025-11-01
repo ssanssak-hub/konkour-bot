@@ -618,7 +618,7 @@ async def process_repeat_count(message: types.Message, state: FSMContext):
         )
 
 async def process_repeat_interval(message: types.Message, state: FSMContext):
-    """پردازش فاصله زمانی (@)"""
+    """پردازش فاصله زمانی (@) - نسخه اصلاح شده"""
     if message.text == "🔙 بازگشت":
         await state.set_state(AdvancedReminderStates.waiting_for_repeat_count)
         await message.answer(
@@ -629,30 +629,32 @@ async def process_repeat_interval(message: types.Message, state: FSMContext):
     
     try:
         repeat_interval = int(message.text)
-        if repeat_interval < 10 or repeat_interval > 60:
-            await message.answer(
-                "❌ فاصله زمانی باید بین 10 تا 60 ثانیه باشد!\n\n"
-                "لطفاً عدد معتبر وارد کنید:",
-                reply_markup=create_repeat_interval_menu()
-            )
-            return
-        
         state_data = await state.get_data()
         repeat_count = state_data.get('repeat_count', 1)
         
-        # اگر تعداد تکرار 1 باشد، فاصله زمانی رو نادیده می‌گیریم
+        # 🔥 اگر تعداد تکرار 1 باشد، فاصله زمانی را نادیده بگیر
         if repeat_count == 1:
             repeat_interval = 0
             await message.answer(
                 "✅ فاصله زمانی تنظیم شد: 0 (نادیده گرفته می‌شود)\n\n"
                 "💡 <i>با توجه به تکرار یکباره، فاصله زمانی اعمال نمی‌شود.</i>\n\n"
-                "در حال انتقال به مرحله تأیید نهایی..."
+                "در حال انتقال به مرحله تأیید نهایی...",
+                parse_mode="HTML"
             )
         else:
+            if repeat_interval < 10 or repeat_interval > 60:
+                await message.answer(
+                    "❌ فاصله زمانی باید بین 10 تا 60 ثانیه باشد!\n\n"
+                    "لطفاً عدد معتبر وارد کنید:",
+                    reply_markup=create_repeat_interval_menu()
+                )
+                return
+            
             await message.answer(
                 f"✅ فاصله زمانی تنظیم شد: {repeat_interval} ثانیه\n\n"
                 f"💡 <i>پیام {repeat_count} بار با فاصله {repeat_interval} ثانیه ارسال می‌شود.</i>\n\n"
-                "در حال انتقال به مرحله تأیید نهایی..."
+                "در حال انتقال به مرحله تأیید نهایی...",
+                parse_mode="HTML"
             )
         
         await state.update_data(repeat_interval=repeat_interval)
