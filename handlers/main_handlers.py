@@ -64,7 +64,7 @@ async def start_handler(message: types.Message, bot: Bot):
 • 💫 پیام‌های انگیزشی
 • 🎯 نکات طلایی مطالعه
 • 🔔 سیستم یادآوری هوشمند{admin_features}
-
+• 💻 SanssAK :سازنده ربات
 از منوی زیر یکی از گزینه‌ها رو انتخاب کن:
 """
     await message.answer(welcome, reply_markup=welcome_menu, parse_mode="HTML")
