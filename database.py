@@ -43,13 +43,14 @@ class Database:
         
         try:
             with self.get_connection() as conn:
-                # جدول کاربران
+                # جدول کاربران - با ستون is_active
                 conn.execute('''
                     CREATE TABLE IF NOT EXISTS users (
                         user_id INTEGER PRIMARY KEY,
                         username TEXT,
                         first_name TEXT,
                         last_name TEXT,
+                        is_active BOOLEAN DEFAULT TRUE,  -- 🔥 ستون جدید
                         joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
@@ -156,14 +157,16 @@ class Database:
         try:
             with self.get_connection() as conn:
                 conn.execute('''
-                    INSERT OR REPLACE INTO users (user_id, username, first_name, last_name, last_active)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    INSERT OR REPLACE INTO users (user_id, username, first_name, last_name, is_active, last_active)
+                    VALUES (?, ?, ?, ?, TRUE, CURRENT_TIMESTAMP)
                 ''', (user_id, username, first_name, last_name))
                 conn.commit()
             logger.debug(f"✅ کاربر {user_id} افزوده/آپدیت شد")
         except Exception as e:
             logger.error(f"❌ خطا در افزودن کاربر {user_id}: {e}")
             self.log_error(user_id, "add_user", str(e))
+
+    # بقیه متدها بدون تغییر...
 
     def get_active_users(self):
         """دریافت کاربران فعال"""
