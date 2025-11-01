@@ -843,25 +843,37 @@ async def process_advanced_confirmation(message: types.Message, state: FSMContex
 # =============================================================================
 
 async def validate_reminder_data(state_data: dict) -> list:
+    """اعتبارسنجی جامع داده‌های ریمایندر - نسخه اصلاح شده"""
     errors = []
     
     # بررسی وجود فیلدهای ضروری
     required_fields = {
         'title': 'عنوان',
-        'message': 'متن ریمایندر', 
+        'message': 'متن ریمایندر',
         'start_date': 'تاریخ شروع',
-        'start_time': 'ساعت شروع',
+        'start_time': 'ساعت شروع', 
         'end_date': 'تاریخ پایان',
         'end_time': 'ساعت پایان',
         'selected_days': 'روزهای هفته',
-        'repeat_count': 'تعداد تکرار',
-        'repeat_interval': 'فاصله زمانی'  # 🔴 اینجا مشکل هست
+        'repeat_count': 'تعداد تکرار'
+        # 🔥 فاصله زمانی فقط برای تکرارهای بیشتر از 1 اجباری است
     }
-    # ...
     
     for field, name in required_fields.items():
-        if field not in state_data or not state_data[field]:
+        if field not in state_data or state_data[field] is None or state_data[field] == "":
             errors.append(f"• فیلد '{name}' پر نشده است")
+    
+    # 🔥 اعتبارسنجی فاصله زمانی فقط برای تکرارهای بیشتر از 1
+    if 'repeat_count' in state_data and state_data['repeat_count'] > 1:
+        if 'repeat_interval' not in state_data or not state_data['repeat_interval']:
+            errors.append("• برای تکرارهای بیشتر از 1، فاصله زمانی الزامی است")
+        elif state_data['repeat_interval'] < 10 or state_data['repeat_interval'] > 60:
+            errors.append("• فاصله زمانی باید بین ۱۰ تا ۶۰ ثانیه باشد")
+    
+    # 🔥 اگر تکرار 1 باشد، فاصله زمانی را 0 قرار بده
+    if 'repeat_count' in state_data and state_data['repeat_count'] == 1:
+        if 'repeat_interval' not in state_data or state_data['repeat_interval'] is None:
+            state_data['repeat_interval'] = 0  # مقدار پیش‌فرض برای تکرار یکباره
     
     # اعتبارسنجی طول عنوان و متن
     if 'title' in state_data:
@@ -884,14 +896,10 @@ async def validate_reminder_data(state_data: dict) -> list:
             if day not in [0, 1, 2, 3, 4, 5, 6]:
                 errors.append("• روزهای هفته انتخاب شده معتبر نیستند")
     
-    # اعتبارسنجی تنظیمات تکرار
+    # 🔥 اعتبارسنجی تعداد تکرار
     if 'repeat_count' in state_data:
         if state_data['repeat_count'] < 0 or state_data['repeat_count'] > 10:
             errors.append("• تعداد تکرار باید بین ۰ تا ۱۰ باشد")
-    
-    if 'repeat_interval' in state_data and state_data['repeat_count'] > 1:
-        if state_data['repeat_interval'] < 10 or state_data['repeat_interval'] > 60:
-            errors.append("• فاصله زمانی باید بین ۱۰ تا ۶۰ ثانیه باشد")
     
     return errors
 
