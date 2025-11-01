@@ -119,10 +119,30 @@ class Database:
                     )
                 ''')
                 
+                # 🔥 اضافه کردن جدول ریمایندرهای پیشرفته
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS advanced_reminders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        message_text TEXT NOT NULL,
+                        scheduled_date TEXT NOT NULL,
+                        scheduled_time TEXT NOT NULL,
+                        repeat_count INTEGER DEFAULT 1,
+                        repeat_interval INTEGER DEFAULT 1,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+                    )
+                ''')
+                
                 # ایجاد ایندکس برای بهبود عملکرد
                 conn.execute('CREATE INDEX IF NOT EXISTS idx_study_plans_user_date ON study_plans(user_id, study_date)')
                 conn.execute('CREATE INDEX IF NOT EXISTS idx_study_plans_completed ON study_plans(completed)')
                 conn.execute('CREATE INDEX IF NOT EXISTS idx_users_active ON users(last_active)')
+                conn.execute('CREATE INDEX IF NOT EXISTS idx_advanced_reminders_user ON advanced_reminders(user_id)')
+                conn.execute('CREATE INDEX IF NOT EXISTS idx_advanced_reminders_date ON advanced_reminders(scheduled_date)')
+                conn.execute('CREATE INDEX IF NOT EXISTS idx_advanced_reminders_active ON advanced_reminders(is_active)')
                 
                 conn.commit()
             logger.info("✅ دیتابیس راه‌اندازی شد")
@@ -144,15 +164,17 @@ class Database:
         except Exception as e:
             logger.error(f"❌ خطا در افزودن کاربر {user_id}: {e}")
             self.log_error(user_id, "add_user", str(e))
+
     def get_active_users(self):
         """دریافت کاربران فعال"""
         query = """
         SELECT user_id, username, first_name, last_name, created_at 
         FROM users 
         WHERE is_active = 1
-        ORDER BY created_at DESC  -- به جای last_activity از created_at استفاده کنید
+        ORDER BY created_at DESC
         """
         return self.execute_query(query, fetch_all=True)
+
     def update_user_activity(self, user_id: int):
         """بروزرسانی زمان فعالیت کاربر"""
         try:
@@ -389,6 +411,145 @@ OR created_at >= datetime('now', ?)
         except Exception as e:
             logger.error(f"❌ خطا در دریافت اطلاعات دیتابیس: {e}")
             return {'user_count': 0, 'session_count': 0, 'db_size_mb': 0, 'db_path': self.db_path}
+
+    # 🔥 اضافه کردن متدهای ضروری برای ریمایندر پیشرفته
+    def execute_query(self, query: str, params: tuple = (), fetch_all: bool = False):
+        """اجرای کوئری و بازگرداندن نتایج - برای سازگاری با کدهای موجود"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                
+                if query.strip().upper().startswith('SELECT'):
+                    if fetch_all:
+                        result = cursor.fetchall()
+                    else:
+                        result = cursor.fetchone()
+                else:
+                    conn.commit()
+                    result = None
+                
+                return result
+        except Exception as e:
+            logger.error(f"❌ خطا در اجرای کوئری: {e}")
+            return None
+
+    def execute_many(self, query: str, params_list: list):
+        """اجرای دستورات bulk"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.executemany(query, params_list)
+                conn.commit()
+        except Exception as e:
+            logger.error(f"❌ خطا در اجرای دستورات bulk: {e}")
+
+    # 🔥 متدهای مخصوص ریمایندرهای پیشرفته
+    def add_advanced_reminder(self, user_id: int, title: str, message_text: str, 
+                            scheduled_date: str, scheduled_time: str, 
+                            repeat_count: int = 1, repeat_interval: int = 1):
+        """افزودن ریمایندر پیشرفته جدید"""
+        try:
+            with self.get_connection() as conn:
+                conn.execute('''
+                    INSERT INTO advanced_reminders 
+                    (user_id, title, message_text, scheduled_date, scheduled_time, repeat_count, repeat_interval)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (user_id, title, message_text, scheduled_date, scheduled_time, repeat_count, repeat_interval))
+                conn.commit()
+            logger.info(f"✅ ریمایندر پیشرفته برای کاربر {user_id} افزوده شد")
+            return True
+        except Exception as e:
+            logger.error(f"❌ خطا در افزودن ریمایندر پیشرفته: {e}")
+            return False
+
+    def get_user_advanced_reminders(self, user_id: int):
+        """دریافت ریمایندرهای پیشرفته کاربر"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute('''
+                    SELECT id, title, message_text, scheduled_date, scheduled_time, 
+                           repeat_count, repeat_interval, is_active, created_at
+                    FROM advanced_reminders 
+                    WHERE user_id = ? AND is_active = TRUE
+                    ORDER BY scheduled_date, scheduled_time
+                ''', (user_id,))
+                
+                return [
+                    {
+                        'id': row[0],
+                        'title': row[1],
+                        'message_text': row[2],
+                        'scheduled_date': row[3],
+                        'scheduled_time': row[4],
+                        'repeat_count': row[5],
+                        'repeat_interval': row[6],
+                        'is_active': row[7],
+                        'created_at': row[8]
+                    }
+                    for row in cursor.fetchall()
+                ]
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت ریمایندرهای کاربر: {e}")
+            return []
+
+    def get_today_advanced_reminders(self):
+        """دریافت ریمایندرهای پیشرفته امروز"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute('''
+                    SELECT id, user_id, title, message_text, scheduled_time, repeat_count
+                    FROM advanced_reminders 
+                    WHERE scheduled_date = DATE('now') 
+                    AND is_active = TRUE
+                    ORDER BY scheduled_time
+                ''')
+                
+                return [
+                    {
+                        'id': row[0],
+                        'user_id': row[1],
+                        'title': row[2],
+                        'message_text': row[3],
+                        'scheduled_time': row[4],
+                        'repeat_count': row[5]
+                    }
+                    for row in cursor.fetchall()
+                ]
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت ریمایندرهای امروز: {e}")
+            return []
+
+    def deactivate_reminder(self, reminder_id: int):
+        """غیرفعال کردن ریمایندر"""
+        try:
+            with self.get_connection() as conn:
+                conn.execute('''
+                    UPDATE advanced_reminders 
+                    SET is_active = FALSE 
+                    WHERE id = ?
+                ''', (reminder_id,))
+                conn.commit()
+            logger.info(f"✅ ریمایندر {reminder_id} غیرفعال شد")
+            return True
+        except Exception as e:
+            logger.error(f"❌ خطا در غیرفعال کردن ریمایندر: {e}")
+            return False
+
+    def delete_reminder(self, reminder_id: int):
+        """حذف ریمایندر"""
+        try:
+            with self.get_connection() as conn:
+                conn.execute('''
+                    DELETE FROM advanced_reminders 
+                    WHERE id = ?
+                ''', (reminder_id,))
+                conn.commit()
+            logger.info(f"✅ ریمایندر {reminder_id} حذف شد")
+            return True
+        except Exception as e:
+            logger.error(f"❌ خطا در حذف ریمایندر: {e}")
+            return False
 
 # ایجاد instance جهانی دیتابیس
 database = Database()
