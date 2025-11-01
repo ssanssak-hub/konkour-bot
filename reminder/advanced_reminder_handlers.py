@@ -545,7 +545,7 @@ async def process_days_of_week(message: types.Message, state: FSMContext):
     )
 
 async def process_repeat_count(message: types.Message, state: FSMContext):
-    """پردازش تعداد تکرار (&)"""
+    """پردازش تعداد تکرار (&) - نسخه اصلاح شده"""
     if message.text == "🔙 بازگشت":
         await state.set_state(AdvancedReminderStates.waiting_for_days_of_week)
         state_data = await state.get_data()
@@ -567,41 +567,41 @@ async def process_repeat_count(message: types.Message, state: FSMContext):
             )
             return
         
-        await state.update_data(repeat_count=repeat_count)
-        
-        if repeat_count == 0:
-            # اگر تعداد تکرار 0 باشد، از کاربر فاصله زمانی نمی‌پرسیم
-            await state.update_data(repeat_interval=0)
-            await message.answer(
-                "✅ تعداد تکرار تنظیم شد: 0 (فقط ثبت اطلاعات)\n\n"
-                "💡 <i>این ریمایندر فقط در سیستم ثبت می‌شود و پیامی ارسال نمی‌کند.</i>\n\n"
-                "در حال انتقال به مرحله تأیید نهایی..."
+        # 🔥 اگر تکرار 0 یا 1 باشد، مستقیماً به تأیید نهایی برو
+        if repeat_count == 0 or repeat_count == 1:
+            await state.update_data(
+                repeat_count=repeat_count,
+                repeat_interval=0  # فاصله زمانی را 0 قرار بده
             )
+            
+            if repeat_count == 0:
+                await message.answer(
+                    "✅ تعداد تکرار تنظیم شد: 0 (فقط ثبت اطلاعات)\n\n"
+                    "💡 <i>این ریمایندر فقط در سیستم ثبت می‌شود و پیامی ارسال نمی‌کند.</i>\n\n"
+                    "در حال انتقال به مرحله تأیید نهایی...",
+                    parse_mode="HTML"
+                )
+            else:
+                await message.answer(
+                    "✅ تعداد تکرار تنظیم شد: 1 (ارسال یکبار)\n\n"
+                    "💡 <i>فاصله زمانی برای تکرار یکباره اعمال نمی‌شود.</i>\n\n"
+                    "در حال انتقال به مرحله تأیید نهایی...",
+                    parse_mode="HTML"
+                )
+            
             await asyncio.sleep(1)
             await show_advanced_confirmation(message, state)
         else:
+            await state.update_data(repeat_count=repeat_count)
             await state.set_state(AdvancedReminderStates.waiting_for_repeat_interval)
-            
-            explanation = ""
-            if repeat_count == 1:
-                explanation = (
-                    "• ارسال یکبار در ساعت مشخص\n"
-                    "• فاصله زمانی نادیده گرفته می‌شود\n"
-                    "• مناسب برای یادآوری‌های مهم یکباره"
-                )
-            else:
-                explanation = (
-                    f"• ارسال {repeat_count} بار با فاصله زمانی مشخص\n"
-                    f"• اولین ارسال: رأس ساعت تعیین شده\n"
-                    f"• ارسال‌های بعدی: با فاصله @ ثانیه\n"
-                    f"• مناسب برای پیام‌های تأکیدی"
-                )
             
             await message.answer(
                 f"⏱️ <b>فاصله زمانی بین تکرارها (@)</b>\n\n"
                 f"لطفاً فاصله زمانی بین ارسال‌ها را انتخاب کنید (10 تا 60 ثانیه):\n\n"
                 f"💡 <i>توضیحات برای {repeat_count} بار تکرار:</i>\n"
-                f"{explanation}\n\n"
+                f"• ارسال {repeat_count} بار با فاصله زمانی مشخص\n"
+                f"• اولین ارسال: رأس ساعت تعیین شده\n"
+                f"• ارسال‌های بعدی: با فاصله @ ثانیه\n\n"
                 f"🎯 <b>پیشنهادات:</b>\n"
                 f"• 10-20 ثانیه: برای پیام‌های فوری\n"
                 f"• 30-40 ثانیه: برای یادآوری‌های معمولی\n"
@@ -615,8 +615,8 @@ async def process_repeat_count(message: types.Message, state: FSMContext):
         await message.answer(
             "❌ لطفاً یک عدد معتبر وارد کنید!",
             reply_markup=create_repeat_count_menu()
-        )
-
+            )
+        
 async def process_repeat_interval(message: types.Message, state: FSMContext):
     """پردازش فاصله زمانی (@) - نسخه اصلاح شده"""
     if message.text == "🔙 بازگشت":
