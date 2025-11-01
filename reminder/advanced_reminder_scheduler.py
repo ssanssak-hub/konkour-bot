@@ -121,15 +121,25 @@ class AdvancedReminderScheduler:
             db = Database()
             
             # استفاده از کوئری مستقیم به جای تابع get_active_users
-            active_users = db.execute_query("""
+            active_users_result = db.execute_query("""
                 SELECT user_id, username, first_name, last_name 
                 FROM users 
-                WHERE is_active = 1
+                WHERE last_active >= datetime('now', '-30 days')
             """, fetch_all=True)
             
-            if not active_users:
+            if not active_users_result:
                 logger.info(f"⚠️ هیچ کاربر فعالی برای ریمایندر پیشرفته {reminder['id']} پیدا نشد")
                 return
+            
+            # تبدیل نتیجه به لیست دیکشنری
+            active_users = []
+            for row in active_users_result:
+                active_users.append({
+                    'user_id': row[0],
+                    'username': row[1],
+                    'first_name': row[2], 
+                    'last_name': row[3]
+                })
             
             message = await self.create_advanced_reminder_message(reminder, current_repeat, total_repeats)
             successful_sends = 0
@@ -144,7 +154,7 @@ class AdvancedReminderScheduler:
                     successful_sends += 1
                     
                     # وقفه کوتاه برای جلوگیری از محدودیت تلگرام
-                    await asyncio.sleep(0.1)  # افزایش زمان برای امنیت بیشتر
+                    await asyncio.sleep(0.1)
                     
                 except Exception as e:
                     logger.error(f"❌ خطا در ارسال ریمایندر پیشرفته به کاربر {user['user_id']}: {e}")
@@ -159,7 +169,7 @@ class AdvancedReminderScheduler:
             )
             
             # به‌روزرسانی تعداد ارسال‌ها
-            self.update_advanced_reminder_sent_count(reminder['id'])
+            reminder_db.update_advanced_reminder_sent_count(reminder['id'])
             
             logger.info(f"✅ ریمایندر پیشرفته {reminder['id']} (تکرار {current_repeat}/{total_repeats}) به {successful_sends} کاربر ارسال شد")
             
