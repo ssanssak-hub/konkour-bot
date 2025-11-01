@@ -1282,10 +1282,10 @@ async def handle_advanced_reminder_callback(callback: types.CallbackQuery):
         reminder_id = int(data.split(":")[1])
         await toggle_advanced_reminder(callback, reminder_id)
     
-    elif data.startswith("adv_stats:"):
-        # نمایش آمار ریمایندر
-        reminder_id = int(data.split(":")[1])
-        await show_advanced_reminder_stats(callback, reminder_id)
+    elif data.startswith("adv_list:"):
+        # بازگشت به لیست
+        action = data.split(":")[1]
+        await list_advanced_reminders_action(callback, action)
 
 async def show_advanced_reminder_details(callback: types.CallbackQuery, reminder_id: int):
     """نمایش جزئیات ریمایندر پیشرفته"""
@@ -1306,16 +1306,12 @@ async def show_advanced_reminder_details(callback: types.CallbackQuery, reminder
     # نمایش اطلاعات تکرار
     if reminder['repeat_count'] == 0:
         repeat_text = "📝 فقط ثبت شده (بدون ارسال)"
-        repeat_details = "این ریمایندر فقط در سیستم ثبت شده و پیامی ارسال نمی‌کند."
     elif reminder['repeat_count'] == 1:
         repeat_text = "🔔 ارسال یکبار"
-        repeat_details = f"پیام در ساعت {reminder['start_time']} ارسال می‌شود."
     else:
-        repeat_text = f"🔄 ارسال {reminder['repeat_count']} بار"
-        repeat_details = f"با فاصله {reminder['repeat_interval']} ثانیه - کل زمان: {(reminder['repeat_count'] - 1) * reminder['repeat_interval']} ثانیه"
+        repeat_text = f"🔄 ارسال {reminder['repeat_count']} بار با فاصله {reminder['repeat_interval']} ثانیه"
     
     status_text = "✅ فعال" if reminder['is_active'] else "❌ غیرفعال"
-    status_details = "در چرخه ارسال قرار دارد" if reminder['is_active'] else "از چرخه ارسال خارج شده"
     
     message = (
         f"📋 <b>جزئیات ریمایندر پیشرفته</b>\n\n"
@@ -1327,14 +1323,9 @@ async def show_advanced_reminder_details(callback: types.CallbackQuery, reminder
         f"⏰ <b>ساعت پایان:</b> {reminder['end_time']}\n"
         f"📅 <b>تاریخ پایان:</b> {reminder['end_date']}\n"
         f"📆 <b>روزهای هفته:</b> {days_text}\n"
-        f"🔢 <b>تکرار:</b> {repeat_text}\n"
-        f"💡 {repeat_details}\n\n"
+        f"🔢 <b>تکرار:</b> {repeat_text}\n\n"
         f"📊 <b>وضعیت:</b> {status_text}\n"
-        f"💡 {status_details}\n"
         f"📈 <b>تعداد ارسال:</b> {reminder['total_sent']} بار\n"
-        f"👤 <b>ایجاد شده توسط:</b> ادمین {reminder['admin_id']}\n"
-        f"🕒 <b>تاریخ ایجاد:</b> {reminder['created_at'][:19]}\n"
-        f"🔄 <b>آخرین بروزرسانی:</b> {reminder['updated_at'][:19]}\n"
     )
     
     await callback.message.edit_text(
@@ -1342,20 +1333,16 @@ async def show_advanced_reminder_details(callback: types.CallbackQuery, reminder
         reply_markup=create_advanced_reminder_actions_keyboard(reminder_id),
         parse_mode="HTML"
     )
-
+    await callback.answer()
+    
 async def edit_advanced_reminder(callback: types.CallbackQuery, reminder_id: int):
-    """شروع فرآیند ویرایش ریمایندر پیشرفته"""
+    """ویرایش ریمایندر پیشرفته"""
     await callback.answer("✏️ قابلیت ویرایش به زودی اضافه خواهد شد")
     
     # نمایش پیام موقت
     await callback.message.answer(
         "✏️ <b>سیستم ویرایش ریمایندر</b>\n\n"
         "💡 <i>این قابلیت در حال توسعه است و به زودی در دسترس قرار می‌گیرد.</i>\n\n"
-        "🎯 <b>قابلیت‌های آینده:</b>\n"
-        "• ویرایش عنوان و متن\n"
-        "• تغییر زمان‌بندی\n"
-        "• به‌روزرسانی روزهای هفته\n"
-        "• تنظیم مجدد تکرارها\n\n"
         "فعلاً می‌توانید ریمایندر جدیدی ایجاد کنید یا ریمایندر فعلی را حذف و مجدداً ایجاد کنید.",
         reply_markup=create_advanced_reminder_admin_menu(),
         parse_mode="HTML"
@@ -1378,12 +1365,9 @@ async def delete_advanced_reminder(callback: types.CallbackQuery, reminder_id: i
         await callback.message.edit_text(
             f"🗑️ <b>ریمایندر پیشرفته حذف شد</b>\n\n"
             f"📝 <b>عنوان:</b> {reminder['title']}\n"
-            f"🆔 <b>کد ریمایندر:</b> {reminder_id}\n"
-            f"📅 <b>تاریخ ایجاد:</b> {reminder['created_at'][:10]}\n"
-            f"📨 <b>تعداد ارسال:</b> {reminder['total_sent']} بار\n\n"
-            f"💡 <i>تمام اطلاعات این ریمایندر از سیستم حذف شد.</i>\n\n"
-            f"برای بازگشت به منوی مدیریت از دکمه زیر استفاده کنید:",
-            reply_markup=create_advanced_reminder_actions_keyboard(reminder_id),
+            f"🆔 <b>کد ریمایندر:</b> {reminder_id}\n\n"
+            f"💡 <i>تمام اطلاعات این ریمایندر از سیستم حذف شد.</i>",
+            reply_markup=create_advanced_reminder_admin_menu(),
             parse_mode="HTML"
         )
     else:
@@ -1400,15 +1384,33 @@ async def toggle_advanced_reminder(callback: types.CallbackQuery, reminder_id: i
         
         if current_reminder:
             status_text = "فعال" if current_reminder['is_active'] else "غیرفعال"
-            action_text = "فعال" if current_reminder['is_active'] else "غیرفعال"
-            
-            await callback.answer(f"✅ ریمایندر {action_text} شد")
+            await callback.answer(f"✅ ریمایندر {status_text} شد")
             
             # بروزرسانی پیام
             await show_advanced_reminder_details(callback, reminder_id)
     else:
         await callback.answer("❌ خطا در تغییر وضعیت")
 
+async def list_advanced_reminders_action(callback: types.CallbackQuery, action: str):
+    """بازگشت به لیست با action مشخص"""
+    reminders = reminder_db.get_admin_advanced_reminders()
+    
+    action_texts = {
+        "edit": "ویرایش",
+        "delete": "حذف", 
+        "toggle": "تغییر وضعیت"
+    }
+    
+    action_text = action_texts.get(action, "مدیریت")
+    
+    await callback.message.edit_text(
+        f"✏️ <b>{action_text} ریمایندرهای پیشرفته</b>\n\n"
+        f"لطفاً ریمایندر مورد نظر را انتخاب کنید:",
+        reply_markup=create_advanced_reminder_list_keyboard(reminders, action=action),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+    
 async def show_advanced_reminder_stats(callback: types.CallbackQuery, reminder_id: int):
     """نمایش آمار ریمایندر پیشرفته"""
     reminders = reminder_db.get_admin_advanced_reminders()
