@@ -131,6 +131,31 @@ class ReminderDatabase:
                     delivery_time_ms INTEGER
                 )
             ''')
+
+            # در جدول admin_advanced_reminders - اضافه کردن فیلدهای جدید
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS admin_advanced_reminders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    start_time TEXT NOT NULL,
+                    start_date TEXT NOT NULL,
+                    end_time TEXT NOT NULL,
+                    end_date TEXT NOT NULL, 
+                    days_of_week TEXT NOT NULL,
+                    repeat_count INTEGER DEFAULT 1,
+                    repeat_interval INTEGER DEFAULT 0,
+                    repetition_mode TEXT DEFAULT 'cyclic',  -- جدید: 'cyclic' یا 'daily_limited'
+                    daily_max_occurrences INTEGER DEFAULT NULL,  -- جدید: سقف روزانه
+                    last_execution_date TEXT,  -- جدید: آخرین تاریخ اجرا
+                    daily_counter INTEGER DEFAULT 0,  -- جدید: شمارنده روزانه
+                    is_active BOOLEAN DEFAULT TRUE,
+                    total_sent INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+               )
+           ''')
             
             # ایجاد ایندکس‌های بهینه
             cursor.execute('''
